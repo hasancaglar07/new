@@ -5,32 +5,22 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # 3. Adım: Gerekli sistem paketlerini kur: git ve git-lfs
-# Bu katmanı ayrı tutarak önbelleğe alınmasını sağlıyoruz
-RUN apt-get update && \
-    apt-get install -y git git-lfs && \
-    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y git git-lfs && rm -rf /var/lib/apt/lists/*
 
-# 4. Adım: ÖNCE SADECE requirements.txt'yi kopyala
-COPY requirements.txt .
+# 4. Adım: Repoyu doğrudan GitHub'dan klonla
+# Bu, .git klasörünün de gelmesini sağlar, böylece LFS çalışır.
+# Repo URL'sini kendi reponuzunkiyle değiştirebilirsiniz, ancak bu genel bir yaklaşımdır.
+RUN git clone https://github.com/hasancaglar07/new.git .
 
-# 5. Adım: ŞİMDİ bağımlılıkları kur. Bu katman, requirements.txt değişmediği sürece
-# önbellekten kullanılacak ve deploy'u hızlandıracaktır.
+# 5. Adım: LFS dosyalarını çek
+RUN git lfs pull
+
+# 6. Adım: Python bağımlılıklarını kur
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 6. Adım: Projenin geri kalan tüm kodlarını kopyala
-COPY . .
+# 7. Adım: Arama indeksini oluştur
+RUN python create_index.py
 
-# 7. Adım: Her deployda çalışacak olan build script'ini oluştur ve çalıştır
-# Bu, kod her değiştiğinde yeniden çalışır
-RUN echo '#!/bin/bash' > build.sh && \
-    echo 'set -e' >> build.sh && \
-    echo 'git lfs pull' >> build.sh && \
-    echo 'python create_index.py' >> build.sh && \
-    chmod +x build.sh
-
-# 8. Adım: Build script'ini çalıştır
-RUN ./build.sh
-
-# 9. Adım: Sunucuyu başlatacak olan komut
-# Gunicorn'u doğrudan çalıştırıyoruz
-CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "main:app", "--bind", "0.0.0.0:10000"]
+# 8. Adım: Sunucuyu başlatacak olan komut
+# Render'ın portunu kullanmak için $PORT değişkenini kullanıyoruz
+CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "main:app", "--bind", "0.0.0.0:${PORT}"]
