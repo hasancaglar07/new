@@ -20,3 +20,5 @@ plotly
 networkx
 matplotlib
 streamlit-mic-recorder
+gunicorn
+uvicorn
