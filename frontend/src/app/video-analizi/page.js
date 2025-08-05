@@ -1,6 +1,7 @@
 "// ai/frontend/src/app/video-analizi/page.js
 
 "use client";
+import Image from "next/image"; // Dosyanın en üstüne ekleyin
 
 import { useState, useEffect } from "react";
 import Image from "next/image"; // --- DÜZELTME: next/image import edildi
@@ -62,14 +63,13 @@ function HistoryCard({ videoId, data, onAnalyzeAgain }) {
         <Card className="overflow-hidden bg-white border group">
             <div className="aspect-video bg-slate-200 overflow-hidden relative">
                 <Image 
-                    src={data.thumbnail} 
-                    alt={data.title} 
-                    fill // Ebeveyn elementi doldurur
-                    style={{ objectFit: 'cover' }} // CSS object-fit'e eşdeğer
-                    className="transition-transform group-hover:scale-105"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    quality={75}
-                />
+					src={data.thumbnail} 
+					alt={data.title} 
+					fill
+					style={{ objectFit: 'cover' }}
+					className="transition-transform group-hover:scale-105"
+					sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+					/>
                 <a href={`https://www.youtube.com/watch?v=${videoId}`} target="_blank" rel="noopener noreferrer" className="absolute top-2 right-2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/80 transition-colors z-10">
                     <ExternalLink className="h-4 w-4" />
                 </a>

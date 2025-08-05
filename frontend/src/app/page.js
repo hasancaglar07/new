@@ -216,7 +216,7 @@ export default function HomePage() {
 
   const handleReadClick = (book) => { setSelectedBook(book); setIsModalOpen(true); };
   
-  const noResultsMessage = `"${searchQuery}" için herhangi bir sonuç bulunamadı. Lütfen farklı bir anahtar kelime deneyin veya filtrelerinizi kontrol edin.`;
+  const noResultsMessage = `"${searchQuery}" için herhangi bir sonuç bulunamadı. Lütfen farklı bir anahtar kelime deneyin veya filtrelerinizi kontrol edin.`.replace(/"/g, '&quot;');
   const hasResults = allResults.books.length > 0 || allResults.videos.length > 0;
 
   return (
