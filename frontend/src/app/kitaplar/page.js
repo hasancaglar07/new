@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Download, ArrowLeft, ArrowRight, BookOpen, Search, Library, AlertTriangle } from "lucide-react";
+import { Loader2, Download, ArrowLeft, ArrowRight, BookOpen, Search, Library } from "lucide-react";
 
 // ShadCN UI ve Yerel Bileşenler
 import { Button } from "@/components/ui/button";
@@ -15,66 +15,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// --- YENİ: Debounce Hook'u ---
-// Arama girdisi gibi sık değişen değerler için kullanılır.
-// İşlemi yalnızca kullanıcı yazmayı bıraktığında tetikler.
-function useDebounce(value, delay) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    // Her değer değişikliğinde önceki zamanlayıcıyı temizle
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
-
 // --- ALT BİLEŞENLER (TÜM DÜZELTMELERLE) ---
 
 function BookViewerDialog({ book, onClose, isOpen }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [imageError, setImageError] = useState(false); // --- YENİ: Resim yükleme hatası state'i
 
   useEffect(() => {
     if (book) {
       setCurrentPage(1); 
       setTotalPages(book.toplam_sayfa || null);
       setIsLoading(true);
-      setImageError(false); // --- YENİ: Dialog açıldığında hatayı sıfırla
     }
   }, [book]);
 
-  useEffect(() => {
-    setIsLoading(true);
-    setImageError(false);
-  }, [currentPage]);
+  useEffect(() => { setIsLoading(true); }, [currentPage]);
 
   if (!book) return null;
 
   const imageUrl = `${API_BASE_URL}/pdf/page_image?pdf_file=${book.pdf_dosyasi}&page_num=${currentPage}`;
-  
-  // --- DÜZENLENDİ: İndirme fonksiyonu eklendi ---
-  const handleDownload = () => {
-    // Not: Bu fonksiyonun çalışması için API'nizin
-    // doğrudan bir dosya yolu veya indirme linki sağlaması gerekir.
-    // Örnek olarak dosyanın public olduğu varsayılmıştır.
-    const downloadUrl = `${API_BASE_URL}/pdfs/${book.pdf_dosyasi}`;
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.setAttribute('download', `${book.kitap_adi}.pdf`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const handleDownload = async () => { /* ... */ };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -82,34 +43,16 @@ function BookViewerDialog({ book, onClose, isOpen }) {
         <DialogHeader className="p-4 border-b"><DialogTitle className="text-xl md:text-2xl text-slate-800">{book.kitap_adi}</DialogTitle></DialogHeader>
         <div className="flex-grow flex justify-center items-center bg-slate-200 overflow-hidden relative">
           {isLoading && <Loader2 className="h-10 w-10 animate-spin text-slate-500 absolute" />}
-          
-          {/* --- DÜZENLENDİ: Hata durumu eklendi --- */}
-          {imageError ? (
-            <div className="text-center text-red-600">
-                <AlertTriangle className="mx-auto h-12 w-12 mb-2" />
-                <p>Sayfa resmi yüklenemedi.</p>
-            </div>
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img 
-              src={imageUrl} 
-              alt={`Sayfa ${currentPage}`} 
-              onLoad={() => setIsLoading(false)} 
-              onError={() => { setIsLoading(false); setImageError(true); }} // --- YENİ: Hata yakalama
-              className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${isLoading || imageError ? 'opacity-0' : 'opacity-100'}`} 
-            />
-          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={imageUrl} alt={`Sayfa ${currentPage}`} onLoad={() => setIsLoading(false)} className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`} />
         </div>
         <DialogFooter className="flex-row justify-between items-center p-3 bg-slate-100 border-t">
-          <Button variant="outline" onClick={handleDownload} aria-label="Kitabı İndir">
-              <Download className="mr-0 md:mr-2 h-4 w-4" />
-              <span className="hidden md:inline">İndir</span>
-          </Button>
+          <Button variant="outline" onClick={handleDownload}><Download className="mr-0 md:mr-2 h-4 w-4" /><span className="hidden md:inline">İndir</span></Button>
           <div className="flex items-center gap-2">
-            <Button onClick={() => setCurrentPage(p => p > 1 ? p - 1 : 1)} disabled={currentPage <= 1} aria-label="Önceki Sayfa"><ArrowLeft className="h-4 w-4" /></Button>
+            <Button onClick={() => setCurrentPage(p => p > 1 ? p - 1 : 1)} disabled={currentPage <= 1}><ArrowLeft className="h-4 w-4" /></Button>
             <Input type="number" value={currentPage} onChange={(e) => { const val = Number(e.target.value); if (val > 0 && val <= totalPages) setCurrentPage(val); }} className="w-20 text-center font-bold" />
             <span className="font-semibold text-slate-600">/ {totalPages || '...'}</span>
-            <Button onClick={() => setCurrentPage(p => totalPages && p < totalPages ? p + 1 : p)} disabled={!totalPages || currentPage >= totalPages} aria-label="Sonraki Sayfa"><ArrowRight className="h-4 w-4" /></Button>
+            <Button onClick={() => setCurrentPage(p => totalPages && p < totalPages ? p + 1 : p)} disabled={!totalPages || currentPage >= totalPages}><ArrowRight className="h-4 w-4" /></Button>
           </div>
         </DialogFooter>
       </DialogContent>
@@ -155,64 +98,37 @@ function EmptyState() {
     return (<div className="text-center py-16 px-6 bg-slate-100/80 rounded-2xl mt-12"><Library className="mx-auto h-16 w-16 text-slate-400 mb-4" /><h3 className="text-2xl font-bold text-slate-700">Sonuç Bulunamadı</h3><p className="text-slate-500 mt-2">Filtre kriterlerinize uyan bir kitap bulunamadı.</p></div>)
 }
 
-// --- YENİ: Hata durumu için component ---
-function ErrorState({ message, onRetry }) {
-    return (
-        <div className="container mx-auto px-4 py-20 text-center">
-            <AlertTriangle className="mx-auto h-16 w-16 text-red-500 mb-4" />
-            <h2 className="text-3xl font-bold text-slate-800">Bir Sorun Oluştu</h2>
-            <p className="text-slate-600 mt-2 mb-6">{message}</p>
-            <Button onClick={onRetry}>Tekrar Dene</Button>
-        </div>
-    );
-}
 
-
-// --- KÜTÜPHANE SAYFASI (TÜM DÜZELTMELERLE) ---
+// --- KÜTÜPHANE SAYFASI ---
 export default function LibraryPage() {
     const [libraryData, setLibraryData] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState(null); // --- YENİ: Hata yönetimi state'i
     const [selectedBook, setSelectedBook] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedAuthor, setSelectedAuthor] = useState("all");
     const [searchTerm, setSearchTerm] = useState("");
-    
-    // --- YENİ: Debounced arama terimi ---
-    const debouncedSearchTerm = useDebounce(searchTerm, 300);
-
-    const fetchLibrary = async () => {
-        setIsLoading(true);
-        setError(null); // Denemeden önce hatayı sıfırla
-        try {
-            const response = await fetch(`${API_BASE_URL}/books_by_author`);
-            if (!response.ok) throw new Error("Veri sunucudan alınamadı. Lütfen daha sonra tekrar deneyin.");
-            const data = await response.json();
-            setLibraryData(data.kutuphane || []);
-        } catch (error) { 
-            console.error("Kütüphane verisi alınırken hata:", error); 
-            setError(error.message);
-        } 
-        finally { setIsLoading(false); }
-    }
 
     useEffect(() => {
+        async function fetchLibrary() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/books_by_author`);
+                if (!response.ok) throw new Error("Veri sunucudan alınamadı.");
+                const data = await response.json();
+                setLibraryData(data.kutuphane || []);
+            } catch (error) { console.error("Kütüphane verisi alınırken hata:", error); } 
+            finally { setIsLoading(false); }
+        }
         fetchLibrary();
     }, []);
 
-    // --- DÜZENLENDİ: Filtreleme mantığı debounced terimi kullanıyor ---
     const filteredData = useMemo(() => {
         return libraryData.map(authorData => {
             if (selectedAuthor !== "all" && authorData.yazar !== selectedAuthor) return null;
-            
-            const filteredBooks = authorData.kitaplar.filter(book => 
-                book.kitap_adi.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-            );
-
+            const filteredBooks = authorData.kitaplar.filter(book => book.kitap_adi.toLowerCase().includes(searchTerm.toLowerCase()));
             if (filteredBooks.length === 0) return null;
             return { ...authorData, kitaplar: filteredBooks };
         }).filter(Boolean);
-    }, [libraryData, selectedAuthor, debouncedSearchTerm]); // dependency array güncellendi
+    }, [libraryData, selectedAuthor, searchTerm]);
 
     const handleAuthorChange = (author) => {
         setSelectedAuthor(author);
@@ -227,9 +143,6 @@ export default function LibraryPage() {
     const handleReadClick = (book) => { setSelectedBook(book); setIsModalOpen(true); };
     
     if (isLoading) return <LibrarySkeleton />;
-    
-    // --- YENİ: Hata durumu render'ı ---
-    if (error) return <ErrorState message={error} onRetry={fetchLibrary} />;
 
     return (
         <div className="bg-slate-50 min-h-screen">
@@ -262,7 +175,7 @@ export default function LibraryPage() {
                                 <motion.section id={authorData.yazar} key={authorData.yazar} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: index * 0.1 }}>
                                     <h2 className="text-3xl md:text-4xl font-bold text-slate-700 mb-8 pb-3 border-b-4 border-emerald-500 inline-block scroll-mt-48">{authorData.yazar}</h2>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
-                                        {authorData.kitaplar.map(book => (<BookCard key={book.kitap_adi} book={book} onReadClick={() => handleReadClick(book)} searchTerm={debouncedSearchTerm} />))}
+                                        {authorData.kitaplar.map(book => (<BookCard key={book.kitap_adi} book={book} onReadClick={() => handleReadClick(book)} searchTerm={searchTerm} />))}
                                     </div>
                                 </motion.section>
                             ))

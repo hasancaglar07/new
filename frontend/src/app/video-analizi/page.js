@@ -1,8 +1,9 @@
-// ai/frontend/src/app/video-analizi/page.js
+"// ai/frontend/src/app/video-analizi/page.js
 
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image"; // --- DÜZELTME: next/image import edildi
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, History, Loader2, ServerCrash, FileQuestion, ChevronDown, Repeat, ExternalLink } from "lucide-react";
 
@@ -16,9 +17,8 @@ const API_BASE_URL = "http://127.0.0.1:8000";
 
 const extractVideoId = (url) => { const match = url.match(/(?:v=|\/|embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/); return match ? match[1] : null; };
 
-// --- ★★★ YENİ VE İYİLEŞTİRİLMİŞ BİLEŞENLER ★★★ ---
+// --- Bileşenler ---
 
-// 1. Analiz Sonuç/Durum Kartları
 function AnalysisResultCard({ result, url }) {
     const videoId = extractVideoId(url);
     return (
@@ -44,7 +44,6 @@ function AnalysisResultCard({ result, url }) {
     );
 }
 
-// *** DÜZELTİLMİŞ BÖLÜM ***
 function AnalysisStatusCard() {
     return (
         <Card className="text-center p-8 md:p-12">
@@ -57,13 +56,21 @@ function AnalysisStatusCard() {
     );
 }
 
-// 2. Geçmiş Kartı
+// --- DÜZELTME: Bu bileşendeki <img> etiketi <Image> ile değiştirildi ---
 function HistoryCard({ videoId, data, onAnalyzeAgain }) {
     return (
         <Card className="overflow-hidden bg-white border group">
             <div className="aspect-video bg-slate-200 overflow-hidden relative">
-                <img src={data.thumbnail} alt={data.title} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                <a href={`https://www.youtube.com/watch?v=${videoId}`} target="_blank" rel="noopener noreferrer" className="absolute top-2 right-2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/80 transition-colors">
+                <Image 
+                    src={data.thumbnail} 
+                    alt={data.title} 
+                    fill // Ebeveyn elementi doldurur
+                    style={{ objectFit: 'cover' }} // CSS object-fit'e eşdeğer
+                    className="transition-transform group-hover:scale-105"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    quality={75}
+                />
+                <a href={`https://www.youtube.com/watch?v=${videoId}`} target="_blank" rel="noopener noreferrer" className="absolute top-2 right-2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/80 transition-colors z-10">
                     <ExternalLink className="h-4 w-4" />
                 </a>
             </div>
@@ -100,7 +107,6 @@ function HistoryCard({ videoId, data, onAnalyzeAgain }) {
     );
 }
 
-// 3. İskelet Yükleyici ve Bilgi Durumu
 function HistorySkeleton() {
     return <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{[...Array(3)].map((_, i) => (<div key={i} className="bg-white rounded-xl border p-4 space-y-4 animate-pulse"><div className="bg-slate-200 rounded-md aspect-video"></div><div className="h-4 bg-slate-200 rounded w-full"></div><div className="h-4 bg-slate-200 rounded w-3/4"></div><div className="h-8 bg-slate-200 rounded w-full mt-4"></div></div>))}</div>
 }
@@ -109,7 +115,8 @@ function InfoState({ title, message, icon: Icon }) {
 }
 
 
-// --- ★★★ ANA VİDEO ANALİZ SAYFASI ★★★ ---
+// --- ANA VİDEO ANALİZ SAYFASI ---
+// Bu ana bileşende bir sorun bulunmadığı için değişiklik yapılmamıştır.
 export default function VideoAnalysisPage() {
     const [url, setUrl] = useState("");
     const [currentAnalysisUrl, setCurrentAnalysisUrl] = useState("");
