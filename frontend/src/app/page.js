@@ -18,9 +18,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-const RESULTS_PER_PAGE = 12;
+const RESULTS_PER_PAGE = 12; // "Daha Fazla Yükle" için sayfa başına sonuç sayısı
 
-// --- ALT BİLEŞENLER (TÜM DÜZELTMELERLE) ---
+// --- ★★★ "ULTIMATE" ALT BİLEŞENLER (FINAL SÜRÜM) ★★★ ---
 
 const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -207,6 +207,7 @@ export default function HomePage() {
   const [allResults, setAllResults] = useState({ books: [], videos: [] });
   const [displayedResultsCount, setDisplayedResultsCount] = useState(RESULTS_PER_PAGE);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('kitaplar');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -249,9 +250,20 @@ export default function HomePage() {
   const handleReadClick = (book) => { setSelectedBook(book); setIsModalOpen(true); };
   const handleSuggestionClick = (tag) => { setQuery(tag); };
   
+  const handleLoadMore = () => {
+    setIsLoadingMore(true);
+    // Yeni sonuçların render edilmesi için küçük bir gecikme ekleyerek
+    // yükleme animasyonunun görünmesini sağlıyoruz.
+    setTimeout(() => {
+        setDisplayedResultsCount(c => c + RESULTS_PER_PAGE);
+        setIsLoadingMore(false);
+    }, 500); // 500ms
+  };
+  
   const hasResults = allResults.books.length > 0 || allResults.videos.length > 0;
   const showLoadMoreBooks = displayedBooks.length < allResults.books.length;
   const showLoadMoreVideos = displayedVideos.length < allResults.videos.length;
+  const noResultsMessage = `'${searchQuery}' için herhangi bir sonuç bulunamadı. Lütfen farklı bir anahtar kelime deneyin veya filtrelerinizi kontrol edin.`;
 
   return (
     <div className="bg-slate-50 min-h-screen w-full font-sans">
@@ -261,7 +273,8 @@ export default function HomePage() {
           <p className="mt-4 md:mt-6 text-lg md:text-xl text-slate-600 max-w-3xl mx-auto">Üstadlarımızın eserlerinde ve sohbetlerinde, yapay zeka destekli modern bir arayüzle derinlemesine arama yapın.</p>
         </motion.header>
 
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }} className="sticky top-6 z-30">
+        {/* ★★★ DÜZELTME: "sticky" sınıfları buradan kaldırıldı ★★★ */}
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}>
           <Card className="max-w-3xl mx-auto shadow-xl shadow-slate-200/70 border-t-4 border-emerald-500 bg-white/90 backdrop-blur-lg rounded-2xl">
             <CardContent className="p-6 md:p-8">
               <div className="space-y-4">
@@ -288,7 +301,7 @@ export default function HomePage() {
           <AnimatePresence mode="wait">
             {isLoading && searchQuery.trim() !== "" ? ( <motion.div key="loading"><ResultsSkeleton /></motion.div> ) : 
              error ? ( <motion.div key="error"><InfoState title="Bir Hata Oluştu" message={error} icon={ServerCrash} /></motion.div> ) : 
-             !hasResults && searchQuery.trim() !== "" ? ( <motion.div key="no-results"><InfoState title="Sonuç Bulunamadı" message={`"${searchQuery}" için herhangi bir sonuç bulunamadı. Lütfen farklı bir anahtar kelime deneyin veya filtrelerinizi kontrol edin.`} icon={FileQuestion} onClearFilters={() => {setQuery(""); setSelectedAuthors(new Set());}} /></motion.div> ) :
+             !hasResults && searchQuery.trim() !== "" ? ( <motion.div key="no-results"><InfoState title="Sonuç Bulunamadı" message={noResultsMessage} icon={FileQuestion} onClearFilters={() => {setQuery(""); setSelectedAuthors(new Set());}} /></motion.div> ) :
              hasResults && (
               <motion.div key="results" initial={{opacity:0, y:20}} animate={{opacity:1, y:0}}>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -296,8 +309,14 @@ export default function HomePage() {
                     <TabsTrigger value="kitaplar" className="text-sm md:text-base gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 font-semibold"><BookOpen /> Kitaplar <Pill className="bg-emerald-100 text-emerald-800">{allResults.books.length}</Pill></TabsTrigger>
                     <TabsTrigger value="videolar" className="text-sm md:text-base gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 font-semibold"><Video /> Videolar <Pill className="bg-sky-100 text-sky-800">{allResults.videos.length}</Pill></TabsTrigger>
                   </TabsList>
-                  <TabsContent value="kitaplar" className="mt-8"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{displayedBooks.map((r, i) => <ResultCard key={`book-${i}`} result={r} onReadClick={handleReadClick} query={searchQuery} index={i} />)}</div>{showLoadMoreBooks && <div className="mt-10 text-center"><Button onClick={() => setDisplayedResultsCount(c => c + RESULTS_PER_PAGE)}>Daha Fazla Kitap Yükle</Button></div>}</TabsContent>
-                  <TabsContent value="videolar" className="mt-8"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{displayedVideos.map((v, i) => <VideoCard key={`video-${i}`} video={v} index={i} />)}</div>{showLoadMoreVideos && <div className="mt-10 text-center"><Button onClick={() => setDisplayedResultsCount(c => c + RESULTS_PER_PAGE)}>Daha Fazla Video Yükle</Button></div>}</TabsContent>
+                  <TabsContent value="kitaplar" className="mt-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{displayedBooks.map((r, i) => <ResultCard key={`book-${i}`} result={r} onReadClick={handleReadClick} query={searchQuery} index={i} />)}</div>
+                    {showLoadMoreBooks && <div className="mt-10 text-center"><Button onClick={handleLoadMore} disabled={isLoadingMore}>{isLoadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} {isLoadingMore ? "Yükleniyor..." : "Daha Fazla Kitap Yükle"}</Button></div>}
+                  </TabsContent>
+                  <TabsContent value="videolar" className="mt-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{displayedVideos.map((v, i) => <VideoCard key={`video-${i}`} video={v} index={i} />)}</div>
+                    {showLoadMoreVideos && <div className="mt-10 text-center"><Button onClick={handleLoadMore} disabled={isLoadingMore}>{isLoadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} {isLoadingMore ? "Yükleniyor..." : "Daha Fazla Video Yükle"}</Button></div>}
+                  </TabsContent>
                 </Tabs>
               </motion.div>
             )}
