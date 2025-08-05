@@ -17,10 +17,10 @@ import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, Command
 import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
-const API_BASE_URL = "http://127.0.0.1:8000";
-const RESULTS_PER_PAGE = 48;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const RESULTS_PER_PAGE = 12;
 
-// --- "ULTIMATE" ALT BİLEŞENLER (FINAL SÜRÜM) ---
+// --- ALT BİLEŞENLER (TÜM DÜZELTMELERLE) ---
 
 const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -44,8 +44,16 @@ function PagePreview({ pdfFile, pageNum, onReadClick }) {
     useEffect(() => {
         setIsLoading(true); setError(null);
         const imageUrl = `${API_BASE_URL}/pdf/page_image?pdf_file=${pdfFile}&page_num=${pageNum}`;
-        fetch(imageUrl).then(res => res.ok ? res.blob() : Promise.reject(new Error("Resim yüklenemedi."))).then(blob => {setImageSrc(URL.createObjectURL(blob)); setIsLoading(false);}).catch(err => {setError(err.message); setIsLoading(false);});
-        return () => { if (imageSrc) URL.revokeObjectURL(imageSrc); };
+        let objectUrl = null;
+        fetch(imageUrl).then(res => res.ok ? res.blob() : Promise.reject(new Error("Resim yüklenemedi."))).then(blob => {
+            objectUrl = URL.createObjectURL(blob);
+            setImageSrc(objectUrl);
+            setIsLoading(false);
+        }).catch(err => {
+            setError(err.message);
+            setIsLoading(false);
+        });
+        return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
     }, [pdfFile, pageNum]);
 
     return (
@@ -53,7 +61,10 @@ function PagePreview({ pdfFile, pageNum, onReadClick }) {
             <div className="relative flex justify-center items-center min-h-[200px] bg-slate-100 rounded-lg p-2">
                 {isLoading && <Loader2 className="h-8 w-8 text-slate-400 animate-spin" />}
                 {error && <div className="text-center text-red-600 p-4"><ServerCrash className="mx-auto h-8 w-8 mb-2" />{error}</div>}
-                {imageSrc && !isLoading && <img src={imageSrc} alt={`Sayfa ${pageNum} önizlemesi`} className="max-w-full max-h-[400px] rounded-md shadow-md" />}
+                {imageSrc && !isLoading && 
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={imageSrc} alt={`Sayfa ${pageNum} önizlemesi`} className="max-w-full max-h-[400px] rounded-md shadow-md" />
+                }
             </div>
             <Button onClick={onReadClick} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">Bu Sayfayı Oku <ArrowRight className="ml-2 h-4 w-4" /></Button>
         </div>
@@ -122,11 +133,11 @@ function BookViewerDialog({ book, onClose, isOpen }) {
 
   useEffect(() => {
     setIsLoading(true);
-    if (totalPages) {
+    if (totalPages && book) {
         if (currentPage < totalPages) { new Image().src = `${API_BASE_URL}/pdf/page_image?pdf_file=${book.pdf_dosyasi}&page_num=${currentPage + 1}`; }
         if (currentPage > 1) { new Image().src = `${API_BASE_URL}/pdf/page_image?pdf_file=${book.pdf_dosyasi}&page_num=${currentPage - 1}`; }
     }
-  }, [currentPage, book.pdf_dosyasi, totalPages]);
+  }, [currentPage, book, totalPages]);
 
   if (!book) return null;
   const imageUrl = `${API_BASE_URL}/pdf/page_image?pdf_file=${book.pdf_dosyasi}&page_num=${currentPage}`;
@@ -141,9 +152,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
         const a = document.createElement('a');
         a.href = url;
         a.download = `${book.kitap.replace(/\s/g, '_')}_Sayfa_${currentPage}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
     } catch (error) { console.error("İndirme hatası:", error); } 
     finally { setIsDownloading(false); }
@@ -155,6 +164,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
         <DialogHeader className="p-4 border-b flex-shrink-0"><DialogTitle className="text-xl md:text-2xl text-slate-800">{book.kitap}</DialogTitle></DialogHeader>
         <div className="flex-grow flex justify-center items-center bg-slate-200 overflow-hidden relative">
           {isLoading && <Loader2 className="h-10 w-10 animate-spin text-slate-500 absolute" />}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={imageUrl} alt={`Sayfa ${currentPage}`} onLoad={() => setIsLoading(false)} className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`} />
         </div>
         <DialogFooter className="flex-row justify-between items-center p-3 bg-slate-100 border-t flex-shrink-0">
@@ -247,12 +257,11 @@ export default function HomePage() {
     <div className="bg-slate-50 min-h-screen w-full font-sans">
       <main className="container mx-auto px-4 py-12 md:py-20">
         <motion.header initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: "easeOut" }} className="text-center mb-12 md:mb-16">
-          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter text-slate-800"><span className="bg-clip-text text-transparent bg-gradient-to-br from-emerald-600 to-green-500"> E - Kütüphane</span></h1>
+          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter text-slate-800"><span className="bg-clip-text text-transparent bg-gradient-to-br from-emerald-600 to-green-500">Yediulya İlim Havuzu</span></h1>
           <p className="mt-4 md:mt-6 text-lg md:text-xl text-slate-600 max-w-3xl mx-auto">Üstadlarımızın eserlerinde ve sohbetlerinde, yapay zeka destekli modern bir arayüzle derinlemesine arama yapın.</p>
         </motion.header>
 
-        {/* ★★★ DÜZELTİLMİŞ BÖLÜM: "sticky" sınıfları kaldırıldı ★★★ */}
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}>
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }} className="sticky top-6 z-30">
           <Card className="max-w-3xl mx-auto shadow-xl shadow-slate-200/70 border-t-4 border-emerald-500 bg-white/90 backdrop-blur-lg rounded-2xl">
             <CardContent className="p-6 md:p-8">
               <div className="space-y-4">
@@ -279,7 +288,7 @@ export default function HomePage() {
           <AnimatePresence mode="wait">
             {isLoading && searchQuery.trim() !== "" ? ( <motion.div key="loading"><ResultsSkeleton /></motion.div> ) : 
              error ? ( <motion.div key="error"><InfoState title="Bir Hata Oluştu" message={error} icon={ServerCrash} /></motion.div> ) : 
-             !hasResults && searchQuery.trim() !== "" ? ( <motion.div key="no-results"><InfoState title="Sonuç Bulunamadı" message={`"${searchQuery}" için herhangi bir sonuç bulunamadı.`} icon={FileQuestion} onClearFilters={() => {setQuery(""); setSelectedAuthors(new Set());}} /></motion.div> ) :
+             !hasResults && searchQuery.trim() !== "" ? ( <motion.div key="no-results"><InfoState title="Sonuç Bulunamadı" message={`"${searchQuery}" için herhangi bir sonuç bulunamadı. Lütfen farklı bir anahtar kelime deneyin veya filtrelerinizi kontrol edin.`} icon={FileQuestion} onClearFilters={() => {setQuery(""); setSelectedAuthors(new Set());}} /></motion.div> ) :
              hasResults && (
               <motion.div key="results" initial={{opacity:0, y:20}} animate={{opacity:1, y:0}}>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
