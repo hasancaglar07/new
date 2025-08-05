@@ -26,8 +26,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # ### BÜYÜK VERİ DOSYALARI ###
-# PDF dosyalarının içeriğini gönderme (klasör boş gidecek)
-/data/pdfler/*
 # Whoosh arama indeksinin içeriğini gönderme (klasör boş gidecek)
 /data/whoosh_index/*
 # Video analiz cache'ini gönderme
