@@ -1,0 +1,19 @@
+[[pages]]
+path = "pages/home.py"
+name = "Ana Sayfa"
+icon = "🕌"
+
+[[pages]]
+path = "pages/kitap_oku.py"
+name = "Kitap Okuma"
+icon = "📖"
+
+[[pages]]
+path = "pages/youtube_arama.py"
+name = "YouTube Arama"
+icon = "🔍"
+
+[[pages]]
+path = "pages/video_bolumleyici.py"
+name = "Video Analizi"
+icon = "🎬"

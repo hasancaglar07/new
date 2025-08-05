@@ -1,0 +1,39 @@
+# ### Hassas Bilgiler ###
+# API anahtarları ve ortam değişkenlerini asla gönderme
+.env
+.env*.local
+
+# ### Python & Backend Bağımlılıkları ve Cache ###
+# Sanal ortam klasörleri
+venv/
+env/
+.venv/
+# Python cache dosyaları
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ### Node.js & Frontend Bağımlılıkları ve Build Çıktıları ###
+# Yüzlerce megabayt tutabilen bağımlılık klasörü
+/frontend/node_modules/
+# Next.js'in build sırasında oluşturduğu klasörler
+/frontend/.next/
+/frontend/out/
+# NPM log dosyaları
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ### BÜYÜK VERİ DOSYALARI ###
+# PDF dosyalarının içeriğini gönderme (klasör boş gidecek)
+/data/pdfler/*
+# Whoosh arama indeksinin içeriğini gönderme (klasör boş gidecek)
+/data/whoosh_index/*
+# Video analiz cache'ini gönderme
+/data/video_analysis_cache.json
+/data/video_analiz_gecmisi.json
+
+# ### İşletim Sistemi Dosyaları ###
+.DS_Store
+Thumbs.db
