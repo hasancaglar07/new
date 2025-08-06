@@ -18,7 +18,7 @@ import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, Command
 import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
-const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL = "process.env.NEXT_PUBLIC_API_URL";
 const RESULTS_PER_PAGE = 48;
 
 // --- "ULTIMATE" ALT BİLEŞENLER (DÜZELTİLMİŞ SÜRÜM) ---
