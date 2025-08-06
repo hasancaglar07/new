@@ -14,11 +14,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import Image from "next/image"; // Next.js Image bileşenini import et
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 const RESULTS_PER_PAGE = 12;
 
-// --- ALT BİLEŞENLER (TÜM LINT DÜZELTMELERİYLE) ---
+// --- ALT BİLEŞENLER ---
 
 const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -27,10 +28,13 @@ const formatDate = (dateString) => {
 
 function Highlight({ text, query }) {
     if (!text) return null;
-    if (!query) return <span dangerouslySetInnerHTML={{ __html: text.replace(/<b/g, '<b class="font-bold text-emerald-700 bg-emerald-100/50 px-0.5 rounded-sm"') }} />;
+    let processedText = text.replace(/<b\b[^>]*>|<\/b>/gi, (match) => 
+        match.startsWith('</') ? '</b>' : '<b class="font-bold text-emerald-700 bg-emerald-100/50 px-0.5 rounded-sm">'
+    );
+    if (!query) return <span dangerouslySetInnerHTML={{ __html: processedText }} />;
     const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-    const parts = text.split(new RegExp(`(${escapedQuery})`, 'gi'));
-    const highlightedHtml = parts.map((part, i) => part.toLowerCase() === query.toLowerCase() ? `<mark class="bg-lime-200 text-lime-900 px-1 rounded-md">${part.replace(/<b\b[^>]*>|<\/b>/gi, "")}</mark>` : part).join('');
+    const parts = processedText.split(new RegExp(`(${escapedQuery})`, 'gi'));
+    const highlightedHtml = parts.map((part, i) => part.toLowerCase() === query.toLowerCase() ? `<mark class="bg-lime-200 text-lime-900 px-1 rounded-md">${part}</mark>` : part).join('');
     return <span dangerouslySetInnerHTML={{ __html: highlightedHtml }} />;
 }
 
@@ -60,8 +64,7 @@ function PagePreview({ pdfFile, pageNum, onReadClick }) {
                 {isLoading && <Loader2 className="h-8 w-8 text-slate-400 animate-spin" />}
                 {error && <div className="text-center text-red-600 p-4"><ServerCrash className="mx-auto h-8 w-8 mb-2" />{error}</div>}
                 {imageSrc && !isLoading && 
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={imageSrc} alt={`Sayfa ${pageNum} önizlemesi`} className="max-w-full max-h-[400px] rounded-md shadow-md" />
+                    <Image src={imageSrc} alt={`Sayfa ${pageNum} önizlemesi`} width={400} height={500} style={{ width: 'auto', height: 'auto', maxHeight: '400px' }} className="rounded-md shadow-md" />
                 }
             </div>
             <Button onClick={onReadClick} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">Bu Sayfayı Oku <ArrowRight className="ml-2 h-4 w-4" /></Button>
@@ -93,32 +96,9 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     }
   }, [book]);
 
-  useEffect(() => {
-    setIsLoading(true);
-    if (totalPages && book) {
-        if (currentPage < totalPages) { new Image().src = `${API_BASE_URL}/pdf/page_image?pdf_file=${book.pdf_dosyasi}&page_num=${currentPage + 1}`; }
-        if (currentPage > 1) { new Image().src = `${API_BASE_URL}/pdf/page_image?pdf_file=${book.pdf_dosyasi}&page_num=${currentPage - 1}`; }
-    }
-  }, [currentPage, book, totalPages]);
+  const imageUrl = book ? `${API_BASE_URL}/pdf/page_image?pdf_file=${book.pdf_dosyasi}&page_num=${currentPage}` : null;
 
   if (!book) return null;
-  const imageUrl = `${API_BASE_URL}/pdf/page_image?pdf_file=${book.pdf_dosyasi}&page_num=${currentPage}`;
-  
-  const handleDownload = async () => {
-    setIsDownloading(true);
-    try {
-        const response = await fetch(imageUrl);
-        if (!response.ok) throw new Error('Resim indirilemedi.');
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${book.kitap.replace(/\s/g, '_')}_Sayfa_${currentPage}.png`;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-    } catch (error) { console.error("İndirme hatası:", error); } 
-    finally { setIsDownloading(false); }
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -126,11 +106,12 @@ function BookViewerDialog({ book, onClose, isOpen }) {
         <DialogHeader className="p-4 border-b flex-shrink-0"><DialogTitle className="text-xl md:text-2xl text-slate-800">{book.kitap}</DialogTitle></DialogHeader>
         <div className="flex-grow flex justify-center items-center bg-slate-200 overflow-hidden relative">
           {isLoading && <Loader2 className="h-10 w-10 animate-spin text-slate-500 absolute" />}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={imageUrl} alt={`Sayfa ${currentPage}`} onLoad={() => setIsLoading(false)} className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`} />
+          {imageUrl && 
+            <Image src={imageUrl} alt={`Sayfa ${currentPage}`} fill style={{ objectFit: 'contain' }} onLoadingComplete={() => setIsLoading(false)} className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`} />
+          }
         </div>
         <DialogFooter className="flex-row justify-between items-center p-3 bg-slate-100 border-t flex-shrink-0">
-          <Button variant="outline" onClick={handleDownload} disabled={isDownloading}>{isDownloading ? <Loader2 className="mr-0 md:mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-0 md:mr-2 h-4 w-4" />}<span className="hidden md:inline">{isDownloading ? "İndiriliyor..." : "İndir"}</span></Button>
+          <Button variant="outline" disabled={isDownloading}>{isDownloading ? <Loader2 className="mr-0 md:mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-0 md:mr-2 h-4 w-4" />}<span className="hidden md:inline">{isDownloading ? "İndiriliyor..." : "İndir"}</span></Button>
           <div className="flex items-center gap-2">
             <Button onClick={goToPrevPage} disabled={currentPage <= 1}><ArrowLeft className="h-4 w-4" /></Button>
             <Input type="number" value={currentPage} onChange={(e) => setCurrentPage(Number(e.target.value))} className="w-20 text-center font-bold" />
@@ -147,7 +128,6 @@ function InfoState({ title, message, icon: Icon, onClearFilters }) {
     return (<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-16 px-6 bg-slate-100/80 rounded-2xl mt-8 max-w-2xl mx-auto"><Icon className="mx-auto h-16 w-16 text-slate-400 mb-4" /><h3 className="text-2xl font-bold text-slate-700">{title}</h3><p className="text-slate-500 mt-2">{message}</p>{onClearFilters && <Button onClick={onClearFilters} className="mt-6"><X className="mr-2 h-4 w-4" /> Filtreleri Temizle</Button>}</motion.div>)
 }
 
-// ... (Diğer alt bileşenler aynı)
 function VideoCard({ video, index }) {
   return (
     <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }} initial="hidden" animate="visible" transition={{ delay: index * 0.05 }}>
@@ -164,7 +144,59 @@ function VideoCard({ video, index }) {
     </motion.div>
   );
 }
-// Diğer alt bileşenler buraya eklenebilir.
+
+function ResultCard({ result, onReadClick, query, index }) {
+  return (
+    <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }} initial="hidden" animate="visible" transition={{ delay: index * 0.05 }}>
+      <Card className="overflow-hidden bg-white hover:shadow-2xl transition-shadow duration-300 rounded-xl border group flex flex-col h-full">
+        <CardHeader>
+          <CardTitle className="text-lg font-bold text-slate-800 line-clamp-2">{result.kitap}</CardTitle>
+          <CardDescription className="flex items-center gap-2 pt-1">
+            <span className="font-semibold text-emerald-700">{result.yazar}</span>
+            <span className="text-slate-400">•</span>
+            <span>Sayfa: {result.sayfa}</span>
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex-grow">
+          <p className="text-sm text-slate-600 line-clamp-4">
+            <Highlight text={result.alinti} query={query} />
+          </p>
+          <Accordion type="single" collapsible className="w-full mt-4">
+            <AccordionItem value="preview" className="border-none">
+              <AccordionTrigger className="text-sm font-semibold text-emerald-700 hover:no-underline p-0">
+                Sayfa Önizlemesi
+              </AccordionTrigger>
+              <AccordionContent className="p-0 pt-2">
+                <PagePreview pdfFile={result.pdf_dosyasi} pageNum={result.sayfa} onReadClick={() => onReadClick(result)} />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+function ResultsSkeleton() {
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white rounded-xl border p-4 space-y-4 animate-pulse">
+                    <div className="space-y-2">
+                        <div className="h-5 bg-slate-200 rounded w-3/4"></div>
+                        <div className="h-4 bg-slate-200 rounded w-1/2"></div>
+                    </div>
+                    <div className="space-y-2 pt-4">
+                        <div className="h-4 bg-slate-200 rounded w-full"></div>
+                        <div className="h-4 bg-slate-200 rounded w-full"></div>
+                        <div className="h-4 bg-slate-200 rounded w-5/6"></div>
+                    </div>
+                    <div className="h-8 bg-slate-200 rounded w-full mt-4"></div>
+                </div>
+            ))}
+        </div>
+    );
+}
 
 // --- ANA SAYFA BİLEŞENİ ---
 export default function HomePage() {

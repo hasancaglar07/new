@@ -2,10 +2,10 @@
 
 "use client";
 
-import Image from "next/image";
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Download, ArrowLeft, ArrowRight, BookOpen, Search, Library } from "lucide-react";
+import Image from 'next/image';
 
 // ShadCN UI ve Yerel Bileşenler
 import { Button } from "@/components/ui/button";
@@ -44,15 +44,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
         <DialogHeader className="p-4 border-b"><DialogTitle className="text-xl md:text-2xl text-slate-800">{book.kitap_adi}</DialogTitle></DialogHeader>
         <div className="flex-grow flex justify-center items-center bg-slate-200 overflow-hidden relative">
           {isLoading && <Loader2 className="h-10 w-10 animate-spin text-slate-500 absolute" />}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <Image 
-    src={imageUrl} 
-    alt={`Sayfa ${currentPage}`} 
-    fill
-    style={{ objectFit: 'contain' }}
-    onLoad={() => setIsLoading(false)} 
-    className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
-    sizes="95vw"/>
+          <Image src={imageUrl} alt={`Sayfa ${currentPage}`} fill style={{ objectFit: 'contain' }} onLoadingComplete={() => setIsLoading(false)} className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`} sizes="95vw" />
         </div>
         <DialogFooter className="flex-row justify-between items-center p-3 bg-slate-100 border-t">
           <Button variant="outline" onClick={handleDownload}><Download className="mr-0 md:mr-2 h-4 w-4" /><span className="hidden md:inline">İndir</span></Button>
