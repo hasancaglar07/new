@@ -24,3 +24,4 @@ uvicorn
 whoosh
 yt-dlp
 httpx
+aiofiles

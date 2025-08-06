@@ -1,5 +1,5 @@
 # main.py
-# Versiyon 1.3.2 - Final - Stabil Video Analizi (Disk -> Harici Servis -> Deepgram)
+# Versiyon 1.3.3 - Final - Stabil Video Analizi (Asenkron Disk Yazma Düzeltmesi)
 
 import logging
 import os
@@ -11,7 +11,8 @@ import urllib.parse
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 import uuid
-import httpx # Harici servislere ve indirme işlemleri için
+import httpx
+import aiofiles # DEĞİŞİKLİK 1: Asenkron dosya işlemleri için import edildi
 
 import fitz
 import requests
@@ -33,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Mihmandar İlim Havuzu API",
-    version="1.3.2",
+    version="1.3.3",
     description="Tasavvufi eserlerde ve YouTube videolarında arama ve analiz yapma API'si."
 )
 
@@ -49,10 +50,8 @@ DATA_DIR = BASE_DIR / "data"
 PDF_DIR = DATA_DIR / "pdfler"
 INDEX_DIR = DATA_DIR / "whoosh_index"
 VIDEO_CACHE_FILE = DATA_DIR / "video_analysis_cache.json"
-
-# DEĞİŞİKLİK 1: Geçici ses dosyaları için bir klasör tanımlayalım.
 TEMP_AUDIO_DIR = DATA_DIR / "temp_audio"
-TEMP_AUDIO_DIR.mkdir(exist_ok=True) # Klasör yoksa oluştur
+TEMP_AUDIO_DIR.mkdir(exist_ok=True)
 
 YOUTUBE_API_KEYS = [os.getenv(f"YOUTUBE_API_KEY{i}") for i in range(1, 7) if os.getenv(f"YOUTUBE_API_KEY{i}")]
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
@@ -63,7 +62,7 @@ deepseek_client = AsyncOpenAI(base_url="https://api.deepseek.com", api_key=DEEPS
 
 tasks_db: Dict[str, Dict[str, Any]] = {}
 
-# --- Yardımcı Fonksiyonlar ---
+# --- Yardımcı Fonksiyonlar (değişiklik yok) ---
 def get_whoosh_index() -> Index:
     try:
         return open_dir(str(INDEX_DIR))
@@ -98,7 +97,6 @@ def extract_video_id(url: str) -> Optional[str]:
 
 # --- Arka Plan Görevi (GÜNCELLENMİŞ FONKSİYON) ---
 async def run_video_analysis(task_id: str, url: str):
-    # Geçici ses dosyasının tam yolunu tanımlıyoruz.
     local_audio_path = TEMP_AUDIO_DIR / f"{task_id}.webm"
 
     try:
@@ -119,25 +117,37 @@ async def run_video_analysis(task_id: str, url: str):
             info = await asyncio.to_thread(ydl.extract_info, url, download=False)
             audio_url = info['url']
 
-        # DEĞİŞİKLİK 2: Sesi belleğe değil, doğrudan diske akış (stream) olarak indiriyoruz.
         async with httpx.AsyncClient(timeout=600.0) as client:
             async with client.stream("GET", audio_url) as response:
                 response.raise_for_status()
-                with open(local_audio_path, 'wb') as f:
+                
+                downloaded_bytes = 0
+                log_threshold_bytes = 1024 * 1024 # Her 1 MB'de bir log yaz
+                next_log_point = log_threshold_bytes
+                
+                # DEĞİŞİKLİK 2: Senkron 'open' yerine asenkron 'aiofiles.open' kullanılıyor
+                async with aiofiles.open(local_audio_path, 'wb') as f:
                     async for chunk in response.aiter_bytes():
-                        f.write(chunk)
+                        # DEĞİŞİKLİK 3: Senkron 'f.write' yerine asenkron 'await f.write' kullanılıyor
+                        await f.write(chunk)
+                        
+                        downloaded_bytes += len(chunk)
+                        if downloaded_bytes >= next_log_point:
+                            logger.info(f"[{task_id}] İndiriliyor... {downloaded_bytes / 1024 / 1024:.2f} MB")
+                            next_log_point += log_threshold_bytes
         
         file_size_mb = local_audio_path.stat().st_size / 1024 / 1024
         logger.info(f"[{task_id}] Ses {file_size_mb:.2f} MB olarak sunucu diskine indirildi: {local_audio_path}")
 
         tasks_db[task_id] = {"status": "processing", "message": "Ses geçici sunucuya yükleniyor..."}
         
-        # DEĞİŞİKLİK 3: Bellekteki buffer yerine, diskteki dosyayı harici servise yüklüyoruz.
-        async with httpx.AsyncClient(timeout=600.0) as client:
-            with open(local_audio_path, "rb") as f:
-                files_to_upload = {'file': (local_audio_path.name, f, 'audio/webm')}
+        # Diskteki dosyayı yükleme kısmı senkron kalabilir, çünkü dosya zaten tamamen indirildi.
+        # Ama daha tutarlı olması için burayı da asenkron yapabiliriz.
+        async with aiofiles.open(local_audio_path, "rb") as f:
+            async with httpx.AsyncClient(timeout=600.0) as client:
+                files_to_upload = {'file': (local_audio_path.name, await f.read(), 'audio/webm')}
                 upload_response = await client.post("https://tmp.ninja/upload.php?d=upload-audio", files=files_to_upload, timeout=600.0)
-        
+
         upload_response.raise_for_status()
         temp_data = upload_response.json()
         temp_download_url = temp_data.get("download_url")
@@ -192,7 +202,6 @@ async def run_video_analysis(task_id: str, url: str):
         logger.error(f"[{task_id}] Görev sırasında HATA oluştu: {e}", exc_info=True)
         tasks_db[task_id] = {"status": "error", "message": f"Analiz sırasında bir hata oluştu: {str(e)}"}
     finally:
-        # DEĞİŞİKLİK 4: İşlem bitse de hata alsa da, diskte yer kaplamaması için geçici dosyayı siliyoruz.
         if local_audio_path.exists():
             try:
                 os.remove(local_audio_path)
@@ -200,10 +209,14 @@ async def run_video_analysis(task_id: str, url: str):
             except OSError as e:
                 logger.error(f"[{task_id}] Geçici dosya silinemedi: {local_audio_path}, Hata: {e}")
 
-# --- API Endpointleri ---
+# --- API Endpointleri (değişiklik yok) ---
 @app.get("/")
 async def read_root():
-    return {"message": "Mihmandar API v1.3.2 Aktif"}
+    return {"message": "Mihmandar API v1.3.3 Aktif"}
+
+# ... (geri kalan tüm endpointler aynı, buraya kopyalamaya gerek yok)
+# Sadece yukarıdaki run_video_analysis fonksiyonunu ve import aiofiles satırını güncellediğinizden emin olun.
+# Size kolaylık olması için aşağıya kalan kısmı da ekliyorum.
 
 @app.get("/authors")
 async def get_all_authors(searcher: Searcher = Depends(get_searcher)):
