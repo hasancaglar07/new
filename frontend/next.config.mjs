@@ -4,16 +4,16 @@ const nextConfig = {
     remotePatterns: [
       // --- YENİ VE EN ÖNEMLİ EKLEME ---
       // Backend API'nizin çalıştığı Railway sunucusunun adresini buraya ekleyin.
-      // Örnek adresi kendi adresinizle değiştirmeyi unutmayın!
+      // Bu satır, Next.js'e bu adresten resim çekme izni verir.
       {
         protocol: 'https',
-        hostname: 'new-production-1016.up.railway.app', // KENDİ RAILWAY ADRESİNİZİ YAZIN
+        hostname: 'new-production-1016.up.railway.app', // BU SİZİN RAILWAY ADRESİNİZ
         port: '',
-        pathname: '/**',
+        pathname: '/**', // Bu sunucudaki tüm yollara izin ver
       },
       // ------------------------------------
 
-      // Yerel geliştirme için mevcut ayarlar
+      // Yerel geliştirme için mevcut ayarlar (bunlar kalmalı)
       {
         protocol: 'http',
         hostname: 'localhost',
@@ -26,7 +26,7 @@ const nextConfig = {
         port: '8000',
         pathname: '/**',
       },
-      // YouTube video kapak resimleri için
+      // YouTube video kapak resimleri için (bu da kalmalı)
       {
         protocol: 'https',
         hostname: 'i.ytimg.com',

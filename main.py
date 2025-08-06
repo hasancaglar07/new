@@ -11,18 +11,11 @@ import os
 from pathlib import Path
 import fitz  # PyMuPDF
 import io
-import asyncio
 import requests
 from dotenv import load_dotenv
-import tempfile
-import sys
-import subprocess
 import json
 import re
-import openai
-from deepgram import DeepgramClient, PrerecordedOptions
-import yt_dlp
-import urllib.parse  # --- GÜNCELLEME: URL decode işlemi için import edildi ---
+import urllib.parse  # GÜNCELLEME: URL decode işlemi için import edildi
 
 # --- Kurulum ve Konfigürasyon ---
 load_dotenv()
