@@ -19,7 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 // API Adresi (Doğrudan yazılı, geçici çözüm olarak)
-const API_BASE_URL = "https://yediulya-backend.onrender.com";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 const RESULTS_PER_PAGE = 48;
 
 // --- YARDIMCI BİLEŞENLER ---
