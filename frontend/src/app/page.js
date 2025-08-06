@@ -3,8 +3,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Check, ChevronsUpDown, Loader2, Search, BookOpen, Video, ArrowRight, Download, ArrowLeft, FileQuestion, ServerCrash, X, Sparkles, Clock } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Search, BookOpen, Video, ArrowRight, Download, ArrowLeft, FileQuestion, ServerCrash, X, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image"; // Next.js Image bileşeni import edildi.
 
 // ShadCN UI ve Yerel Bileşenler
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 const API_BASE_URL = "http://127.0.0.1:8000";
 const RESULTS_PER_PAGE = 48;
 
-// --- "ULTIMATE" ALT BİLEŞENLER (FINAL SÜRÜM) ---
+// --- "ULTIMATE" ALT BİLEŞENLER (DÜZELTİLMİŞ SÜRÜM) ---
 
 const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -44,16 +45,44 @@ function PagePreview({ pdfFile, pageNum, onReadClick }) {
     useEffect(() => {
         setIsLoading(true); setError(null);
         const imageUrl = `${API_BASE_URL}/pdf/page_image?pdf_file=${pdfFile}&page_num=${pageNum}`;
-        fetch(imageUrl).then(res => res.ok ? res.blob() : Promise.reject(new Error("Resim yüklenemedi."))).then(blob => {setImageSrc(URL.createObjectURL(blob)); setIsLoading(false);}).catch(err => {setError(err.message); setIsLoading(false);});
-        return () => { if (imageSrc) URL.revokeObjectURL(imageSrc); };
-    }, [pdfFile, pageNum]);
+        
+        fetch(imageUrl)
+            .then(res => res.ok ? res.blob() : Promise.reject(new Error("Resim yüklenemedi.")))
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                setImageSrc(url);
+                setIsLoading(false);
+            })
+            .catch(err => {
+                setError(err.message);
+                setIsLoading(false);
+            });
+            
+        // Cleanup function: revoke object URL to prevent memory leaks.
+        return () => {
+            if (imageSrc) {
+                URL.revokeObjectURL(imageSrc);
+            }
+        };
+    // imageSrc, bağımlılık dizisine eklendi (linting uyarısı için).
+    }, [pdfFile, pageNum, imageSrc]);
 
     return (
         <div className="mt-4 space-y-4">
-            <div className="relative flex justify-center items-center min-h-[200px] bg-slate-100 rounded-lg p-2">
+            {/* Tasarımın bozulmaması için Image bileşenine ebeveyn div eklendi */}
+            <div className="relative flex justify-center items-center h-[400px] bg-slate-100 rounded-lg p-2">
                 {isLoading && <Loader2 className="h-8 w-8 text-slate-400 animate-spin" />}
                 {error && <div className="text-center text-red-600 p-4"><ServerCrash className="mx-auto h-8 w-8 mb-2" />{error}</div>}
-                {imageSrc && !isLoading && <img src={imageSrc} alt={`Sayfa ${pageNum} önizlemesi`} className="max-w-full max-h-[400px] rounded-md shadow-md" />}
+                {imageSrc && !isLoading && 
+                    <Image 
+                        src={imageSrc} 
+                        alt={`Sayfa ${pageNum} önizlemesi`} 
+                        fill 
+                        style={{ objectFit: 'contain' }} // or 'cover'
+                        className="rounded-md"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
+                }
             </div>
             <Button onClick={onReadClick} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">Bu Sayfayı Oku <ArrowRight className="ml-2 h-4 w-4" /></Button>
         </div>
@@ -65,7 +94,10 @@ function ResultCard({ result, onReadClick, query, index }) {
     <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }} initial="hidden" animate="visible" transition={{ delay: index * 0.05 }} className="h-full">
       <Card className="flex flex-col h-full overflow-hidden bg-white hover:shadow-2xl transition-shadow duration-300 group rounded-xl border">
         <CardHeader className="p-6"><CardTitle className="text-xl font-bold text-slate-800 group-hover:text-emerald-600 transition-colors">{result.kitap}</CardTitle><CardDescription>Yazar: {result.yazar}</CardDescription></CardHeader>
-        <CardContent className="flex-grow p-6 pt-0"><p className="text-slate-600 italic line-clamp-5">"...<Highlight text={result.alinti} query={query} />..."</p></CardContent>
+        <CardContent className="flex-grow p-6 pt-0">
+            {/* DÜZELTME: " karakteri &quot; ile değiştirildi. */}
+            <p className="text-slate-600 italic line-clamp-5">&quot;...<Highlight text={result.alinti} query={query} />...&quot;</p>
+        </CardContent>
         <CardFooter className="p-0 pt-4 bg-slate-50/70">
             <Accordion type="single" collapsible className="w-full px-6">
                 <AccordionItem value="item-1" className="border-b-0"><AccordionTrigger className="text-sm font-semibold text-emerald-700 hover:no-underline py-3">Sayfa {result.sayfa} Önizlemesi</AccordionTrigger>
@@ -123,8 +155,8 @@ function BookViewerDialog({ book, onClose, isOpen }) {
   useEffect(() => {
     setIsLoading(true);
     if (totalPages) {
-        if (currentPage < totalPages) { new Image().src = `${API_BASE_URL}/pdf/page_image?pdf_file=${book.pdf_dosyasi}&page_num=${currentPage + 1}`; }
-        if (currentPage > 1) { new Image().src = `${API_BASE_URL}/pdf/page_image?pdf_file=${book.pdf_dosyasi}&page_num=${currentPage - 1}`; }
+        if (currentPage < totalPages) { new window.Image().src = `${API_BASE_URL}/pdf/page_image?pdf_file=${book.pdf_dosyasi}&page_num=${currentPage + 1}`; }
+        if (currentPage > 1) { new window.Image().src = `${API_BASE_URL}/pdf/page_image?pdf_file=${book.pdf_dosyasi}&page_num=${currentPage - 1}`; }
     }
   }, [currentPage, book.pdf_dosyasi, totalPages]);
 
@@ -155,7 +187,8 @@ function BookViewerDialog({ book, onClose, isOpen }) {
         <DialogHeader className="p-4 border-b flex-shrink-0"><DialogTitle className="text-xl md:text-2xl text-slate-800">{book.kitap}</DialogTitle></DialogHeader>
         <div className="flex-grow flex justify-center items-center bg-slate-200 overflow-hidden relative">
           {isLoading && <Loader2 className="h-10 w-10 animate-spin text-slate-500 absolute" />}
-          <img src={imageUrl} alt={`Sayfa ${currentPage}`} onLoad={() => setIsLoading(false)} className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`} />
+          {/* DÜZELTME: <img> yerine <Image> kullanıldı */}
+          <Image src={imageUrl} alt={`Sayfa ${currentPage}`} onLoad={() => setIsLoading(false)} fill style={{ objectFit: 'contain' }} className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`} sizes="95vw"/>
         </div>
         <DialogFooter className="flex-row justify-between items-center p-3 bg-slate-100 border-t flex-shrink-0">
           <Button variant="outline" onClick={handleDownload} disabled={isDownloading}>{isDownloading ? <Loader2 className="mr-0 md:mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-0 md:mr-2 h-4 w-4" />}<span className="hidden md:inline">{isDownloading ? "İndiriliyor..." : "İndir"}</span></Button>
@@ -251,8 +284,7 @@ export default function HomePage() {
           <p className="mt-4 md:mt-6 text-lg md:text-xl text-slate-600 max-w-3xl mx-auto">Üstadlarımızın eserlerinde ve sohbetlerinde, yapay zeka destekli modern bir arayüzle derinlemesine arama yapın.</p>
         </motion.header>
 
-        {/* ★★★ DÜZELTİLMİŞ BÖLÜM: "sticky" sınıfları kaldırıldı ★★★ */}
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}>
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }} className="sticky top-24 z-40">
           <Card className="max-w-3xl mx-auto shadow-xl shadow-slate-200/70 border-t-4 border-emerald-500 bg-white/90 backdrop-blur-lg rounded-2xl">
             <CardContent className="p-6 md:p-8">
               <div className="space-y-4">
