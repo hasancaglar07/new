@@ -1,9 +1,9 @@
-// ai/frontend/src/app/page.js
+// frontend/src/app/page.js
 
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Check, ChevronsUpDown, Loader2, Search, BookOpen, Video, ArrowRight, Download, ArrowLeft, FileQuestion, ServerCrash, X, Sparkles } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Search, BookOpen, Video, ArrowRight, FileQuestion, ServerCrash, X, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 
@@ -22,9 +22,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 const API_BASE_URL = "https://yediulya-backend.onrender.com";
 // -----------------------------------------------------------
 
-const RESULTS_PER_PAGE = 48;
-
-// --- ALT BİLEŞENLER ---
+// --- ALT BİLEŞENLER (DEĞİŞİKLİK YOK) ---
 
 const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -48,21 +46,20 @@ function PagePreview({ pdfFile, pageNum, onReadClick }) {
     useEffect(() => {
         setIsLoading(true); setError(null);
         const imageUrl = `${API_BASE_URL}/pdf/page_image?pdf_file=${pdfFile}&page_num=${pageNum}`;
-        
+        let objectUrl = null;
         fetch(imageUrl)
             .then(res => res.ok ? res.blob() : Promise.reject(new Error("Resim yüklenemedi.")))
             .then(blob => {
-                const url = URL.createObjectURL(blob);
-                setImageSrc(url);
+                objectUrl = URL.createObjectURL(blob);
+                setImageSrc(objectUrl);
                 setIsLoading(false);
             })
             .catch(err => {
                 setError(err.message);
                 setIsLoading(false);
             });
-            
-        return () => { if (imageSrc) { URL.revokeObjectURL(imageSrc); } };
-    }, [pdfFile, pageNum, imageSrc]);
+        return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+    }, [pdfFile, pageNum]);
 
     return (
         <div className="mt-4 space-y-4">
@@ -70,14 +67,7 @@ function PagePreview({ pdfFile, pageNum, onReadClick }) {
                 {isLoading && <Loader2 className="h-8 w-8 text-slate-400 animate-spin" />}
                 {error && <div className="text-center text-red-600 p-4"><ServerCrash className="mx-auto h-8 w-8 mb-2" />{error}</div>}
                 {imageSrc && !isLoading && 
-                    <Image 
-                        src={imageSrc} 
-                        alt={`Sayfa ${pageNum} önizlemesi`} 
-                        fill 
-                        style={{ objectFit: 'contain' }}
-                        className="rounded-md"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    />
+                    <Image src={imageSrc} alt={`Sayfa ${pageNum} önizlemesi`} fill style={{ objectFit: 'contain' }} className="rounded-md" sizes="(max-width: 768px) 100vw, 50vw"/>
                 }
             </div>
             <Button onClick={onReadClick} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">Bu Sayfayı Oku <ArrowRight className="ml-2 h-4 w-4" /></Button>
@@ -124,7 +114,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   useEffect(() => {
     if (book) {
       setCurrentPage(book.sayfa); setIsLoading(true);
@@ -174,6 +164,7 @@ function InfoState({ title, message, icon: Icon, onClearFilters }) {
     return (<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-16 px-6 bg-slate-100/80 rounded-2xl mt-8 max-w-2xl mx-auto"><Icon className="mx-auto h-16 w-16 text-slate-400 mb-4" /><h3 className="text-2xl font-bold text-slate-700">{title}</h3><p className="text-slate-500 mt-2">{message}</p>{onClearFilters && <Button onClick={onClearFilters} className="mt-6"><X className="mr-2 h-4 w-4" /> Filtreleri Temizle</Button>}</motion.div>)
 }
 
+// ANA SAYFA BİLEŞENİ
 export default function HomePage() {
   const [authors, setAuthors] = useState([]);
   const [selectedAuthors, setSelectedAuthors] = useState(new Set());
@@ -186,7 +177,10 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState('kitaplar');
 
   useEffect(() => { 
-      fetch(`${API_BASE_URL}/authors`).then(res => res.json()).then(data => setAuthors(data.authors || [])).catch(() => setError("Yazar listesi yüklenemedi. API bağlantısını kontrol edin."));
+      fetch(`${API_BASE_URL}/authors`)
+          .then(res => res.json())
+          .then(data => setAuthors(data.authors || []))
+          .catch(() => setError("Yazar listesi yüklenemedi. API bağlantısını kontrol edin."));
   }, []);
 
   const performSearch = useCallback(async (currentQuery, currentAuthors) => {
@@ -201,7 +195,7 @@ export default function HomePage() {
         videoUrl.searchParams.append('q', currentQuery);
 
         const [bookRes, videoRes] = await Promise.all([ fetch(bookUrl), fetch(videoUrl) ]);
-        if (!bookRes.ok || !videoRes.ok) throw new Error("Arama sunucusuna ulaşılamadı.");
+        if (!bookRes.ok || !videoRes.ok) throw new Error("Arama sunucusuna ulaşılamadı. Lütfen backend'in çalıştığından emin olun.");
         const bookData = await bookRes.json();
         const videoData = await videoRes.json();
         setAllResults({ books: bookData?.sonuclar || [], videos: videoData?.sonuclar || [] });
@@ -219,7 +213,28 @@ export default function HomePage() {
   
   return (
     <div className="bg-slate-50 min-h-screen w-full font-sans">
-      <main className="container mx-auto px-4 py-12 md:py-20">
+      
+      {/* ----- TEŞHİS İÇİN EKLENEN TEST KODU ----- */}
+      <div style={{
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          width: '100%', 
+          backgroundColor: '#ef4444', // red-500
+          color: 'white', 
+          textAlign: 'center', 
+          padding: '12px', 
+          zIndex: 9999,
+          fontSize: '16px',
+          fontWeight: 'bold',
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+      }}>
+          BU KIRMIZI BARI GÖRÜYORSANIZ, DEPLOY BAŞARILIDIR! API ADRESİ: {API_BASE_URL}
+      </div>
+      {/* ------------------------------------------- */}
+
+      <main className="container mx-auto px-4 py-12 md:py-20 pt-28"> {/* pt-28: Kırmızı barın içeriği örtmemesi için padding artırıldı */}
+        
         <motion.header initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: "easeOut" }} className="text-center mb-12 md:mb-16">
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter text-slate-800"><span className="bg-clip-text text-transparent bg-gradient-to-br from-emerald-600 to-green-500"> E - Kütüphane</span></h1>
           <p className="mt-4 md:mt-6 text-lg md:text-xl text-slate-600 max-w-3xl mx-auto">Üstadlarımızın eserlerinde ve sohbetlerinde, yapay zeka destekli modern bir arayüzle derinlemesine arama yapın.</p>
