@@ -2,20 +2,31 @@
 const nextConfig = {
   images: {
     remotePatterns: [
-      // Backend sunucusu için (PDF sayfaları)
+      // --- YENİ VE EN ÖNEMLİ EKLEME ---
+      // Backend API'nizin çalıştığı Railway sunucusunun adresini buraya ekleyin.
+      // Örnek adresi kendi adresinizle değiştirmeyi unutmayın!
+      {
+        protocol: 'https',
+        hostname: 'new-production-1016.up.railway.app', // KENDİ RAILWAY ADRESİNİZİ YAZIN
+        port: '',
+        pathname: '/**',
+      },
+      // ------------------------------------
+
+      // Yerel geliştirme için mevcut ayarlar
       {
         protocol: 'http',
         hostname: 'localhost',
         port: '8000',
-        pathname: '/pdf/page_image/**',
+        pathname: '/**',
       },
       {
         protocol: 'http',
         hostname: '127.0.0.1',
         port: '8000',
-        pathname: '/pdf/page_image/**',
+        pathname: '/**',
       },
-      // YouTube video kapak resimleri için (YENİ EKLENEN KISIM)
+      // YouTube video kapak resimleri için
       {
         protocol: 'https',
         hostname: 'i.ytimg.com',
