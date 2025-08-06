@@ -1,247 +1,237 @@
-# backend/main.py
+// ai/frontend/src/app/video-analizi/page.js
 
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
-from typing import List, Optional
-from whoosh.index import open_dir
-from whoosh.qparser import MultifieldParser, AndGroup
-import logging
-import os
-from pathlib import Path
-import fitz
-import io
-import asyncio
-import requests
-from dotenv import load_dotenv
-import tempfile
-import sys
-import subprocess
-import json
-from deepgram import DeepgramClient, PrerecordedOptions
-import openai
-import re
-import yt_dlp
+"use client";
 
-# --- Kurulum ve Konfigürasyon ---
-dotenv_path = Path(__file__).parent.parent / ".env"
-load_dotenv(dotenv_path=dotenv_path)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-app = FastAPI(title="Yediulya İlim Havuzu API", version="1.0.0")
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
+import { Sparkles, History, Loader2, ServerCrash, FileQuestion, ChevronDown, Repeat, ExternalLink, AlertTriangle } from "lucide-react";
 
-# --- CORS (Frontend'den Gelen İsteğe İzin Verme) ---
-origins = [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "https://new-yediulyas-projects.vercel.app" # YENİ VERCEL ADRESİNİZ
-]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+// ShadCN UI ve Yerel Bileşenler
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
-# --- Veri Yolları ve İndekslerin Yüklenmesi ---
-try:
-    BASE_DIR = Path(__file__).parent.parent
-    DATA_DIR = BASE_DIR / "data"
-    PDF_DIR = DATA_DIR / "pdfler"
-    INDEX_DIR = DATA_DIR / "whoosh_index"
-    VIDEO_CACHE_FILE = DATA_DIR / "video_analysis_cache.json"
-    ix = open_dir(str(INDEX_DIR))
-    logger.info("Whoosh indeksi başarıyla yüklendi.")
-except Exception as e:
-    logger.error(f"Başlangıç hatası (indeks yüklenemedi): {e}")
-    ix = None
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
-# --- API İstemcileri ---
-DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-deepgram_client = DeepgramClient(DEEPGRAM_API_KEY) if DEEPGRAM_API_KEY else None
-deepseek_client = openai.OpenAI(base_url="https://api.deepseek.com", api_key=DEEPSEEK_API_KEY) if DEEPSEEK_API_KEY else None
+const extractVideoId = (url) => { const match = url.match(/(?:v=|\/|embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/); return match ? match[1] : null; };
 
-# --- YouTube API ve Kanalları ---
-YOUTUBE_API_KEYS = [os.getenv(f"YOUTUBE_API_KEY{i}") for i in range(1, 7) if os.getenv(f"YOUTUBE_API_KEY{i}")]
-YOUTUBE_CHANNEL_IDS = ["UCvhlPtV-1MgZBQPmGjomhsA", "UCfYG6Ij2vIJXXplpottv02Q", "UC0FN4XBgk2Isvv1QmrbFn8w"]
+// --- Bileşenler ---
 
-# --- Yardımcı Fonksiyonlar ---
-def format_time(s): m, s = divmod(int(s), 60); h, m = divmod(m, 60); return f"{h:02d}:{m:02d}:{s:02d}"
-def extract_video_id(url): match = re.search(r"(?:v=|\/|embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})", url); return match.group(1) if match else None
-def load_video_cache():
-    if not VIDEO_CACHE_FILE.exists(): return {}
-    with open(VIDEO_CACHE_FILE, 'r', encoding='utf-8') as f:
-        try: return json.load(f)
-        except json.JSONDecodeError: return {}
-def save_video_cache(cache):
-    with open(VIDEO_CACHE_FILE, 'w', encoding='utf-8') as f: json.dump(cache, f, ensure_ascii=False, indent=4)
-def get_video_metadata(url):
-    with yt_dlp.YoutubeDL({'quiet': True, 'skip_download': True, 'no_warnings': True}) as ydl:
-        info = ydl.extract_info(url, download=False); return {"title": info.get('title'), "thumbnail": info.get('thumbnail')}
+function AnalysisResultCard({ result, url }) {
+    const videoId = extractVideoId(url);
+    return (
+        <Card className="overflow-hidden">
+            <CardHeader>
+                <CardTitle>Yeni Analiz Sonucu</CardTitle>
+                <CardDescription>{result.title}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div className="aspect-video bg-slate-200 rounded-lg overflow-hidden">
+                    <iframe src={`https://www.youtube.com/embed/${videoId}`} title="YouTube video player" frameBorder="0" allowFullScreen className="w-full h-full"></iframe>
+                </div>
+                <div>
+                    <h3 className="font-semibold mb-3 text-slate-800">Konu Başlıkları</h3>
+                    <ul className="space-y-2 text-sm max-h-60 overflow-y-auto border rounded-lg p-3 bg-slate-50/80">
+                        {result.chapters.map((chapter, index) => (
+                            <li key={index} className="p-2 rounded-md text-slate-700" dangerouslySetInnerHTML={{ __html: chapter.replace(/\*\*(.*?)\*\*/g, '<strong class="text-emerald-700 font-bold">$1</strong>') }} />
+                        ))}
+                    </ul>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
 
-# --- API ENDPOINTS ---
+function AnalysisStatusCard() {
+    return (
+        <Card className="text-center p-8 md:p-12">
+            <Loader2 className="mx-auto h-12 w-12 text-emerald-500 animate-spin mb-4" />
+            <CardTitle className="text-2xl">Analiz Sürüyor</CardTitle>
+            <CardDescription className="mt-2 max-w-md mx-auto">
+                Bu işlem videonun uzunluğuna göre birkaç dakika sürebilir. Lütfen sayfadan ayrılmayın.
+            </CardDescription>
+        </Card> 
+    );
+}
 
-@app.get("/")
-def read_root(): return {"message": "Yediulya API'sine hoş geldiniz!"}
+// ★★★ DÜZELTİLMİŞ HistoryCard BİLEŞENİ ★★★
+function HistoryCard({ videoId, data, onAnalyzeAgain }) {
+    // Veri formatını kontrol et. Eğer beklenen yapıda değilse, bir uyarı kartı göster.
+    if (typeof data !== 'object' || data === null || !data.chapters || !Array.isArray(data.chapters)) {
+        return (
+            <Card className="overflow-hidden bg-white border border-amber-300 flex flex-col items-center justify-center text-center p-4 h-full">
+                <AlertTriangle className="h-10 w-10 text-amber-500 mb-2" />
+                <CardTitle className="text-base font-bold text-slate-800">Uyumsuz Veri</CardTitle>
+                <CardDescription className="text-xs mt-1">Bu analiz kaydı eski bir formatta ve görüntülenemiyor.</CardDescription>
+                <Button 
+                    variant="ghost"
+                    onClick={() => onAnalyzeAgain(`https://www.youtube.com/watch?v=${videoId}`)}
+                    className="w-full text-center text-xs font-semibold text-slate-600 hover:text-emerald-700 mt-4"
+                >
+                    <Repeat className="mr-2 h-3 w-3" />
+                    Tekrar Analiz Et
+                </Button>
+            </Card>
+        );
+    }
 
-@app.get("/authors")
-def get_all_authors():
-    if not ix: raise HTTPException(500, "Veri indeksi yüklenemedi.")
-    with ix.searcher() as s: return {"authors": sorted(list(set(f['author'].title() for f in s.all_stored_fields() if 'author' in f)))}
+    return (
+        <Card className="overflow-hidden bg-white border group">
+            <div className="aspect-video bg-slate-200 overflow-hidden relative">
+                <Image 
+                    src={data.thumbnail} 
+                    alt={data.title} 
+                    fill
+                    style={{ objectFit: 'cover' }}
+                    className="transition-transform group-hover:scale-105"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    quality={75}
+                />
+                <a href={`https://www.youtube.com/watch?v=${videoId}`} target="_blank" rel="noopener noreferrer" className="absolute top-2 right-2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/80 transition-colors z-10">
+                    <ExternalLink className="h-4 w-4" />
+                </a>
+            </div>
+            <CardHeader>
+                <CardTitle className="text-base font-bold text-slate-800 line-clamp-2">{data.title}</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+                 <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="item-1" className="border-b-0">
+                        <AccordionTrigger className="text-sm font-semibold text-emerald-700 hover:no-underline px-6 py-2">
+                            Bölümleri Göster
+                        </AccordionTrigger>
+                        <AccordionContent className="px-6">
+                             <ul className="space-y-2 text-sm max-h-48 overflow-y-auto border rounded-lg p-3 bg-slate-50">
+                                {data.chapters.map((chapter, index) => (
+                                    <li key={index} className="p-1 rounded-md text-slate-700" dangerouslySetInnerHTML={{ __html: chapter.replace(/\*\*(.*?)\*\*/g, '<strong class="text-emerald-700 font-bold">$1</strong>') }} />
+                                ))}
+                            </ul>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+            </CardContent>
+            <div className="p-4 border-t mt-2">
+                 <Button 
+                    variant="ghost"
+                    onClick={() => onAnalyzeAgain(`https://www.youtube.com/watch?v=${videoId}`)}
+                    className="w-full text-center text-xs font-semibold text-slate-600 hover:text-emerald-700"
+                >
+                    <Repeat className="mr-2 h-3 w-3" />
+                    Bu analizi yeniden yap
+                </Button>
+            </div>
+        </Card>
+    );
+}
 
-@app.get("/search/books")
-async def search_books(q: str, authors: Optional[List[str]] = Query(None)):
-    if not ix:
-        raise HTTPException(status_code=500, detail="Veri indeksi yüklenemedi.")
-    with ix.searcher() as s:
-        parser = MultifieldParser(["content", "author"], schema=ix.schema, group=AndGroup)
-        user_query = q.lower()
-        if authors:
-            author_filter_query = " OR ".join([f'author:"{a.lower()}"' for a in authors])
-            final_query_str = f"({user_query}) AND ({author_filter_query})"
-        else:
-            final_query_str = user_query
-        parsed_query = parser.parse(final_query_str)
-        results = s.search(parsed_query, limit=100)
-        final_results = []
-        for hit in results:
-            final_results.append({
-                "kitap": hit["book"].title(),
-                "yazar": hit["author"].title(),
-                "sayfa": hit["page"],
-                "alinti": hit.highlights("content") or hit["content"][:250],
-                "pdf_dosyasi": hit["pdf_file"]
-            })
-        return {"sonuclar": final_results}
+function HistorySkeleton() {
+    return <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{[...Array(3)].map((_, i) => (<div key={i} className="bg-white rounded-xl border p-4 space-y-4 animate-pulse"><div className="bg-slate-200 rounded-md aspect-video"></div><div className="h-4 bg-slate-200 rounded w-full"></div><div className="h-4 bg-slate-200 rounded w-3/4"></div><div className="h-8 bg-slate-200 rounded w-full mt-4"></div></div>))}</div>
+}
+function InfoState({ title, message, icon: Icon }) {
+    return (<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-16 px-6 bg-slate-100/80 rounded-2xl mt-8"><Icon className="mx-auto h-16 w-16 text-slate-400 mb-4" /><h3 className="text-2xl font-bold text-slate-700">{title}</h3><p className="text-slate-500 mt-2">{message}</p></motion.div>)
+}
 
-@app.get("/search/videos")
-async def search_videos_official_api(q: str):
-    # ... (Bu fonksiyon aynı kalabilir) ...
-    if not YOUTUBE_API_KEYS: raise HTTPException(500, "YouTube API anahtarı yok.")
-    all_videos = []
-    for channel_id in YOUTUBE_CHANNEL_IDS:
-        for api_key in YOUTUBE_API_KEYS:
-            params = {"part": "snippet", "q": q, "type": "video", "maxResults": 5, "key": api_key, "channelId": channel_id}
-            try:
-                response = requests.get("https://www.googleapis.com/youtube/v3/search", params=params, timeout=5)
-                if response.status_code == 200:
-                    for item in response.json().get("items", []):
-                        snippet, video_id = item.get("snippet", {}), item.get("id", {}).get("videoId")
-                        all_videos.append({"id": video_id, "title": snippet.get("title"), "thumbnail": snippet.get("thumbnails", {}).get("high", {}).get("url"), "channel": snippet.get("channelTitle"), "publishedTime": snippet.get("publishedAt", "").split("T")[0], "link": f"https://www.youtube.com/watch?v={video_id}" if video_id else ""})
-                    break
-            except requests.exceptions.RequestException as e: logger.error(f"API isteği hatası: {e}"); continue
-            if response.status_code == 403: continue
-    return {"sonuclar": all_videos}
 
-# ★★★ DÜZELTİLMİŞ VE SAĞLAMLAŞTIRILMIŞ ENDPOINT ★★★
-@app.get("/books_by_author")
-async def get_books_by_author():
-    if not ix:
-        raise HTTPException(status_code=500, detail="Veri indeksi yüklenemedi.")
-    
-    books_data = {}
-    with ix.searcher() as s:
-        # Whoosh indeksindeki TÜM dökümanları gez, bu verimli bir yoldur.
-        for fields in s.all_stored_fields():
-            author = fields.get('author', 'Bilinmeyen Yazar').title()
-            book = fields.get('book', 'Bilinmeyen Kitap').title()
-            pdf_file = fields.get('pdf_file')
+// --- ANA VİDEO ANALİZ SAYFASI ---
+export default function VideoAnalysisPage() {
+    const [url, setUrl] = useState("");
+    const [currentAnalysisUrl, setCurrentAnalysisUrl] = useState("");
+    const [analysisResult, setAnalysisResult] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [history, setHistory] = useState([]);
+    const [historyLoading, setHistoryLoading] = useState(true);
 
-            if not pdf_file:
-                continue
+    useEffect(() => {
+        const fetchHistory = async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/analysis_history`);
+                const data = await response.json();
+                setHistory(Object.entries(data).reverse());
+            } catch (err) { console.error("Geçmiş alınamadı:", err); }
+            finally { setHistoryLoading(false); }
+        };
+        fetchHistory();
+    }, []);
 
-            if author not in books_data:
-                books_data[author] = {}
+    const handleAnalyze = async (e) => {
+        if (e) e.preventDefault();
+        const videoId = extractVideoId(url);
+        if (!videoId) { setError("Lütfen geçerli bir YouTube linki girin."); return; }
+        
+        setIsLoading(true); setError(null); setAnalysisResult(null); setCurrentAnalysisUrl(url);
+
+        try {
+            const params = new URLSearchParams({ url });
+            const response = await fetch(`${API_BASE_URL}/analyze_video?${params.toString()}`, { method: 'POST' });
+            if (!response.ok) { const err = await response.json(); throw new Error(err.detail || "Analiz sırasında sunucuda bir hata oluştu."); }
+            const data = await response.json();
+            setAnalysisResult(data);
             
-            # Her kitabı sadece bir kez eklediğimizden emin oluyoruz.
-            if book not in books_data[author]:
-                # Toplam sayfa sayısını şimdilik göndermiyoruz. 
-                # Bu bilgi, okuyucu açıldığında /pdf/info endpoint'i ile alınabilir.
-                books_data[author][book] = {"pdf_dosyasi": pdf_file}
+            setHistory(prev => {
+                const newHistory = prev.filter(([id]) => id !== videoId);
+                return [[videoId, data], ...newHistory];
+            });
+            setUrl("");
+        } catch (err) { setError(err.message); }
+        finally { setIsLoading(false); }
+    };
 
-    # Frontend'in beklediği formata dönüştür
-    kutuphane_listesi = []
-    for author, books in sorted(books_data.items()):
-        kitaplar_listesi = []
-        for title, details in books.items():
-            kitaplar_listesi.append({
-                "kitap_adi": title,
-                "pdf_dosyasi": details["pdf_dosyasi"],
-                # Geçici olarak toplam sayfa sayısını 0 veya null gönderelim
-                # Bu, frontend'in çökmesini engeller.
-                "toplam_sayfa": 0 
-            })
-        kutuphane_listesi.append({
-            "yazar": author,
-            "kitaplar": kitaplar_listesi
-        })
+    const handleAnalyzeAgain = (historyUrl) => {
+        setUrl(historyUrl);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 
-    return {"kutuphane": kutuphane_listesi}
+    return (
+        <div className="bg-slate-50 min-h-screen">
+            <div className="container mx-auto px-4 py-12 md:py-20">
+                <motion.header initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-center mb-12">
+                    <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter text-slate-800">Video İçerik Analizi</h1>
+                    <p className="mt-4 text-lg md:text-xl text-slate-600">Bir YouTube videosunu analiz ederek önemli konu başlıklarını çıkarın.</p>
+                </motion.header>
 
-# ... (Diğer endpoint'ler aynı kalabilir) ...
+                <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
+                    <Card className="max-w-3xl mx-auto p-6 md:p-8">
+                        <form onSubmit={handleAnalyze} className="space-y-4">
+                            <div>
+                                <label htmlFor="youtube_url" className="block mb-2 text-sm font-medium text-slate-700">YouTube Video Linki</label>
+                                <Input id="youtube_url" type="text" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="w-full h-12 text-base rounded-lg" />
+                            </div>
+                            <Button type="submit" disabled={isLoading} className="w-full h-12 text-base bg-emerald-600 hover:bg-emerald-700 text-white transition-all transform hover:scale-[1.02]">
+                                {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
+                                {isLoading ? 'Analiz Ediliyor...' : 'Analizi Başlat'}
+                            </Button>
+                        </form>
+                    </Card>
+                </motion.section>
+                
+                <section className="mt-12 max-w-3xl mx-auto">
+                     <AnimatePresence mode="wait">
+                        {isLoading && <motion.div key="loading"><AnalysisStatusCard /></motion.div>}
+                        {error && <motion.div key="error"><InfoState title="Bir Hata Oluştu" message={error} icon={ServerCrash} /></motion.div>}
+                        {analysisResult && <motion.div key="result"><AnalysisResultCard result={analysisResult} url={currentAnalysisUrl} /></motion.div>}
+                    </AnimatePresence>
+                </section>
 
-@app.post("/analyze_video")
-async def analyze_youtube_video(url: str = Query(..., description="Analiz edilecek YouTube video URL'si")):
-    if not deepgram_client or not deepseek_client: raise HTTPException(500, "API anahtarları yapılandırılmamış.")
-    video_id = extract_video_id(url)
-    if not video_id: raise HTTPException(400, "Geçersiz YouTube URL'si.")
-    
-    cache = load_video_cache()
-    if video_id in cache:
-        logger.info(f"Önbellekten bulundu: {video_id}")
-        return cache[video_id]
-
-    try:
-        logger.info(f"Yeni analiz başlatılıyor: {video_id}")
-        metadata = get_video_metadata(url)
-        with tempfile.TemporaryDirectory() as temp_dir:
-            audio_path = os.path.join(temp_dir, "audio.m4a")
-            subprocess.run(['yt-dlp', '-f', 'bestaudio', '-o', audio_path, url], check=True, capture_output=True)
-            with open(audio_path, "rb") as audio: source = {'buffer': audio.read()}
-            options = PrerecordedOptions(model="nova-2", language="tr", smart_format=True, utterances=True)
-            response = await deepgram_client.listen.asyncrest.v("1").transcribe_file(source, options)
-            transcript = response.results.utterances
-            if not transcript: raise HTTPException(400, "Metin çıkarılamadı.")
-
-            chapters, chunk_text, start_time = [], "", transcript[0].start
-            for utt in transcript:
-                chunk_text += utt.transcript + " "
-                if utt.end - start_time >= 120:
-                    comp = deepseek_client.chat.completions.create(model="deepseek-chat", messages=[{"role": "system", "content": "Verilen metnin ana konusunu özetleyen 4-6 kelimelik kısa bir başlık oluştur."}, {"role": "user", "content": chunk_text}], max_tokens=20)
-                    title = comp.choices[0].message.content.strip().replace('"', '')
-                    chapters.append(f"**{format_time(start_time)}** - {title}")
-                    chunk_text, start_time = "", utt.end
-            if chunk_text:
-                comp = deepseek_client.chat.completions.create(model="deepseek-chat", messages=[{"role": "system", "content": "Verilen metnin ana konusunu özetleyen 4-6 kelimelik kısa bir başlık oluştur."}, {"role": "user", "content": chunk_text}], max_tokens=20)
-                title = comp.choices[0].message.content.strip().replace('"', '')
-                chapters.append(f"**{format_time(start_time)}** - {title}")
-
-            result = {"title": metadata.get("title"), "thumbnail": metadata.get("thumbnail"), "chapters": chapters}
-            cache[video_id] = result
-            save_video_cache(cache)
-            logger.info(f"Önbelleğe kaydedildi: {video_id}")
-            return result
-    except Exception as e:
-        logger.error(f"Analiz hatası: {e}"); raise HTTPException(500, f"Analiz sırasında hata: {str(e)}")
-
-@app.get("/analysis_history")
-def get_analysis_history():
-    logger.info("Video analizi geçmişi isteniyor.")
-    return load_video_cache()
-
-@app.get("/pdf/info")
-def get_pdf_info(pdf_file: str):
-    pdf_path = PDF_DIR / pdf_file
-    if not pdf_path.is_file(): raise HTTPException(404, "PDF bulunamadı")
-    with fitz.open(pdf_path) as doc: return {"total_pages": len(doc)}
-
-@app.get("/pdf/page_image")
-def get_page_image(pdf_file: str, page_num: int = Query(..., gt=0)):
-    pdf_path = PDF_DIR / pdf_file
-    if not pdf_path.is_file(): raise HTTPException(404, "PDF bulunamadı")
-    with fitz.open(pdf_path) as doc:
-        if page_num > len(doc): raise HTTPException(400, "Geçersiz sayfa")
-        page = doc.load_page(page_num - 1); pix = page.get_pixmap(dpi=150); buf = io.BytesIO(pix.tobytes("png"))
-        return StreamingResponse(buf, media_type="image/png")
+                <section className="mt-20">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
+                        <h2 className="text-3xl md:text-4xl font-bold text-slate-700 mb-8 pb-3 border-b-4 border-emerald-500 inline-block">
+                            <History className="inline-block h-8 w-8 mr-3 -mt-1 text-emerald-600" /> Analiz Geçmişi
+                        </h2>
+                        {historyLoading && <HistorySkeleton />}
+                        {!historyLoading && history.length === 0 && <InfoState title="Geçmişiniz Boş" message="Henüz bir video analizi yapmadınız." icon={FileQuestion} />}
+                        {!historyLoading && history.length > 0 && 
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                                {history.map(([videoId, data]) => (
+                                    <HistoryCard key={videoId} videoId={videoId} data={data} onAnalyzeAgain={handleAnalyzeAgain} />
+                                ))}
+                            </div>
+                        }
+                    </motion.div>
+                </section>
+            </div>
+        </div>
+    );
+}
