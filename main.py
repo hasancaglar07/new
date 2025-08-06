@@ -1,5 +1,5 @@
 # main.py
-# Versiyon 1.3.3 - Final - Stabil Video Analizi (Asenkron Disk Yazma Düzeltmesi)
+# Versiyon 1.3.4 - Final - Stabil Video Analizi (Redirect Takibi Eklendi)
 
 import logging
 import os
@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any
 import uuid
 import httpx
-import aiofiles # DEĞİŞİKLİK 1: Asenkron dosya işlemleri için import edildi
+import aiofiles
 
 import fitz
 import requests
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Mihmandar İlim Havuzu API",
-    version="1.3.3",
+    version="1.3.4",
     description="Tasavvufi eserlerde ve YouTube videolarında arama ve analiz yapma API'si."
 )
 
@@ -117,18 +117,18 @@ async def run_video_analysis(task_id: str, url: str):
             info = await asyncio.to_thread(ydl.extract_info, url, download=False)
             audio_url = info['url']
 
-        async with httpx.AsyncClient(timeout=600.0) as client:
+        # DEĞİŞİKLİK 1: `follow_redirects=True` parametresi eklendi.
+        async with httpx.AsyncClient(timeout=600.0, follow_redirects=True) as client:
             async with client.stream("GET", audio_url) as response:
-                response.raise_for_status()
+                if response.status_code != 200:
+                    raise HTTPException(status_code=response.status_code, detail=f"Video sunucusundan beklenmeyen durum kodu: {response.status_code}")
                 
                 downloaded_bytes = 0
-                log_threshold_bytes = 1024 * 1024 # Her 1 MB'de bir log yaz
+                log_threshold_bytes = 1024 * 1024
                 next_log_point = log_threshold_bytes
                 
-                # DEĞİŞİKLİK 2: Senkron 'open' yerine asenkron 'aiofiles.open' kullanılıyor
                 async with aiofiles.open(local_audio_path, 'wb') as f:
                     async for chunk in response.aiter_bytes():
-                        # DEĞİŞİKLİK 3: Senkron 'f.write' yerine asenkron 'await f.write' kullanılıyor
                         await f.write(chunk)
                         
                         downloaded_bytes += len(chunk)
@@ -141,10 +141,9 @@ async def run_video_analysis(task_id: str, url: str):
 
         tasks_db[task_id] = {"status": "processing", "message": "Ses geçici sunucuya yükleniyor..."}
         
-        # Diskteki dosyayı yükleme kısmı senkron kalabilir, çünkü dosya zaten tamamen indirildi.
-        # Ama daha tutarlı olması için burayı da asenkron yapabiliriz.
         async with aiofiles.open(local_audio_path, "rb") as f:
-            async with httpx.AsyncClient(timeout=600.0) as client:
+            # DEĞİŞİKLİK 2: Buradaki istemciye de eklemek iyi bir pratiktir.
+            async with httpx.AsyncClient(timeout=600.0, follow_redirects=True) as client:
                 files_to_upload = {'file': (local_audio_path.name, await f.read(), 'audio/webm')}
                 upload_response = await client.post("https://tmp.ninja/upload.php?d=upload-audio", files=files_to_upload, timeout=600.0)
 
@@ -212,11 +211,7 @@ async def run_video_analysis(task_id: str, url: str):
 # --- API Endpointleri (değişiklik yok) ---
 @app.get("/")
 async def read_root():
-    return {"message": "Mihmandar API v1.3.3 Aktif"}
-
-# ... (geri kalan tüm endpointler aynı, buraya kopyalamaya gerek yok)
-# Sadece yukarıdaki run_video_analysis fonksiyonunu ve import aiofiles satırını güncellediğinizden emin olun.
-# Size kolaylık olması için aşağıya kalan kısmı da ekliyorum.
+    return {"message": "Mihmandar API v1.3.4 Aktif"}
 
 @app.get("/authors")
 async def get_all_authors(searcher: Searcher = Depends(get_searcher)):
