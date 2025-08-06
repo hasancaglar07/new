@@ -1,7 +1,6 @@
-"// ai/frontend/src/app/video-analizi/page.js
+// ai/frontend/src/app/video-analizi/page.js
 
 "use client";
-import Image from "next/image"; // Dosyanın en üstüne ekleyin
 
 import { useState, useEffect } from "react";
 import Image from "next/image"; // --- DÜZELTME: next/image import edildi
