@@ -22,4 +22,4 @@ RUN python backend/create_index.py
 
 # 8. Adım: Sunucuyu başlatacak olan komut (SHELL FORMATI İLE DÜZELTİLDİ)
 # Bu format, ${PORT} gibi ortam değişkenlerinin doğru şekilde okunmasını sağlar.
-CMD gunicorn -w 4 -k uvicorn.workers.UvicornWorker --chdir backend main:app --bind "0.0.0.0:10000"
+CMD gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
