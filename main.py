@@ -33,10 +33,18 @@ app = FastAPI(title="Yediulya İlim Havuzu API", version="1.0.0")
 # --- CORS (Frontend'den Gelen İsteğe İzin Verme) ---
 # Artık sorunu bildiğimiz için güvenli ayarlara geri dönüyoruz.
 origins = [
+    # Yerel geliştirme için
     "http://localhost:3000",
+    
+    # Çalışan Vercel adresi
     "https://new-git-main-yediulyas-projects.vercel.app",
-    "https://mihmandar.org"
+    
+    # YENİ EKLENEN VE ÇALIŞMAYAN ADRESLER
+    "https://mihmandar.org",
+    "https://new-mu-self.vercel.app",
+    "https://new-yediulyas-projects.vercel.app"
 ]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
