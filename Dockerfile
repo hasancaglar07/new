@@ -3,8 +3,8 @@
 # Adım 1: Temel Python imajı
 FROM python:3.11-slim
 
-# Adım 2: Gerekli sistem paketlerini kur
-RUN apt-get update && apt-get install -y git git-lfs && rm -rf /var/lib/apt/lists/*
+# Adım 2: Gerekli sistem paketlerini kur (ffmpeg eklendi)
+RUN apt-get update && apt-get install -y git git-lfs ffmpeg && rm -rf /var/lib/apt/lists/*
 
 # Adım 3: Çalışma dizini
 WORKDIR /app

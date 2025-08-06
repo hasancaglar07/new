@@ -1,5 +1,5 @@
 # main.py
-# Versiyon 1.2.7 - DeepSeek API çağrısı, async/await uyumluluğu için düzeltildi.
+# Versiyon 1.3.2 - Final - Stabil Video Analizi (Disk -> Harici Servis -> Deepgram)
 
 import logging
 import os
@@ -11,13 +11,12 @@ import urllib.parse
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 import uuid
-import tempfile
+import httpx # Harici servislere ve indirme işlemleri için
 
 import fitz
 import requests
 import yt_dlp
-# ★★★ DEĞİŞİKLİK: Gerekli async istemciyi import et ★★★
-from openai import OpenAI, AsyncOpenAI
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,122 +33,184 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Mihmandar İlim Havuzu API",
-    version="1.2.7",
+    version="1.3.2",
     description="Tasavvufi eserlerde ve YouTube videolarında arama ve analiz yapma API'si."
 )
 
-# --- Diğer bölümlerde değişiklik yok ---
 origins = [
     "http://localhost:3000", "https://new-git-main-yediulyas-projects.vercel.app",
     "https://mihmandar.org", "https://new-mu-self.vercel.app",
     "https://new-yediulyas-projects.vercel.app",
 ]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
 PDF_DIR = DATA_DIR / "pdfler"
 INDEX_DIR = DATA_DIR / "whoosh_index"
 VIDEO_CACHE_FILE = DATA_DIR / "video_analysis_cache.json"
+
+# DEĞİŞİKLİK 1: Geçici ses dosyaları için bir klasör tanımlayalım.
+TEMP_AUDIO_DIR = DATA_DIR / "temp_audio"
+TEMP_AUDIO_DIR.mkdir(exist_ok=True) # Klasör yoksa oluştur
+
 YOUTUBE_API_KEYS = [os.getenv(f"YOUTUBE_API_KEY{i}") for i in range(1, 7) if os.getenv(f"YOUTUBE_API_KEY{i}")]
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
 deepgram_client = DeepgramClient(DEEPGRAM_API_KEY) if DEEPGRAM_API_KEY else None
-# ★★★ DEĞİŞİKLİK: Senkron istemci yerine Asenkron istemci kullan ★★★
 deepseek_client = AsyncOpenAI(base_url="https://api.deepseek.com", api_key=DEEPSEEK_API_KEY) if DEEPSEEK_API_KEY else None
 
 tasks_db: Dict[str, Dict[str, Any]] = {}
+
+# --- Yardımcı Fonksiyonlar ---
 def get_whoosh_index() -> Index:
-    try: return open_dir(str(INDEX_DIR))
+    try:
+        return open_dir(str(INDEX_DIR))
     except Exception as e:
         logger.error(f"Kritik Hata: Whoosh indeksi '{INDEX_DIR}' adresinde bulunamadı: {e}")
         raise HTTPException(status_code=503, detail="Arama servisi şu anda kullanılamıyor.")
-def get_searcher(ix: Index = Depends(get_whoosh_index)) -> Searcher: return ix.searcher()
+
+def get_searcher(ix: Index = Depends(get_whoosh_index)) -> Searcher:
+    return ix.searcher()
+
 def load_video_cache() -> Dict[str, Any]:
     if not VIDEO_CACHE_FILE.exists(): return {}
     with open(VIDEO_CACHE_FILE, 'r', encoding='utf-8') as f:
-        try: return json.load(f)
-        except json.JSONDecodeError: return {}
+        try:
+            return json.load(f)
+        except json.JSONDecodeError:
+            return {}
+
 def save_video_cache(cache: Dict[str, Any]):
-    with open(VIDEO_CACHE_FILE, 'w', encoding='utf-8') as f: json.dump(cache, f, ensure_ascii=False, indent=4)
+    with open(VIDEO_CACHE_FILE, 'w', encoding='utf-8') as f:
+        json.dump(cache, f, ensure_ascii=False, indent=4)
+
 def format_time(seconds: float) -> str:
     minutes, seconds = divmod(int(seconds), 60)
     hours, minutes = divmod(minutes, 60)
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
 def extract_video_id(url: str) -> Optional[str]:
     match = re.search(r"(?:v=|\/|embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})", url)
     return match.group(1) if match else None
 
-def download_audio_sync(url: str, task_id: str) -> bytes:
-    temp_dir = tempfile.gettempdir()
-    temp_filepath = os.path.join(temp_dir, f"{task_id}_audio.m4a")
-    ydl_opts = {'format': 'bestaudio/best', 'outtmpl': temp_filepath, 'quiet': True, 'no_warnings': True, 'noprogress': True}
-    try:
-        logger.info(f"[{task_id}] yt-dlp ile indirme başlatılıyor: {temp_filepath}")
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-        logger.info(f"[{task_id}] Geçici dosyaya indirme tamamlandı.")
-        with open(temp_filepath, 'rb') as f:
-            audio_content = f.read()
-        logger.info(f"[{task_id}] Dosya okundu. Boyut: {len(audio_content) / 1024 / 1024:.2f} MB")
-        return audio_content
-    finally:
-        if os.path.exists(temp_filepath):
-            os.remove(temp_filepath)
-            logger.info(f"[{task_id}] Geçici dosya silindi: {temp_filepath}")
 
-# --- Arka Plan Görevi ---
+# --- Arka Plan Görevi (GÜNCELLENMİŞ FONKSİYON) ---
 async def run_video_analysis(task_id: str, url: str):
+    # Geçici ses dosyasının tam yolunu tanımlıyoruz.
+    local_audio_path = TEMP_AUDIO_DIR / f"{task_id}.webm"
+
     try:
         logger.info(f"[{task_id}] Analiz başlatıldı.")
         tasks_db[task_id] = {"status": "processing", "message": "Video Bilgileri Alınıyor..."}
-        logger.info(f"[{task_id}] Meta veri çekiliyor...")
+
         meta_opts = {'quiet': True, 'skip_download': True, 'no_warnings': True}
         with yt_dlp.YoutubeDL(meta_opts) as ydl:
             metadata = await asyncio.to_thread(ydl.extract_info, url, download=False)
-        logger.info(f"[{task_id}] Meta veri çekildi.")
-        tasks_db[task_id] = {"status": "processing", "message": "Video Sesi İndiriliyor..."}
-        audio_content = await asyncio.to_thread(download_audio_sync, url, task_id)
+        title = metadata.get("title", "Başlık Yok")
+        thumbnail = metadata.get("thumbnail")
+
+        tasks_db[task_id] = {"status": "processing", "message": "Ses sunucuya indiriliyor..."}
+        logger.info(f"[{task_id}] Ses için doğrudan URL alınıyor...")
+
+        ydl_opts = {'format': 'bestaudio/best', 'quiet': True, 'no_warnings': True}
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = await asyncio.to_thread(ydl.extract_info, url, download=False)
+            audio_url = info['url']
+
+        # DEĞİŞİKLİK 2: Sesi belleğe değil, doğrudan diske akış (stream) olarak indiriyoruz.
+        async with httpx.AsyncClient(timeout=600.0) as client:
+            async with client.stream("GET", audio_url) as response:
+                response.raise_for_status()
+                with open(local_audio_path, 'wb') as f:
+                    async for chunk in response.aiter_bytes():
+                        f.write(chunk)
+        
+        file_size_mb = local_audio_path.stat().st_size / 1024 / 1024
+        logger.info(f"[{task_id}] Ses {file_size_mb:.2f} MB olarak sunucu diskine indirildi: {local_audio_path}")
+
+        tasks_db[task_id] = {"status": "processing", "message": "Ses geçici sunucuya yükleniyor..."}
+        
+        # DEĞİŞİKLİK 3: Bellekteki buffer yerine, diskteki dosyayı harici servise yüklüyoruz.
+        async with httpx.AsyncClient(timeout=600.0) as client:
+            with open(local_audio_path, "rb") as f:
+                files_to_upload = {'file': (local_audio_path.name, f, 'audio/webm')}
+                upload_response = await client.post("https://tmp.ninja/upload.php?d=upload-audio", files=files_to_upload, timeout=600.0)
+        
+        upload_response.raise_for_status()
+        temp_data = upload_response.json()
+        temp_download_url = temp_data.get("download_url")
+
+        if not temp_download_url:
+            raise ValueError("Geçici dosya sunucusundan indirme linki alınamadı.")
+        
+        logger.info(f"[{task_id}] Ses geçici olarak yüklendi: {temp_download_url}")
+
         tasks_db[task_id] = {"status": "processing", "message": "Ses Metne Dönüştürülüyor..."}
-        logger.info(f"[{task_id}] Deepgram'e gönderiliyor...")
-        source = {'buffer': audio_content}
+        logger.info(f"[{task_id}] Deepgram'e geçici URL gönderiliyor...")
+        
+        source = {'url': temp_download_url}
         options = PrerecordedOptions(model="nova-2", language="tr", smart_format=True, utterances=True)
-        response = await deepgram_client.listen.asyncrest.v("1").transcribe_file(source, options)
-        if not response.results or not response.results.utterances: raise ValueError("Videodan metin çıkarılamadı.")
+        response = await deepgram_client.listen.asyncrest.v("1").transcribe_url(source, options, timeout=600)
+        
+        if not response.results or not response.results.utterances:
+            raise ValueError("Videodan metin çıkarılamadı (Deepgram boş sonuç döndü).")
+            
         logger.info(f"[{task_id}] Metin başarıyla alındı.")
         tasks_db[task_id] = {"status": "processing", "message": "Konu Başlıkları Oluşturuluyor..."}
-        logger.info(f"[{task_id}] DeepSeek ile başlıklar oluşturuluyor...")
+        
         chapters, chunk_text, start_time = [], "", 0
         utterances = response.results.utterances
         for i, utt in enumerate(utterances):
             if not chunk_text: start_time = utt.start
             chunk_text += utt.transcript + " "
+            
             if (utt.end - start_time) >= 120 or (i == len(utterances) - 1 and chunk_text.strip()):
-                # ★★★ DEĞİŞİKLİK: API çağrısı artık doğru şekilde 'await' ediliyor ★★★
-                comp_res = await deepseek_client.chat.completions.create(model="deepseek-chat", messages=[{"role": "system", "content": "Verilen metnin ana konusunu özetleyen 4-6 kelimelik kısa bir başlık oluştur."}, {"role": "user", "content": chunk_text}], max_tokens=20)
-                title = comp_res.choices[0].message.content.strip().replace('"', '')
-                chapters.append(f"**{format_time(start_time)}** - {title}")
+                comp_res = await deepseek_client.chat.completions.create(
+                    model="deepseek-chat",
+                    messages=[{"role": "system", "content": "Verilen metnin ana konusunu özetleyen 4-6 kelimelik kısa bir başlık oluştur."}, {"role": "user", "content": chunk_text}],
+                    max_tokens=20
+                )
+                chapter_title = comp_res.choices[0].message.content.strip().replace('"', '')
+                chapters.append(f"**{format_time(start_time)}** - {chapter_title}")
                 chunk_text = ""
+        
         logger.info(f"[{task_id}] Başlıklar oluşturuldu.")
-        result = {"title": metadata.get("title"), "thumbnail": metadata.get("thumbnail"), "chapters": chapters}
+        result = {"title": title, "thumbnail": thumbnail, "chapters": chapters}
+        
         video_id = extract_video_id(url)
         if video_id:
             cache = load_video_cache()
             cache[video_id] = result
             save_video_cache(cache)
+            
         tasks_db[task_id] = {"status": "completed", "result": result}
         logger.info(f"[{task_id}] Analiz başarıyla tamamlandı.")
+        
     except Exception as e:
-        logger.error(f"[{task_id}] Görev sırasında HATA oluştu: {e}")
+        logger.error(f"[{task_id}] Görev sırasında HATA oluştu: {e}", exc_info=True)
         tasks_db[task_id] = {"status": "error", "message": f"Analiz sırasında bir hata oluştu: {str(e)}"}
+    finally:
+        # DEĞİŞİKLİK 4: İşlem bitse de hata alsa da, diskte yer kaplamaması için geçici dosyayı siliyoruz.
+        if local_audio_path.exists():
+            try:
+                os.remove(local_audio_path)
+                logger.info(f"[{task_id}] Geçici dosya silindi: {local_audio_path}")
+            except OSError as e:
+                logger.error(f"[{task_id}] Geçici dosya silinemedi: {local_audio_path}, Hata: {e}")
 
-# --- API Endpoints (Değişiklik yok) ---
+# --- API Endpointleri ---
 @app.get("/")
-async def read_root(): return {"message": "Mihmandar API v1.2.7 Aktif"}
+async def read_root():
+    return {"message": "Mihmandar API v1.3.2 Aktif"}
+
 @app.get("/authors")
 async def get_all_authors(searcher: Searcher = Depends(get_searcher)):
-    def _get_authors(): return {"authors": sorted(list({f['author'].title() for f in searcher.all_stored_fields() if 'author' in f}))}
+    def _get_authors():
+        return {"authors": sorted(list({f['author'].title() for f in searcher.all_stored_fields() if 'author' in f}))}
     return await asyncio.to_thread(_get_authors)
+
 @app.get("/search/books")
 async def search_books(q: str, authors: Optional[List[str]] = Query(None), searcher: Searcher = Depends(get_searcher)):
     def _search():
@@ -163,6 +224,7 @@ async def search_books(q: str, authors: Optional[List[str]] = Query(None), searc
         results = searcher.search(parsed_query, limit=150)
         return {"sonuclar": [{"kitap": hit["book"].title(), "yazar": hit["author"].title(), "sayfa": hit["page"], "alinti": hit.highlights("content") or hit["content"][:300], "pdf_dosyasi": hit["pdf_file"]} for hit in results]}
     return await asyncio.to_thread(_search)
+
 @app.get("/books_by_author")
 async def get_books_by_author(searcher: Searcher = Depends(get_searcher)):
     def _process_books():
@@ -178,6 +240,7 @@ async def get_books_by_author(searcher: Searcher = Depends(get_searcher)):
                  except Exception: continue
         return {"kutuphane": [{"yazar": author, "kitaplar": [{"kitap_adi": title, **details} for title, details in books.items()]} for author, books in sorted(books_data.items())]}
     return await asyncio.to_thread(_process_books)
+
 @app.get("/pdf/info")
 async def get_pdf_info(pdf_file: str):
     try:
@@ -189,6 +252,7 @@ async def get_pdf_info(pdf_file: str):
     except Exception as e:
         logger.error(f"PDF info hatası: pdf={pdf_file}, error={e}")
         raise HTTPException(status_code=500, detail="PDF bilgisi alınamadı.")
+
 @app.get("/pdf/page_image")
 def get_page_image(pdf_file: str, page_num: int = Query(..., gt=0)):
     try:
@@ -203,6 +267,7 @@ def get_page_image(pdf_file: str, page_num: int = Query(..., gt=0)):
     except Exception as e:
         logger.error(f"Sayfa resmi hatası: pdf={pdf_file}, page={page_num}, error={e}")
         raise HTTPException(status_code=500, detail="Sayfa resmi işlenirken hata oluştu.")
+
 @app.get("/search/videos")
 async def search_videos(q: str):
     if not YOUTUBE_API_KEYS: raise HTTPException(status_code=503, detail="YouTube servisi yapılandırılmamış.")
@@ -220,6 +285,7 @@ async def search_videos(q: str):
                 elif response.status_code == 403: continue
             except requests.RequestException: break
     return {"sonuclar": all_videos}
+
 @app.post("/analyze/start")
 async def start_analysis(background_tasks: BackgroundTasks, url: str = Query(..., description="Analiz edilecek YouTube video URL'si")):
     if not deepgram_client or not deepseek_client: raise HTTPException(status_code=503, detail="Video analiz servisi yapılandırılmamış.")
@@ -228,10 +294,13 @@ async def start_analysis(background_tasks: BackgroundTasks, url: str = Query(...
     tasks_db[task_id] = {"status": "processing", "message": "Görev Başlatılıyor..."}
     background_tasks.add_task(run_video_analysis, task_id, url)
     return JSONResponse(status_code=202, content={"task_id": task_id, "message": "Analiz başlatıldı."})
+
 @app.get("/analyze/status/{task_id}")
 async def get_analysis_status(task_id: str):
     task = tasks_db.get(task_id)
     if not task: raise HTTPException(status_code=404, detail="Görev bulunamadı.")
     return task
+
 @app.get("/analysis_history")
-async def get_analysis_history(): return load_video_cache()
+async def get_analysis_history():
+    return load_video_cache()
