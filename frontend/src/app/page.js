@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Check, ChevronsUpDown, Loader2, Search, BookOpen, Video, ArrowRight, Download, ArrowLeft, FileQuestion, ServerCrash, X, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import Image from "next/image"; // Next.js Image bileşeni import edildi.
+import Image from "next/image";
 
 // ShadCN UI ve Yerel Bileşenler
 import { Button } from "@/components/ui/button";
@@ -18,10 +18,13 @@ import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, Command
 import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
-const API_BASE_URL = "process.env.NEXT_PUBLIC_API_URL";
+// ----- KESİN ÇÖZÜM: API ADRESİ BURAYA DOĞRUDAN YAZILDI -----
+const API_BASE_URL = "https://yediulya-backend.onrender.com";
+// -----------------------------------------------------------
+
 const RESULTS_PER_PAGE = 48;
 
-// --- "ULTIMATE" ALT BİLEŞENLER (DÜZELTİLMİŞ SÜRÜM) ---
+// --- ALT BİLEŞENLER ---
 
 const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -58,18 +61,11 @@ function PagePreview({ pdfFile, pageNum, onReadClick }) {
                 setIsLoading(false);
             });
             
-        // Cleanup function: revoke object URL to prevent memory leaks.
-        return () => {
-            if (imageSrc) {
-                URL.revokeObjectURL(imageSrc);
-            }
-        };
-    // imageSrc, bağımlılık dizisine eklendi (linting uyarısı için).
+        return () => { if (imageSrc) { URL.revokeObjectURL(imageSrc); } };
     }, [pdfFile, pageNum, imageSrc]);
 
     return (
         <div className="mt-4 space-y-4">
-            {/* Tasarımın bozulmaması için Image bileşenine ebeveyn div eklendi */}
             <div className="relative flex justify-center items-center h-[400px] bg-slate-100 rounded-lg p-2">
                 {isLoading && <Loader2 className="h-8 w-8 text-slate-400 animate-spin" />}
                 {error && <div className="text-center text-red-600 p-4"><ServerCrash className="mx-auto h-8 w-8 mb-2" />{error}</div>}
@@ -78,7 +74,7 @@ function PagePreview({ pdfFile, pageNum, onReadClick }) {
                         src={imageSrc} 
                         alt={`Sayfa ${pageNum} önizlemesi`} 
                         fill 
-                        style={{ objectFit: 'contain' }} // or 'cover'
+                        style={{ objectFit: 'contain' }}
                         className="rounded-md"
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
@@ -94,10 +90,7 @@ function ResultCard({ result, onReadClick, query, index }) {
     <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }} initial="hidden" animate="visible" transition={{ delay: index * 0.05 }} className="h-full">
       <Card className="flex flex-col h-full overflow-hidden bg-white hover:shadow-2xl transition-shadow duration-300 group rounded-xl border">
         <CardHeader className="p-6"><CardTitle className="text-xl font-bold text-slate-800 group-hover:text-emerald-600 transition-colors">{result.kitap}</CardTitle><CardDescription>Yazar: {result.yazar}</CardDescription></CardHeader>
-        <CardContent className="flex-grow p-6 pt-0">
-            {/* DÜZELTME: " karakteri &quot; ile değiştirildi. */}
-            <p className="text-slate-600 italic line-clamp-5">&quot;...<Highlight text={result.alinti} query={query} />...&quot;</p>
-        </CardContent>
+        <CardContent className="flex-grow p-6 pt-0"><p className="text-slate-600 italic line-clamp-5">&quot;...<Highlight text={result.alinti} query={query} />...&quot;</p></CardContent>
         <CardFooter className="p-0 pt-4 bg-slate-50/70">
             <Accordion type="single" collapsible className="w-full px-6">
                 <AccordionItem value="item-1" className="border-b-0"><AccordionTrigger className="text-sm font-semibold text-emerald-700 hover:no-underline py-3">Sayfa {result.sayfa} Önizlemesi</AccordionTrigger>
@@ -116,7 +109,6 @@ function VideoCard({ video, index }) {
       <Card className="overflow-hidden bg-white hover:shadow-2xl transition-shadow duration-300 rounded-xl border group flex flex-col h-full">
         <div className="aspect-video bg-slate-200 relative">
             <iframe src={`https://www.youtube.com/embed/${video.id}`} title={video.title} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen className="w-full h-full"></iframe>
-            {video.duration && <Pill className="absolute bottom-2 right-2 bg-black/70 text-white backdrop-blur-sm">{video.duration}</Pill>}
         </div>
         <CardHeader className="flex-grow"><CardTitle className="text-base font-bold text-slate-800 line-clamp-2">{video.title}</CardTitle><CardDescription>{video.channel}</CardDescription></CardHeader>
         <CardFooter className="bg-slate-50/70 p-3 text-xs text-slate-500 flex justify-between items-center">
@@ -132,19 +124,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDownloading, setIsDownloading] = useState(false);
-
-  const goToNextPage = useCallback(() => { if (totalPages && currentPage < totalPages) setCurrentPage(p => p + 1); }, [currentPage, totalPages]);
-  const goToPrevPage = useCallback(() => { if (currentPage > 1) setCurrentPage(p => p - 1); }, [currentPage]);
   
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'ArrowRight') goToNextPage();
-      if (e.key === 'ArrowLeft') goToPrevPage();
-    };
-    if (isOpen) { window.addEventListener('keydown', handleKeyDown); return () => window.removeEventListener('keydown', handleKeyDown); }
-  }, [isOpen, goToNextPage, goToPrevPage]);
-
   useEffect(() => {
     if (book) {
       setCurrentPage(book.sayfa); setIsLoading(true);
@@ -152,34 +132,8 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     }
   }, [book]);
 
-  useEffect(() => {
-    setIsLoading(true);
-    if (totalPages) {
-        if (currentPage < totalPages) { new window.Image().src = `${API_BASE_URL}/pdf/page_image?pdf_file=${book.pdf_dosyasi}&page_num=${currentPage + 1}`; }
-        if (currentPage > 1) { new window.Image().src = `${API_BASE_URL}/pdf/page_image?pdf_file=${book.pdf_dosyasi}&page_num=${currentPage - 1}`; }
-    }
-  }, [currentPage, book.pdf_dosyasi, totalPages]);
-
   if (!book) return null;
   const imageUrl = `${API_BASE_URL}/pdf/page_image?pdf_file=${book.pdf_dosyasi}&page_num=${currentPage}`;
-  
-  const handleDownload = async () => {
-    setIsDownloading(true);
-    try {
-        const response = await fetch(imageUrl);
-        if (!response.ok) throw new Error('Resim indirilemedi.');
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${book.kitap.replace(/\s/g, '_')}_Sayfa_${currentPage}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-    } catch (error) { console.error("İndirme hatası:", error); } 
-    finally { setIsDownloading(false); }
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -187,17 +141,16 @@ function BookViewerDialog({ book, onClose, isOpen }) {
         <DialogHeader className="p-4 border-b flex-shrink-0"><DialogTitle className="text-xl md:text-2xl text-slate-800">{book.kitap}</DialogTitle></DialogHeader>
         <div className="flex-grow flex justify-center items-center bg-slate-200 overflow-hidden relative">
           {isLoading && <Loader2 className="h-10 w-10 animate-spin text-slate-500 absolute" />}
-          {/* DÜZELTME: <img> yerine <Image> kullanıldı */}
           <Image src={imageUrl} alt={`Sayfa ${currentPage}`} onLoad={() => setIsLoading(false)} fill style={{ objectFit: 'contain' }} className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`} sizes="95vw"/>
         </div>
         <DialogFooter className="flex-row justify-between items-center p-3 bg-slate-100 border-t flex-shrink-0">
-          <Button variant="outline" onClick={handleDownload} disabled={isDownloading}>{isDownloading ? <Loader2 className="mr-0 md:mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-0 md:mr-2 h-4 w-4" />}<span className="hidden md:inline">{isDownloading ? "İndiriliyor..." : "İndir"}</span></Button>
-          <div className="flex items-center gap-2">
-            <Button onClick={goToPrevPage} disabled={currentPage <= 1}><ArrowLeft className="h-4 w-4" /></Button>
-            <Input type="number" value={currentPage} onChange={(e) => setCurrentPage(Number(e.target.value))} className="w-20 text-center font-bold" />
-            <span className="font-semibold text-slate-600">/ {totalPages || '...'}</span>
-            <Button onClick={goToNextPage} disabled={!totalPages || currentPage >= totalPages}><ArrowRight className="h-4 w-4" /></Button>
-          </div>
+            <div></div>
+            <div className="flex items-center gap-2">
+                <Button onClick={() => setCurrentPage(p => p > 1 ? p - 1 : p)} disabled={currentPage <= 1}><ArrowLeft className="h-4 w-4" /></Button>
+                <Input type="number" value={currentPage} onChange={(e) => setCurrentPage(Number(e.target.value))} className="w-20 text-center font-bold" />
+                <span className="font-semibold text-slate-600">/ {totalPages || '...'}</span>
+                <Button onClick={() => setCurrentPage(p => totalPages && p < totalPages ? p + 1 : p)} disabled={!totalPages || currentPage >= totalPages}><ArrowRight className="h-4 w-4" /></Button>
+            </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -221,61 +174,49 @@ function InfoState({ title, message, icon: Icon, onClearFilters }) {
     return (<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-16 px-6 bg-slate-100/80 rounded-2xl mt-8 max-w-2xl mx-auto"><Icon className="mx-auto h-16 w-16 text-slate-400 mb-4" /><h3 className="text-2xl font-bold text-slate-700">{title}</h3><p className="text-slate-500 mt-2">{message}</p>{onClearFilters && <Button onClick={onClearFilters} className="mt-6"><X className="mr-2 h-4 w-4" /> Filtreleri Temizle</Button>}</motion.div>)
 }
 
-// --- ANA SAYFA BİLEŞENİ ("YÖNETİCİ") ---
 export default function HomePage() {
   const [authors, setAuthors] = useState([]);
   const [selectedAuthors, setSelectedAuthors] = useState(new Set());
   const [query, setQuery] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
   const [allResults, setAllResults] = useState({ books: [], videos: [] });
-  const [displayedResultsCount, setDisplayedResultsCount] = useState(RESULTS_PER_PAGE);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('kitaplar');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState(null);
-  
-  const displayedBooks = useMemo(() => allResults.books.slice(0, displayedResultsCount), [allResults.books, displayedResultsCount]);
-  const displayedVideos = useMemo(() => allResults.videos.slice(0, displayedResultsCount), [allResults.videos, displayedResultsCount]);
+  const [activeTab, setActiveTab] = useState('kitaplar');
 
   useEffect(() => { 
       fetch(`${API_BASE_URL}/authors`).then(res => res.json()).then(data => setAuthors(data.authors || [])).catch(() => setError("Yazar listesi yüklenemedi. API bağlantısını kontrol edin."));
   }, []);
 
   const performSearch = useCallback(async (currentQuery, currentAuthors) => {
-    if (!currentQuery.trim()) { setAllResults({ books: [], videos: [] }); return; }
+    if (!currentQuery.trim()) { setAllResults({ books: [], videos: [] }); setError(null); return; }
     setIsLoading(true); setError(null);
     try {
         const bookUrl = new URL(`${API_BASE_URL}/search/books`);
         bookUrl.searchParams.append('q', currentQuery);
         currentAuthors.forEach(author => bookUrl.searchParams.append('authors', author));
+        
         const videoUrl = new URL(`${API_BASE_URL}/search/videos`);
         videoUrl.searchParams.append('q', currentQuery);
+
         const [bookRes, videoRes] = await Promise.all([ fetch(bookUrl), fetch(videoUrl) ]);
         if (!bookRes.ok || !videoRes.ok) throw new Error("Arama sunucusuna ulaşılamadı.");
         const bookData = await bookRes.json();
         const videoData = await videoRes.json();
         setAllResults({ books: bookData?.sonuclar || [], videos: videoData?.sonuclar || [] });
-        setDisplayedResultsCount(RESULTS_PER_PAGE);
         setActiveTab((bookData?.sonuclar?.length || 0) > 0 ? 'kitaplar' : 'videolar');
     } catch (error) { setError(error.message); } 
     finally { setIsLoading(false); }
   }, []);
   
-  useEffect(() => {
-    const handler = setTimeout(() => { setSearchQuery(query); }, 350);
-    return () => clearTimeout(handler);
-  }, [query]);
-
-  useEffect(() => { performSearch(searchQuery, selectedAuthors); }, [searchQuery, selectedAuthors, performSearch]);
-
-  const handleReadClick = (book) => { setSelectedBook(book); setIsModalOpen(true); };
-  const handleSuggestionClick = (tag) => { setQuery(tag); };
+  const handleSearch = (e) => {
+    e.preventDefault();
+    performSearch(query, selectedAuthors);
+  };
   
   const hasResults = allResults.books.length > 0 || allResults.videos.length > 0;
-  const showLoadMoreBooks = displayedBooks.length < allResults.books.length;
-  const showLoadMoreVideos = displayedVideos.length < allResults.videos.length;
-
+  
   return (
     <div className="bg-slate-50 min-h-screen w-full font-sans">
       <main className="container mx-auto px-4 py-12 md:py-20">
@@ -287,31 +228,30 @@ export default function HomePage() {
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }} className="sticky top-24 z-40">
           <Card className="max-w-3xl mx-auto shadow-xl shadow-slate-200/70 border-t-4 border-emerald-500 bg-white/90 backdrop-blur-lg rounded-2xl">
             <CardContent className="p-6 md:p-8">
-              <div className="space-y-4">
+              <form onSubmit={handleSearch} className="space-y-4">
                 <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 pointer-events-none" />
-                    {isLoading && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 animate-spin" />}
                     <Input placeholder="Konu, eser veya yazar adı yazın..." value={query} onChange={(e) => setQuery(e.target.value)} className="text-lg h-14 pl-12 rounded-lg" />
                 </div>
                 <Popover>
                     <PopoverTrigger asChild>
                         <Button variant="outline" className="w-full justify-between h-12 text-base text-slate-600 rounded-lg">{selectedAuthors.size > 0 ? `${selectedAuthors.size} yazar seçildi` : "Yazara Göre Filtrele"}<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button>
                     </PopoverTrigger>
-                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command><CommandInput placeholder="Yazar ara..." /><CommandList><CommandEmpty>Yazar bulunamadı.</CommandEmpty><CommandGroup>
-                        {authors.map((author) => (<CommandItem key={author} onSelect={() => setSelectedAuthors(prev => { const newSet = new Set(prev); if (newSet.has(author)) newSet.delete(author); else newSet.add(author); return newSet; })} className="cursor-pointer"><Checkbox checked={selectedAuthors.has(author)} className="mr-2" /><span>{author}</span></CommandItem>))}
-                    </CommandGroup></CommandList>{selectedAuthors.size > 0 && <div className="p-2 border-t"><Button variant="ghost" className="w-full h-8 text-sm" onClick={() => setSelectedAuthors(new Set())}><X className="mr-2 h-4 w-4"/>Filtreleri Temizle</Button></div>}</Command></PopoverContent>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command><CommandInput placeholder="Yazar ara..." /><CommandList><CommandEmpty>Yazar bulunamadı.</CommandEmpty><CommandGroup>
+                        {authors.map((author) => (<CommandItem key={author} onSelect={() => { const newSet = new Set(selectedAuthors); if (newSet.has(author)) {newSet.delete(author);} else {newSet.add(author);} setSelectedAuthors(newSet);}} className="cursor-pointer"><Checkbox checked={selectedAuthors.has(author)} className="mr-2" /><span>{author}</span></CommandItem>))}
+                    </CommandGroup></CommandList></Command></PopoverContent>
                 </Popover>
-              </div>
+              </form>
             </CardContent>
           </Card>
-          {searchQuery.trim() === "" && <SuggestionTags onSelect={handleSuggestionClick} />}
+          {!query.trim() && <SuggestionTags onSelect={(tag) => {setQuery(tag); performSearch(tag, selectedAuthors);}} />}
         </motion.div>
 
         <div className="mt-12 md:mt-16 max-w-7xl mx-auto">
           <AnimatePresence mode="wait">
-            {isLoading && searchQuery.trim() !== "" ? ( <motion.div key="loading"><ResultsSkeleton /></motion.div> ) : 
-             error ? ( <motion.div key="error"><InfoState title="Bir Hata Oluştu" message={error} icon={ServerCrash} /></motion.div> ) : 
-             !hasResults && searchQuery.trim() !== "" ? ( <motion.div key="no-results"><InfoState title="Sonuç Bulunamadı" message={`"${searchQuery}" için herhangi bir sonuç bulunamadı.`} icon={FileQuestion} onClearFilters={() => {setQuery(""); setSelectedAuthors(new Set());}} /></motion.div> ) :
+            {isLoading ? <motion.div key="loading"><ResultsSkeleton /></motion.div> : 
+             error ? <motion.div key="error"><InfoState title="Bir Hata Oluştu" message={error} icon={ServerCrash} /></motion.div> : 
+             !hasResults && query.trim() !== "" ? <motion.div key="no-results"><InfoState title="Sonuç Bulunamadı" message={`"${query}" için herhangi bir sonuç bulunamadı.`} icon={FileQuestion} onClearFilters={() => {setQuery(""); setSelectedAuthors(new Set());}} /></motion.div> :
              hasResults && (
               <motion.div key="results" initial={{opacity:0, y:20}} animate={{opacity:1, y:0}}>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -319,8 +259,8 @@ export default function HomePage() {
                     <TabsTrigger value="kitaplar" className="text-sm md:text-base gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 font-semibold"><BookOpen /> Kitaplar <Pill className="bg-emerald-100 text-emerald-800">{allResults.books.length}</Pill></TabsTrigger>
                     <TabsTrigger value="videolar" className="text-sm md:text-base gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 font-semibold"><Video /> Videolar <Pill className="bg-sky-100 text-sky-800">{allResults.videos.length}</Pill></TabsTrigger>
                   </TabsList>
-                  <TabsContent value="kitaplar" className="mt-8"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{displayedBooks.map((r, i) => <ResultCard key={`book-${i}`} result={r} onReadClick={handleReadClick} query={searchQuery} index={i} />)}</div>{showLoadMoreBooks && <div className="mt-10 text-center"><Button onClick={() => setDisplayedResultsCount(c => c + RESULTS_PER_PAGE)}>Daha Fazla Kitap Yükle</Button></div>}</TabsContent>
-                  <TabsContent value="videolar" className="mt-8"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{displayedVideos.map((v, i) => <VideoCard key={`video-${i}`} video={v} index={i} />)}</div>{showLoadMoreVideos && <div className="mt-10 text-center"><Button onClick={() => setDisplayedResultsCount(c => c + RESULTS_PER_PAGE)}>Daha Fazla Video Yükle</Button></div>}</TabsContent>
+                  <TabsContent value="kitaplar" className="mt-8"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{allResults.books.map((r, i) => <ResultCard key={`book-${i}`} result={r} onReadClick={(book) => { setSelectedBook(book); setIsModalOpen(true); }} query={query} index={i} />)}</div></TabsContent>
+                  <TabsContent value="videolar" className="mt-8"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{allResults.videos.map((v, i) => <VideoCard key={`video-${i}`} video={v} index={i} />)}</div></TabsContent>
                 </Tabs>
               </motion.div>
             )}
