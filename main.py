@@ -48,7 +48,7 @@ Use
 
 # --- Veri Yolları ve İndekslerin Yüklenmesi ---
 try:
-    BASE_DIR = Path(__file__).parent.parent
+    BASE_DIR = Path(__file__).parent
     DATA_DIR = BASE_DIR / "data"
     PDF_DIR = DATA_DIR / "pdfler"
     INDEX_DIR = DATA_DIR / "whoosh_index"
