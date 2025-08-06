@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Progress } from "@/components/ui/progress"; // Progress bileşenini ekleyin (shadcn'den)
+import { Progress } from "@/components/ui/progress";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -19,30 +19,24 @@ const extractVideoId = (url) => {
     return match ? match[1] : null;
 };
 
-// --- ★★★ YENİ VE GELİŞMİŞ BEKLEME KARTI ★★★ ---
-
+// --- BEKLEME KARTI BİLEŞENİ ---
 const TASAVVUF_TAVSIYELER = [
-    "Kalbinizi rabıta ile arındırın.",
-    "Zikr ile ruhunuzu yükseltin.",
-    "Sabır, tasavvufun anahtarıdır.",
-    "İlim, amelsiz faydasızdır.",
-    "Mürşid, yol göstericidir.",
-    "Tevekkül, huzurun kapısıdır.",
-    "Şükür, nimetin artmasıdır.",
-    "En büyük cihad, nefisle olan cihaddır.",
-    "Hiçbir şey tesadüf değildir, her şey tevafuktur."
+    "Kalbinizi rabıta ile arındırın.", "Zikr ile ruhunuzu yükseltin.", "Sabır, tasavvufun anahtarıdır.",
+    "İlim, amelsiz faydasızdır.", "Mürşid, yol göstericidir.", "Tevekkül, huzurun kapısıdır.",
+    "Şükür, nimetin artmasıdır.", "En büyük cihad, nefisle olan cihaddır.", "Hiçbir şey tesadüf değildir, her şey tevafuktur."
 ];
 
 function EnhancedAnalysisStatusCard({ statusMessage }) {
     const [progress, setProgress] = useState(13);
     const [currentTip, setCurrentTip] = useState(0);
 
+    // ★★★ SAĞLAMLAŞTIRILMIŞ ANAHTAR KELİMELER ★★★
     const steps = [
-        { id: 1, text: "Görev Başlatılıyor", keyword: "başlatılıyor" },
-        { id: 2, text: "Video Bilgileri Alınıyor", keyword: "bilgileri alınıyor" },
-        { id: 3, text: "Video Sesi İndiriliyor", keyword: "indiriliyor" },
-        { id: 4, text: "Ses Metne Dönüştürülüyor", keyword: "dönüştürülüyor" },
-        { id: 5, text: "Konu Başlıkları Oluşturuluyor", keyword: "oluşturuluyor" },
+        { id: 1, text: "Görev Başlatılıyor", keyword: "başlat" },
+        { id: 2, text: "Video Bilgileri Alınıyor", keyword: "bilgi" },
+        { id: 3, text: "Video Sesi İndiriliyor", keyword: "indir" },
+        { id: 4, text: "Ses Metne Dönüştürülüyor", keyword: "dönüştür" },
+        { id: 5, text: "Konu Başlıkları Oluşturuluyor", keyword: "oluştur" },
     ];
 
     const currentStepIndex = steps.findIndex(step => statusMessage.toLowerCase().includes(step.keyword));
@@ -55,11 +49,12 @@ function EnhancedAnalysisStatusCard({ statusMessage }) {
     useEffect(() => {
         const tipTimer = setInterval(() => {
             setCurrentTip(prev => (prev + 1) % TASAVVUF_TAVSIYELER.length);
-        }, 6000); // Her 6 saniyede bir tavsiye değiştir
+        }, 6000);
         return () => clearInterval(tipTimer);
     }, []);
 
     const getStepStatus = (stepIndex) => {
+        if (currentStepIndex === -1 && stepIndex === 0) return "in-progress";
         if (stepIndex < currentStepIndex) return "completed";
         if (stepIndex === currentStepIndex) return "in-progress";
         return "pending";
@@ -70,12 +65,9 @@ function EnhancedAnalysisStatusCard({ statusMessage }) {
             <Card className="text-center p-6 md:p-10 shadow-lg border-t-4 border-emerald-500">
                 <CardHeader>
                     <CardTitle className="text-3xl font-bold text-slate-800">Analiz Sürüyor</CardTitle>
-                    <CardDescription className="text-lg mt-2 text-slate-600">
-                        Bu manevi yolculuk biraz zaman alabilir, sabrınız için teşekkürler.
-                    </CardDescription>
+                    <CardDescription className="text-lg mt-2 text-slate-600">Bu manevi yolculuk biraz zaman alabilir, sabrınız için teşekkürler.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-8 mt-6">
-                    {/* Adım Adım İlerleme (Stepper) */}
                     <div className="space-y-4 text-left">
                         {steps.map((step, index) => {
                             const status = getStepStatus(index);
@@ -86,30 +78,16 @@ function EnhancedAnalysisStatusCard({ statusMessage }) {
                                         {status === 'in-progress' && <Loader2 className="h-6 w-6 text-blue-500 animate-spin" />}
                                         {status === 'pending' && <Circle className="h-6 w-6 text-slate-300" />}
                                     </div>
-                                    <span className={`font-medium ${status === 'pending' ? 'text-slate-400' : 'text-slate-700'}`}>
-                                        {step.text}
-                                    </span>
+                                    <span className={`font-medium ${status === 'pending' ? 'text-slate-400' : 'text-slate-700'}`}>{step.text}</span>
                                 </motion.div>
                             );
                         })}
                     </div>
-
-                    {/* İlerleme Çubuğu */}
                     <Progress value={progress} className="w-full h-3" />
-                    
-                    {/* İlgi Çekici Bilgiler */}
                     <div className="pt-4 text-center">
                         <AnimatePresence mode="wait">
-                            <motion.div
-                                key={currentTip}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.5 }}
-                                className="flex items-center justify-center gap-3 text-slate-500 italic"
-                            >
-                                <Lightbulb className="h-5 w-5 text-amber-400" />
-                                <p>&quot;{TASAVVUF_TAVSIYELER[currentTip]}&quot;</p>
+                            <motion.div key={currentTip} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.5 }} className="flex items-center justify-center gap-3 text-slate-500 italic">
+                                <Lightbulb className="h-5 w-5 text-amber-400" /><p>&quot;{TASAVVUF_TAVSIYELER[currentTip]}&quot;</p>
                             </motion.div>
                         </AnimatePresence>
                     </div>
@@ -119,10 +97,10 @@ function EnhancedAnalysisStatusCard({ statusMessage }) {
     );
 }
 
+// --- DİĞER BİLEŞENLER ---
+// (Diğer bileşenlerde değişiklik yok, olduğu gibi kalabilirler)
+// ...
 
-// --- Diğer Alt Bileşenler (Değişiklik yok) ---
-// AnalysisResultCard, HistoryCard, vb. buraya gelecek.
-// ... (Önceki cevaptaki veya mevcut dosyanızdaki diğer alt bileşenler)
 function AnalysisResultCard({ result, url }) {
     const videoId = extractVideoId(url);
     return (
@@ -163,7 +141,6 @@ function HistoryCard({ videoId, data, onAnalyzeAgain }) {
             </Card>
         );
     }
-
     return (
         <Card className="overflow-hidden bg-white border group">
             <div className="aspect-video bg-slate-200 overflow-hidden relative">
@@ -172,9 +149,7 @@ function HistoryCard({ videoId, data, onAnalyzeAgain }) {
                     <ExternalLink className="h-4 w-4" />
                 </a>
             </div>
-            <CardHeader>
-                <CardTitle className="text-base font-bold text-slate-800 line-clamp-2">{data.title}</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-base font-bold text-slate-800 line-clamp-2">{data.title}</CardTitle></CardHeader>
             <CardContent className="p-0">
                  <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="item-1" className="border-b-0">
@@ -206,10 +181,8 @@ function InfoState({ title, message, icon: Icon }) {
     return (<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-16 px-6 bg-slate-100/80 rounded-2xl mt-8"><Icon className="mx-auto h-16 w-16 text-slate-400 mb-4" /><h3 className="text-2xl font-bold text-slate-700">{title}</h3><p className="text-slate-500 mt-2">{message}</p></motion.div>)
 }
 
-
-// --- Ana Sayfa Bileşeni ---
+// --- ANA SAYFA BİLEŞENİ ---
 export default function VideoAnalysisPage() {
-    // State'ler aynı kalıyor
     const [url, setUrl] = useState("");
     const [currentAnalysisUrl, setCurrentAnalysisUrl] = useState("");
     const [analysisResult, setAnalysisResult] = useState(null);
@@ -221,10 +194,7 @@ export default function VideoAnalysisPage() {
     const [statusMessage, setStatusMessage] = useState("");
     const pollingIntervalRef = useRef(null);
 
-    // useEffect ve handleAnalyze fonksiyonları aynı kalıyor...
-    // ...
-
-        useEffect(() => {
+    useEffect(() => {
         const fetchHistory = async () => {
             try {
                 const response = await fetch(`${API_BASE_URL}/analysis_history`);
@@ -243,6 +213,9 @@ export default function VideoAnalysisPage() {
                 const response = await fetch(`${API_BASE_URL}/analyze/status/${taskId}`);
                 if (!response.ok) throw new Error("Durum sunucusuna ulaşılamadı.");
                 const data = await response.json();
+
+                // ★★★ HATA AYIKLAMA İÇİN KONSOL LOG'U ★★★
+                console.log("Gelen Durum Mesajı:", data.message);
 
                 if (data.status === "processing") {
                     setStatusMessage(data.message);
@@ -280,7 +253,7 @@ export default function VideoAnalysisPage() {
         setError(null);
         setAnalysisResult(null);
         setCurrentAnalysisUrl(url);
-        setStatusMessage("Analiz görevi başlatılıyor...");
+        setStatusMessage("Görev Başlatılıyor...");
 
         try {
             const params = new URLSearchParams({ url });
@@ -302,20 +275,16 @@ export default function VideoAnalysisPage() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    // --- RENDER BÖLÜMÜNDEKİ DEĞİŞİKLİK ---
-    // Sadece <AnalysisStatusCard> yerine <EnhancedAnalysisStatusCard> kullanacağız.
     return (
         <div className="bg-slate-50 min-h-screen">
             <div className="container mx-auto px-4 py-12 md:py-20">
                 <motion.header initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-center mb-12">
-                    {/* Header içeriği aynı */}
-                     <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter text-slate-800">Video İçerik Analizi</h1>
+                    <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter text-slate-800">Video İçerik Analizi</h1>
                     <p className="mt-4 text-lg md:text-xl text-slate-600">Bir YouTube videosunu analiz ederek önemli konu başlıklarını çıkarın.</p>
                 </motion.header>
 
                 <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
-                    {/* Form içeriği aynı */}
-                      <Card className="max-w-3xl mx-auto p-6 md:p-8">
+                    <Card className="max-w-3xl mx-auto p-6 md:p-8">
                         <form onSubmit={handleAnalyze} className="space-y-4">
                             <div>
                                 <label htmlFor="youtube_url" className="block mb-2 text-sm font-medium text-slate-700">YouTube Video Linki</label>
@@ -331,17 +300,14 @@ export default function VideoAnalysisPage() {
                 
                 <section className="mt-12 max-w-3xl mx-auto">
                      <AnimatePresence mode="wait">
-                        {/* ★★★ DEĞİŞİKLİK BURADA ★★★ */}
                         {isLoading && <EnhancedAnalysisStatusCard statusMessage={statusMessage} />}
-                        
                         {error && <InfoState title="Bir Hata Oluştu" message={error} icon={ServerCrash} />}
                         {analysisResult && <AnalysisResultCard result={analysisResult} url={currentAnalysisUrl} />}
                     </AnimatePresence>
                 </section>
 
                 <section className="mt-20">
-                    {/* Geçmiş bölümü aynı */}
-                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
                         <h2 className="text-3xl md:text-4xl font-bold text-slate-700 mb-8 pb-3 border-b-4 border-emerald-500 inline-block">
                             <History className="inline-block h-8 w-8 mr-3 -mt-1 text-emerald-600" /> Analiz Geçmişi
                         </h2>
