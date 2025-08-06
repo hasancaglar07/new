@@ -1,4 +1,4 @@
-# backend/create_index.py
+# create_index.py
 
 import os
 from pathlib import Path
@@ -6,13 +6,15 @@ import fitz  # PyMuPDF
 from whoosh.index import create_in
 from whoosh.fields import Schema, TEXT, ID
 import logging
+import sys # Hata durumunda çıkış yapmak için eklendi
 
 # Temel yapılandırma
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Proje yollarını tanımla (bu script backend klasöründe olduğu için)
-BASE_DIR = Path(__file__).parent.parent
+# --- DOSYA YOLLARI ---
+# Bu script kök dizinde olduğu için, yollar doğrudan buradan başlıyor.
+BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
 PDF_DIR = DATA_DIR / "pdfler"
 INDEX_DIR = DATA_DIR / "whoosh_index"
@@ -20,7 +22,7 @@ INDEX_DIR = DATA_DIR / "whoosh_index"
 def create_search_index():
     """
     PDF klasörünü tarar ve Whoosh arama indeksini oluşturur.
-    Render.com'da her build sırasında çalıştırılmak üzere tasarlanmıştır.
+    Platformda, uygulamanın her başlangıcında çalıştırılmak üzere tasarlanmıştır.
     """
     # 1. İndeks klasörünün var olduğundan emin ol
     if not os.path.exists(INDEX_DIR):
@@ -44,9 +46,16 @@ def create_search_index():
 
         # 4. PDF klasöründeki tüm PDF'leri işle
         pdf_files = list(PDF_DIR.glob("*.pdf"))
+        
+        # --- YENİ GÜVENLİK KONTROLÜ ---
+        # Eğer taranacak PDF dosyası bulunamazsa, bu kritik bir hatadır.
+        # Bu, genellikle Git LFS dosyalarının indirilmediği anlamına gelir.
+        # sys.exit(1) komutu, script'i bir hata koduyla sonlandırır ve
+        # bu da deploy sürecinin başarısız olarak işaretlenmesini sağlar.
         if not pdf_files:
-            logger.warning(f"İndekslenecek PDF bulunamadı: {PDF_DIR}")
-            return
+            logger.error(f"KRİTİK HATA: İndekslenecek PDF bulunamadı: {PDF_DIR}. Git LFS dosyaları indirilmemiş olabilir. Deploy durduruluyor.")
+            sys.exit(1)
+        # --- GÜVENLİK KONTROLÜ SONU ---
 
         for pdf_path in pdf_files:
             try:
@@ -88,6 +97,7 @@ def create_search_index():
 
     except Exception as e:
         logger.error(f"İndeks oluşturma sırasında genel bir hata oluştu: {e}")
+        sys.exit(1) # Genel bir hata olursa da deploy'u durdur
 
 if __name__ == "__main__":
     create_search_index()
