@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import Image from "next/image"; // Next.js Image bileşenini import et
+import Image from "next/image";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 const RESULTS_PER_PAGE = 12;
@@ -99,7 +99,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
   const imageUrl = book ? `${API_BASE_URL}/pdf/page_image?pdf_file=${book.pdf_dosyasi}&page_num=${currentPage}` : null;
 
   if (!book) return null;
-
+  
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl w-[95vw] h-[95vh] flex flex-col p-0 gap-0">
@@ -107,11 +107,11 @@ function BookViewerDialog({ book, onClose, isOpen }) {
         <div className="flex-grow flex justify-center items-center bg-slate-200 overflow-hidden relative">
           {isLoading && <Loader2 className="h-10 w-10 animate-spin text-slate-500 absolute" />}
           {imageUrl && 
-            <Image src={imageUrl} alt={`Sayfa ${currentPage}`} fill style={{ objectFit: 'contain' }} onLoadingComplete={() => setIsLoading(false)} className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`} />
+            <Image src={imageUrl} alt={`Sayfa ${currentPage}`} fill style={{ objectFit: 'contain' }} onLoadingComplete={() => setIsLoading(false)} className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`} sizes="95vw"/>
           }
         </div>
         <DialogFooter className="flex-row justify-between items-center p-3 bg-slate-100 border-t flex-shrink-0">
-          <Button variant="outline" disabled={isDownloading}>{isDownloading ? <Loader2 className="mr-0 md:mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-0 md:mr-2 h-4 w-4" />}<span className="hidden md:inline">{isDownloading ? "İndiriliyor..." : "İndir"}</span></Button>
+           <Button variant="outline" disabled={isDownloading}>{isDownloading ? <Loader2 className="mr-0 md:mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-0 md:mr-2 h-4 w-4" />}<span className="hidden md:inline">{isDownloading ? "İndiriliyor..." : "İndir"}</span></Button>
           <div className="flex items-center gap-2">
             <Button onClick={goToPrevPage} disabled={currentPage <= 1}><ArrowLeft className="h-4 w-4" /></Button>
             <Input type="number" value={currentPage} onChange={(e) => setCurrentPage(Number(e.target.value))} className="w-20 text-center font-bold" />
@@ -211,6 +211,7 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState('kitaplar');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState(null);
+  const [popoverOpen, setPopoverOpen] = useState(false);
   
   const displayedBooks = useMemo(() => allResults.books.slice(0, displayedResultsCount), [allResults.books, displayedResultsCount]);
   const displayedVideos = useMemo(() => allResults.videos.slice(0, displayedResultsCount), [allResults.videos, displayedResultsCount]);
@@ -248,12 +249,89 @@ export default function HomePage() {
 
   const handleReadClick = (book) => { setSelectedBook(book); setIsModalOpen(true); };
   
-  const noResultsMessage = `"${searchQuery}" için herhangi bir sonuç bulunamadı. Lütfen farklı bir anahtar kelime deneyin veya filtrelerinizi kontrol edin.`.replace(/"/g, '&quot;');
+  const handleAuthorSelect = (author) => {
+    setSelectedAuthors(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(author)) {
+            newSet.delete(author);
+        } else {
+            newSet.add(author);
+        }
+        return newSet;
+    });
+  };
+
+  const noResultsMessage = `"${searchQuery}" için herhangi bir sonuç bulunamadı. Lütfen farklı bir anahtar kelime deneyin veya filtrelerinizi kontrol edin.`;
   const hasResults = allResults.books.length > 0 || allResults.videos.length > 0;
 
   return (
     <div className="bg-slate-50 min-h-screen w-full font-sans">
       <main className="container mx-auto px-4 py-12 md:py-20">
+
+        {/* EKSİK OLAN ARAMA VE BAŞLIK BÖLÜMÜ BURAYA EKLENDİ */}
+        <motion.header 
+            initial={{ opacity: 0, y: -20 }} 
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-12"
+        >
+            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter text-slate-800">
+                Mihmandar İlim Havuzu
+            </h1>
+            <p className="mt-4 text-lg md:text-xl text-slate-600 max-w-3xl mx-auto">
+                Tasavvufi eserlerde ve sohbetlerde derinlemesine arama yapın, ilmi keşfedin.
+            </p>
+        </motion.header>
+
+        <div className="sticky top-24 z-40 bg-slate-50/80 backdrop-blur-lg p-4 mb-12 rounded-2xl border shadow-md shadow-slate-200/50 max-w-4xl mx-auto">
+            <div className="flex flex-col md:flex-row gap-3">
+                <div className="relative flex-grow">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <Input
+                        type="text"
+                        value={query}
+                        onChange={e => setQuery(e.target.value)}
+                        placeholder="Aramak istediğiniz konuyu yazın (ör: rabıta)..."
+                        className="w-full h-12 text-base pl-12 rounded-lg"
+                    />
+                </div>
+                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" role="combobox" aria-expanded={popoverOpen} className="w-full md:w-[250px] justify-between h-12 text-base">
+                            {selectedAuthors.size > 0 ? `${selectedAuthors.size} yazar seçildi` : "Yazar Filtrele"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[250px] p-0">
+                        <Command>
+                            <CommandInput placeholder="Yazar ara..." />
+                            <CommandList>
+                                <CommandEmpty>Yazar bulunamadı.</CommandEmpty>
+                                <CommandGroup>
+                                    {authors.map((author) => (
+                                        <CommandItem key={author} value={author} onSelect={() => handleAuthorSelect(author)} className="flex items-center justify-between">
+                                            <span>{author}</span>
+                                            <Checkbox checked={selectedAuthors.has(author)} />
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </CommandList>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
+            </div>
+            
+            {hasResults && !isLoading && (
+                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-4">
+                    <TabsList className="grid w-full grid-cols-2 h-12">
+                        <TabsTrigger value="kitaplar" className="text-base h-full"><BookOpen className="mr-2 h-5 w-5"/> Kitaplar ({allResults.books.length})</TabsTrigger>
+                        <TabsTrigger value="videolar" className="text-base h-full"><Video className="mr-2 h-5 w-5"/> Videolar ({allResults.videos.length})</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+            )}
+        </div>
+        {/* ARAMA BÖLÜMÜ SONU */}
+
         <div className="mt-12 md:mt-16 max-w-7xl mx-auto">
           <AnimatePresence mode="wait">
             {isLoading && searchQuery.trim() !== "" ? ( <motion.div key="loading"><ResultsSkeleton /></motion.div> ) : 
