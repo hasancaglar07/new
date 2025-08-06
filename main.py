@@ -1,4 +1,4 @@
-# backend/main.py
+# main.py
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,19 +24,19 @@ import re
 import yt_dlp
 
 # --- Kurulum ve Konfigürasyon ---
-dotenv_path = Path(__file__).parent.parent / ".env"
-load_dotenv(dotenv_path=dotenv_path)
+# Dosya kök dizine taşındığı için yol düzeltildi.
+load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 app = FastAPI(title="Yediulya İlim Havuzu API", version="1.0.0")
 
 # --- CORS (Frontend'den Gelen İsteğe İzin Verme) ---
+# Artık sorunu bildiğimiz için güvenli ayarlara geri dönüyoruz.
 origins = [
-    "http://localhost:3000",  # Yerel geliştirme için
-    "https://new-git-main-yediulyas-projects.vercel.app", # Vercel'in kendi adresi
-    "https://mihmandar.org"  # SİZİN ÖZEL ALAN ADINIZ (EN ÖNEMLİSİ)
+    "http://localhost:3000",
+    "https://new-git-main-yediulyas-projects.vercel.app",
+    "https://mihmandar.org"
 ]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -44,15 +44,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-Use
 
 # --- Veri Yolları ve İndekslerin Yüklenmesi ---
+# Dosya kök dizine taşındığı için yollar düzeltildi.
+BASE_DIR = Path(__file__).parent
+DATA_DIR = BASE_DIR / "data"
+PDF_DIR = DATA_DIR / "pdfler"
+INDEX_DIR = DATA_DIR / "whoosh_index"
+VIDEO_CACHE_FILE = DATA_DIR / "video_analysis_cache.json"
+
 try:
-    BASE_DIR = Path(__file__).parent
-    DATA_DIR = BASE_DIR / "data"
-    PDF_DIR = DATA_DIR / "pdfler"
-    INDEX_DIR = DATA_DIR / "whoosh_index"
-    VIDEO_CACHE_FILE = DATA_DIR / "video_analysis_cache.json"
     ix = open_dir(str(INDEX_DIR))
     logger.info("Whoosh indeksi başarıyla yüklendi.")
 except Exception as e:
@@ -93,39 +94,30 @@ def get_all_authors():
     if not ix: raise HTTPException(500, "Veri indeksi yüklenemedi.")
     with ix.searcher() as s: return {"authors": sorted(list(set(f['author'].title() for f in s.all_stored_fields() if 'author' in f)))}
 
-# ★★★ DÜZELTİLMİŞ KİTAP ARAMA FONKSİYONU ★★★
 @app.get("/search/books")
 async def search_books(q: str, authors: Optional[List[str]] = Query(None)):
     if not ix:
         raise HTTPException(status_code=500, detail="Veri indeksi yüklenemedi.")
 
     with ix.searcher() as s:
-        # Arama parser'ını 'content' ve 'author' alanları için ayarla
         parser = MultifieldParser(["content", "author"], schema=ix.schema, group=AndGroup)
-
-        # Kullanıcı sorgusunu ve yazar filtresini birleştir
         user_query = q.lower()
         if authors:
             author_filter_query = " OR ".join([f'author:"{a.lower()}"' for a in authors])
             final_query_str = f"({user_query}) AND ({author_filter_query})"
         else:
             final_query_str = user_query
-
         parsed_query = parser.parse(final_query_str)
         results = s.search(parsed_query, limit=100)
-
-        # Sonuçları işlerken `highlights` metodunu kullan
         final_results = []
         for hit in results:
             final_results.append({
                 "kitap": hit["book"].title(),
                 "yazar": hit["author"].title(),
                 "sayfa": hit["page"],
-                # ÖNEMLİ DEĞİŞİKLİK: 'content' yerine 'highlights' kullanılıyor.
                 "alinti": hit.highlights("content") or hit["content"][:250],
                 "pdf_dosyasi": hit["pdf_file"]
             })
-
         return {"sonuclar": final_results}
 
 @app.get("/search/videos")
