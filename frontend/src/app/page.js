@@ -213,25 +213,6 @@ export default function HomePage() {
   
   return (
     <div className="bg-slate-50 min-h-screen w-full font-sans">
-      
-      {/* ----- TEŞHİS İÇİN EKLENEN TEST KODU ----- */}
-      <div style={{
-          position: 'fixed', 
-          top: 0, 
-          left: 0, 
-          width: '100%', 
-          backgroundColor: '#ef4444', // red-500
-          color: 'white', 
-          textAlign: 'center', 
-          padding: '12px', 
-          zIndex: 9999,
-          fontSize: '16px',
-          fontWeight: 'bold',
-          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-      }}>
-          BU KIRMIZI BARI GÖRÜYORSANIZ, DEPLOY BAŞARILIDIR! API ADRESİ: {API_BASE_URL}
-      </div>
-      {/* ------------------------------------------- */}
 
       <main className="container mx-auto px-4 py-12 md:py-20 pt-28"> {/* pt-28: Kırmızı barın içeriği örtmemesi için padding artırıldı */}
         

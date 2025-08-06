@@ -31,7 +31,12 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Yediulya İlim Havuzu API", version="1.0.0")
 
 # --- CORS (Frontend'den Gelen İsteğe İzin Verme) ---
-origins = [*]
+origins = [
+    "http://localhost:3000",  # Yerel geliştirme için
+    "https://new-git-main-yediulyas-projects.vercel.app", # Vercel'in kendi adresi
+    "https://mihmandar.org"  # SİZİN ÖZEL ALAN ADINIZ (EN ÖNEMLİSİ)
+]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -39,6 +44,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+Use
 
 # --- Veri Yolları ve İndekslerin Yüklenmesi ---
 try:
