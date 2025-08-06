@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-const API_BASE_URL = "https://yediulya-backend.onrender.com";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // --- ★★★ YENİ VE İYİLEŞTİRİLMİŞ BİLEŞENLER ★★★ ---
 

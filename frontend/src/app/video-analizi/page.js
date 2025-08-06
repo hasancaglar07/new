@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
-const API_BASE_URL ="https://yediulya-backend.onrender.com";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const extractVideoId = (url) => { const match = url.match(/(?:v=|\/|embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/); return match ? match[1] : null; };
 
