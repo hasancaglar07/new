@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Check, ChevronsUpDown, Loader2, Search, BookOpen, Video, ArrowRight, FileQuestion, ServerCrash, X, Sparkles } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Search, BookOpen, Video, ArrowRight, ArrowLeft, FileQuestion, ServerCrash, X, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 
