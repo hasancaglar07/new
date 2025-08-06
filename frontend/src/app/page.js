@@ -119,7 +119,7 @@ function ResultCard({ result, onReadClick, query, index }) {
     <motion.div variants={cardVariants} className="h-full">
       <Card className="flex flex-col h-full overflow-hidden bg-white hover:shadow-2xl transition-shadow duration-300 group rounded-xl border">
         <CardHeader className="p-6"><CardTitle className="text-xl font-bold text-slate-800 group-hover:text-emerald-600 transition-colors">{result.kitap}</CardTitle><CardDescription>Yazar: {result.yazar}</CardDescription></CardHeader>
-        <CardContent className="flex-grow p-6 pt-0"><p className="text-slate-600 italic line-clamp-5">"...<Highlight text={result.alinti} query={query} />..."</p></CardContent>
+        <CardContent className="flex-grow p-6 pt-0"><p className="text-slate-600 italic line-clamp-5">&quot;...<Highlight text={result.alinti} query={query} />...&quot;</p></CardContent>
         <CardFooter className="flex-col items-start p-0 bg-slate-50/70">
             <Accordion type="single" collapsible className="w-full px-6"><AccordionItem value="item-1" className="border-b-0"><AccordionTrigger className="text-sm font-semibold text-emerald-700 hover:no-underline py-3">Sayfa {result.sayfa} Önizlemesi</AccordionTrigger><AccordionContent><PagePreview pdfFile={result.pdf_dosyasi} pageNum={result.sayfa} /></AccordionContent></AccordionItem></Accordion>
             <div className="p-4 w-full border-t"><Button onClick={() => onReadClick(result)} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">Bu Sayfayı Oku <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
