@@ -210,7 +210,8 @@ export default function HomePage() {
           <AnimatePresence mode="wait">
             {isLoading ? <motion.div key="loading"><ResultsSkeleton /></motion.div> : 
              error ? <motion.div key="error"><InfoState title="Bir Hata Oluştu" message={error} icon={ServerCrash} /></motion.div> : 
-             !hasResults && query.trim() ? <motion.div key="no-results"><InfoState title="Sonuç Bulunamadı" message={`"${query}" için bir sonuç bulunamadı.`} icon={FileQuestion} onClearFilters={() => {setQuery(""); setSelectedAuthors(new Set());}} /></motion.div> :
+             // YENİ DÜZELTİLMİŞ SATIR:
+!hasResults && query.trim() ? <motion.div key="no-results"><InfoState title="Sonuç Bulunamadı" message={`“${query}” için bir sonuç bulunamadı.`} icon={FileQuestion} onClearFilters={() => {setQuery(""); setSelectedAuthors(new Set());}} /></motion.div> :
              hasResults && (
               <motion.div key="results" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.02 } } }}>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
