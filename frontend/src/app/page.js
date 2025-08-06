@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Check, ChevronsUpDown, Loader2, Search, BookOpen, Video, ArrowRight, ArrowLeft, FileQuestion, ServerCrash, X, Sparkles } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Search, BookOpen, Video, ArrowRight, Download, ArrowLeft, FileQuestion, ServerCrash, X, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 
@@ -18,11 +18,11 @@ import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, Command
 import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
-// ----- KESİN ÇÖZÜM: API ADRESİ BURAYA DOĞRUDAN YAZILDI -----
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-// -----------------------------------------------------------
+// API Adresi (Doğrudan yazılı, geçici çözüm olarak)
+const API_BASE_URL = "https://yediulya-backend.onrender.com";
+const RESULTS_PER_PAGE = 48;
 
-// --- ALT BİLEŞENLER (DEĞİŞİKLİK YOK) ---
+// --- YARDIMCI BİLEŞENLER ---
 
 const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -38,7 +38,7 @@ function Highlight({ text, query }) {
     return <span dangerouslySetInnerHTML={{ __html: highlightedHtml }} />;
 }
 
-function PagePreview({ pdfFile, pageNum, onReadClick }) {
+function PagePreview({ pdfFile, pageNum }) {
     const [imageSrc, setImageSrc] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -52,46 +52,62 @@ function PagePreview({ pdfFile, pageNum, onReadClick }) {
             .then(blob => {
                 objectUrl = URL.createObjectURL(blob);
                 setImageSrc(objectUrl);
-                setIsLoading(false);
             })
-            .catch(err => {
-                setError(err.message);
-                setIsLoading(false);
-            });
+            .catch(err => setError(err.message))
+            .finally(() => setIsLoading(false));
+            
         return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
     }, [pdfFile, pageNum]);
 
     return (
-        <div className="mt-4 space-y-4">
-            <div className="relative flex justify-center items-center h-[400px] bg-slate-100 rounded-lg p-2">
+        <div className="mt-2">
+            <div className="relative flex justify-center items-center min-h-[200px] bg-slate-100 rounded-lg p-2">
                 {isLoading && <Loader2 className="h-8 w-8 text-slate-400 animate-spin" />}
                 {error && <div className="text-center text-red-600 p-4"><ServerCrash className="mx-auto h-8 w-8 mb-2" />{error}</div>}
                 {imageSrc && !isLoading && 
                     <Image src={imageSrc} alt={`Sayfa ${pageNum} önizlemesi`} fill style={{ objectFit: 'contain' }} className="rounded-md" sizes="(max-width: 768px) 100vw, 50vw"/>
                 }
             </div>
-            <Button onClick={onReadClick} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">Bu Sayfayı Oku <ArrowRight className="ml-2 h-4 w-4" /></Button>
         </div>
     );
 }
 
+// ----- DÜZELTİLMİŞ ResultCard Bileşeni -----
 function ResultCard({ result, onReadClick, query, index }) {
   return (
     <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }} initial="hidden" animate="visible" transition={{ delay: index * 0.05 }} className="h-full">
       <Card className="flex flex-col h-full overflow-hidden bg-white hover:shadow-2xl transition-shadow duration-300 group rounded-xl border">
-        <CardHeader className="p-6"><CardTitle className="text-xl font-bold text-slate-800 group-hover:text-emerald-600 transition-colors">{result.kitap}</CardTitle><CardDescription>Yazar: {result.yazar}</CardDescription></CardHeader>
-        <CardContent className="flex-grow p-6 pt-0"><p className="text-slate-600 italic line-clamp-5">&quot;...<Highlight text={result.alinti} query={query} />...&quot;</p></CardContent>
-        <CardFooter className="p-0 pt-4 bg-slate-50/70">
+        <CardHeader className="p-6">
+            <CardTitle className="text-xl font-bold text-slate-800 group-hover:text-emerald-600 transition-colors">{result.kitap}</CardTitle>
+            <CardDescription>Yazar: {result.yazar}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex-grow p-6 pt-0">
+            <p className="text-slate-600 italic line-clamp-5">&quot;...<Highlight text={result.alinti} query={query} />...&quot;</p>
+        </CardContent>
+        <CardFooter className="flex-col items-start p-0 bg-slate-50/70">
+            {/* Önizleme Akordiyonu */}
             <Accordion type="single" collapsible className="w-full px-6">
-                <AccordionItem value="item-1" className="border-b-0"><AccordionTrigger className="text-sm font-semibold text-emerald-700 hover:no-underline py-3">Sayfa {result.sayfa} Önizlemesi</AccordionTrigger>
-                    <AccordionContent><PagePreview pdfFile={result.pdf_dosyasi} pageNum={result.sayfa} onReadClick={() => onReadClick(result)} /></AccordionContent>
+                <AccordionItem value="item-1" className="border-b-0">
+                    <AccordionTrigger className="text-sm font-semibold text-emerald-700 hover:no-underline py-3">
+                        Sayfa {result.sayfa} Önizlemesi
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <PagePreview pdfFile={result.pdf_dosyasi} pageNum={result.sayfa} />
+                    </AccordionContent>
                 </AccordionItem>
             </Accordion>
+            {/* "Oku" Butonu Doğrudan Kartın Altında */}
+            <div className="p-4 w-full border-t">
+                 <Button onClick={() => onReadClick(result)} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
+                    Bu Sayfayı Oku <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+            </div>
         </CardFooter>
       </Card>
     </motion.div>
   );
 }
+// ----- Düzeltme Sonu -----
 
 function VideoCard({ video, index }) {
   return (
@@ -111,14 +127,20 @@ function VideoCard({ video, index }) {
 }
 
 function BookViewerDialog({ book, onClose, isOpen }) {
+  // Bu bileşenin iç mantığı doğru, değiştirmiyoruz.
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (book) {
-      setCurrentPage(book.sayfa); setIsLoading(true);
-      fetch(`${API_BASE_URL}/pdf/info?${new URLSearchParams({ pdf_file: book.pdf_dosyasi })}`).then(res => res.ok ? res.json() : Promise.reject(res)).then(data => setTotalPages(data.total_pages)).catch(err => console.error("Toplam sayfa alınamadı", err));
+      // Gelen sayfa numarasını (string veya number olabilir) integer'a çeviriyoruz.
+      setCurrentPage(parseInt(book.sayfa, 10));
+      setIsLoading(true);
+      fetch(`${API_BASE_URL}/pdf/info?${new URLSearchParams({ pdf_file: book.pdf_dosyasi })}`)
+        .then(res => res.ok ? res.json() : Promise.reject(res))
+        .then(data => setTotalPages(data.total_pages))
+        .catch(err => console.error("Toplam sayfa alınamadı", err));
     }
   }, [book]);
 
@@ -164,6 +186,7 @@ function InfoState({ title, message, icon: Icon, onClearFilters }) {
     return (<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-16 px-6 bg-slate-100/80 rounded-2xl mt-8 max-w-2xl mx-auto"><Icon className="mx-auto h-16 w-16 text-slate-400 mb-4" /><h3 className="text-2xl font-bold text-slate-700">{title}</h3><p className="text-slate-500 mt-2">{message}</p>{onClearFilters && <Button onClick={onClearFilters} className="mt-6"><X className="mr-2 h-4 w-4" /> Filtreleri Temizle</Button>}</motion.div>)
 }
 
+
 // ANA SAYFA BİLEŞENİ
 export default function HomePage() {
   const [authors, setAuthors] = useState([]);
@@ -175,6 +198,7 @@ export default function HomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState(null);
   const [activeTab, setActiveTab] = useState('kitaplar');
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => { 
       fetch(`${API_BASE_URL}/authors`)
@@ -182,7 +206,7 @@ export default function HomePage() {
           .then(data => setAuthors(data.authors || []))
           .catch(() => setError("Yazar listesi yüklenemedi. API bağlantısını kontrol edin."));
   }, []);
-
+  
   const performSearch = useCallback(async (currentQuery, currentAuthors) => {
     if (!currentQuery.trim()) { setAllResults({ books: [], videos: [] }); setError(null); return; }
     setIsLoading(true); setError(null);
@@ -204,18 +228,26 @@ export default function HomePage() {
     finally { setIsLoading(false); }
   }, []);
   
-  const handleSearch = (e) => {
-    e.preventDefault();
-    performSearch(query, selectedAuthors);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (query !== searchQuery) {
+        setSearchQuery(query);
+        performSearch(query, selectedAuthors);
+      }
+    }, 500); // 500ms debounce
+    return () => clearTimeout(handler);
+  }, [query, selectedAuthors, performSearch, searchQuery]);
+
+  const handleReadClick = (book) => {
+    setSelectedBook(book);
+    setIsModalOpen(true);
   };
   
   const hasResults = allResults.books.length > 0 || allResults.videos.length > 0;
   
   return (
     <div className="bg-slate-50 min-h-screen w-full font-sans">
-
-      <main className="container mx-auto px-4 py-12 md:py-20 pt-28"> {/* pt-28: Kırmızı barın içeriği örtmemesi için padding artırıldı */}
-        
+      <main className="container mx-auto px-4 py-12 md:py-20">
         <motion.header initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: "easeOut" }} className="text-center mb-12 md:mb-16">
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter text-slate-800"><span className="bg-clip-text text-transparent bg-gradient-to-br from-emerald-600 to-green-500"> E - Kütüphane</span></h1>
           <p className="mt-4 md:mt-6 text-lg md:text-xl text-slate-600 max-w-3xl mx-auto">Üstadlarımızın eserlerinde ve sohbetlerinde, yapay zeka destekli modern bir arayüzle derinlemesine arama yapın.</p>
@@ -224,7 +256,7 @@ export default function HomePage() {
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }} className="sticky top-24 z-40">
           <Card className="max-w-3xl mx-auto shadow-xl shadow-slate-200/70 border-t-4 border-emerald-500 bg-white/90 backdrop-blur-lg rounded-2xl">
             <CardContent className="p-6 md:p-8">
-              <form onSubmit={handleSearch} className="space-y-4">
+              <div className="space-y-4">
                 <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 pointer-events-none" />
                     <Input placeholder="Konu, eser veya yazar adı yazın..." value={query} onChange={(e) => setQuery(e.target.value)} className="text-lg h-14 pl-12 rounded-lg" />
@@ -237,17 +269,17 @@ export default function HomePage() {
                         {authors.map((author) => (<CommandItem key={author} onSelect={() => { const newSet = new Set(selectedAuthors); if (newSet.has(author)) {newSet.delete(author);} else {newSet.add(author);} setSelectedAuthors(newSet);}} className="cursor-pointer"><Checkbox checked={selectedAuthors.has(author)} className="mr-2" /><span>{author}</span></CommandItem>))}
                     </CommandGroup></CommandList></Command></PopoverContent>
                 </Popover>
-              </form>
+              </div>
             </CardContent>
           </Card>
-          {!query.trim() && <SuggestionTags onSelect={(tag) => {setQuery(tag); performSearch(tag, selectedAuthors);}} />}
+          {!searchQuery.trim() && <SuggestionTags onSelect={(tag) => {setQuery(tag);}} />}
         </motion.div>
 
         <div className="mt-12 md:mt-16 max-w-7xl mx-auto">
           <AnimatePresence mode="wait">
             {isLoading ? <motion.div key="loading"><ResultsSkeleton /></motion.div> : 
              error ? <motion.div key="error"><InfoState title="Bir Hata Oluştu" message={error} icon={ServerCrash} /></motion.div> : 
-             !hasResults && query.trim() !== "" ? <motion.div key="no-results"><InfoState title="Sonuç Bulunamadı" message={`"${query}" için herhangi bir sonuç bulunamadı.`} icon={FileQuestion} onClearFilters={() => {setQuery(""); setSelectedAuthors(new Set());}} /></motion.div> :
+             !hasResults && searchQuery.trim() !== "" ? <motion.div key="no-results"><InfoState title="Sonuç Bulunamadı" message={`"${searchQuery}" için herhangi bir sonuç bulunamadı.`} icon={FileQuestion} onClearFilters={() => {setQuery(""); setSelectedAuthors(new Set());}} /></motion.div> :
              hasResults && (
               <motion.div key="results" initial={{opacity:0, y:20}} animate={{opacity:1, y:0}}>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -255,7 +287,7 @@ export default function HomePage() {
                     <TabsTrigger value="kitaplar" className="text-sm md:text-base gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 font-semibold"><BookOpen /> Kitaplar <Pill className="bg-emerald-100 text-emerald-800">{allResults.books.length}</Pill></TabsTrigger>
                     <TabsTrigger value="videolar" className="text-sm md:text-base gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 font-semibold"><Video /> Videolar <Pill className="bg-sky-100 text-sky-800">{allResults.videos.length}</Pill></TabsTrigger>
                   </TabsList>
-                  <TabsContent value="kitaplar" className="mt-8"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{allResults.books.map((r, i) => <ResultCard key={`book-${i}`} result={r} onReadClick={(book) => { setSelectedBook(book); setIsModalOpen(true); }} query={query} index={i} />)}</div></TabsContent>
+                  <TabsContent value="kitaplar" className="mt-8"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{allResults.books.map((r, i) => <ResultCard key={`book-${i}`} result={r} onReadClick={handleReadClick} query={searchQuery} index={i} />)}</div></TabsContent>
                   <TabsContent value="videolar" className="mt-8"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{allResults.videos.map((v, i) => <VideoCard key={`video-${i}`} video={v} index={i} />)}</div></TabsContent>
                 </Tabs>
               </motion.div>
