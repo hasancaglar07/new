@@ -1,23 +1,28 @@
-# 1. Adım: Temel işletim sistemi olarak resmi Python imajını kullan
+# 1. Adım: Temel işletim sistemi
 FROM python:3.11-slim
 
-# 2. Adım: Çalışma dizinini ayarla
+# 2. Adım: Çalışma dizini
 WORKDIR /app
 
-# 3. Adım: Gerekli sistem paketlerini kur: git ve git-lfs
+# 3. Adım: Sistem paketleri
 RUN apt-get update && apt-get install -y git git-lfs && rm -rf /var/lib/apt/lists/*
 
-# 4. Adım: Repoyu doğrudan GitHub'dan klonla
+# 4. Adım: Repoyu klonla
 RUN git clone https://github.com/hasancaglar07/new.git .
 
 # 5. Adım: LFS dosyalarını çek
 RUN git lfs pull
 
-# 6. Adım: Python bağımlılıklarını kur (ARTIK YOL YOK)
+# 6. Adım: Python bağımlılıklarını kur
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 7. Adım: Arama indeksini oluştur (ARTIK YOL YOK)
+# 7. Adım: Arama indeksini oluştur
 RUN python create_index.py
 
-# 8. Adım: Sunucuyu başlatacak olan komut (EN BASİT HALİ)
-CMD ["gunicorn", "main:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:$PORT"]
+# --- YENİ ADIMLAR ---
+# 8. Adım: Başlatma script'ini kopyala ve çalıştırılabilir yap
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# 9. Adım: Sunucuyu başlatmak için script'i çalıştır
+CMD ["/app/entrypoint.sh"]
