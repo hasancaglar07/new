@@ -2,12 +2,10 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, History, Loader2, ServerCrash, FileQuestion, ChevronDown, Repeat, ExternalLink, AlertTriangle } from "lucide-react";
-
-// ShadCN UI ve Yerel Bileşenler
+import { Sparkles, History, Loader2, ServerCrash, FileQuestion, Repeat, ExternalLink, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,63 +13,63 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
-const extractVideoId = (url) => { const match = url.match(/(?:v=|\/|embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/); return match ? match[1] : null; };
+const extractVideoId = (url) => {
+    const match = url.match(/(?:v=|\/|embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    return match ? match[1] : null;
+};
 
-// --- Bileşenler ---
+// --- Alt Bileşenler ---
 
 function AnalysisResultCard({ result, url }) {
     const videoId = extractVideoId(url);
     return (
-        <Card className="overflow-hidden">
-            <CardHeader>
-                <CardTitle>Yeni Analiz Sonucu</CardTitle>
-                <CardDescription>{result.title}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                <div className="aspect-video bg-slate-200 rounded-lg overflow-hidden">
-                    <iframe src={`https://www.youtube.com/embed/${videoId}`} title="YouTube video player" frameBorder="0" allowFullScreen className="w-full h-full"></iframe>
-                </div>
-                <div>
-                    <h3 className="font-semibold mb-3 text-slate-800">Konu Başlıkları</h3>
-                    <ul className="space-y-2 text-sm max-h-60 overflow-y-auto border rounded-lg p-3 bg-slate-50/80">
-                        {result.chapters.map((chapter, index) => (
-                            <li key={index} className="p-2 rounded-md text-slate-700" dangerouslySetInnerHTML={{ __html: chapter.replace(/\*\*(.*?)\*\*/g, '<strong class="text-emerald-700 font-bold">$1</strong>') }} />
-                        ))}
-                    </ul>
-                </div>
-            </CardContent>
-        </Card>
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}>
+            <Card className="overflow-hidden">
+                <CardHeader>
+                    <CardTitle>Analiz Tamamlandı</CardTitle>
+                    <CardDescription>{result.title}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="aspect-video bg-slate-200 rounded-lg overflow-hidden">
+                        <iframe src={`https://www.youtube.com/embed/${videoId}`} title="YouTube video player" frameBorder="0" allowFullScreen className="w-full h-full"></iframe>
+                    </div>
+                    <div>
+                        <h3 className="font-semibold mb-3 text-slate-800">Konu Başlıkları</h3>
+                        <ul className="space-y-2 text-sm max-h-60 overflow-y-auto border rounded-lg p-3 bg-slate-50/80">
+                            {result.chapters.map((chapter, index) => (
+                                <li key={index} className="p-2 rounded-md text-slate-700" dangerouslySetInnerHTML={{ __html: chapter.replace(/\*\*(.*?)\*\*/g, '<strong class="text-emerald-700 font-bold">$1</strong>') }} />
+                            ))}
+                        </ul>
+                    </div>
+                </CardContent>
+            </Card>
+        </motion.div>
     );
 }
 
-function AnalysisStatusCard() {
+function AnalysisStatusCard({ statusMessage }) {
     return (
-        <Card className="text-center p-8 md:p-12">
-            <Loader2 className="mx-auto h-12 w-12 text-emerald-500 animate-spin mb-4" />
-            <CardTitle className="text-2xl">Analiz Sürüyor</CardTitle>
-            <CardDescription className="mt-2 max-w-md mx-auto">
-                Bu işlem videonun uzunluğuna göre birkaç dakika sürebilir. Lütfen sayfadan ayrılmayın.
-            </CardDescription>
-        </Card> 
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <Card className="text-center p-8 md:p-12">
+                <Loader2 className="mx-auto h-12 w-12 text-emerald-500 animate-spin mb-4" />
+                <CardTitle className="text-2xl">Analiz Sürüyor</CardTitle>
+                <CardDescription className="mt-2 max-w-md mx-auto">
+                    {statusMessage || "Bu işlem videonun uzunluğuna göre birkaç dakika sürebilir. Lütfen sayfadan ayrılmayın."}
+                </CardDescription>
+            </Card>
+        </motion.div>
     );
 }
 
-// ★★★ DÜZELTİLMİŞ HistoryCard BİLEŞENİ ★★★
 function HistoryCard({ videoId, data, onAnalyzeAgain }) {
-    // Veri formatını kontrol et. Eğer beklenen yapıda değilse, bir uyarı kartı göster.
     if (typeof data !== 'object' || data === null || !data.chapters || !Array.isArray(data.chapters)) {
         return (
             <Card className="overflow-hidden bg-white border border-amber-300 flex flex-col items-center justify-center text-center p-4 h-full">
                 <AlertTriangle className="h-10 w-10 text-amber-500 mb-2" />
                 <CardTitle className="text-base font-bold text-slate-800">Uyumsuz Veri</CardTitle>
-                <CardDescription className="text-xs mt-1">Bu analiz kaydı eski bir formatta ve görüntülenemiyor.</CardDescription>
-                <Button 
-                    variant="ghost"
-                    onClick={() => onAnalyzeAgain(`https://www.youtube.com/watch?v=${videoId}`)}
-                    className="w-full text-center text-xs font-semibold text-slate-600 hover:text-emerald-700 mt-4"
-                >
-                    <Repeat className="mr-2 h-3 w-3" />
-                    Tekrar Analiz Et
+                <CardDescription className="text-xs mt-1">Bu kayıt eski formatta.</CardDescription>
+                <Button variant="ghost" onClick={() => onAnalyzeAgain(`https://www.youtube.com/watch?v=${videoId}`)} className="w-full text-xs text-slate-600 hover:text-emerald-700 mt-4">
+                    <Repeat className="mr-2 h-3 w-3" /> Tekrar Analiz Et
                 </Button>
             </Card>
         );
@@ -80,15 +78,7 @@ function HistoryCard({ videoId, data, onAnalyzeAgain }) {
     return (
         <Card className="overflow-hidden bg-white border group">
             <div className="aspect-video bg-slate-200 overflow-hidden relative">
-                <Image 
-                    src={data.thumbnail} 
-                    alt={data.title} 
-                    fill
-                    style={{ objectFit: 'cover' }}
-                    className="transition-transform group-hover:scale-105"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    quality={75}
-                />
+                <Image src={data.thumbnail} alt={data.title} fill style={{ objectFit: 'cover' }} className="transition-transform group-hover:scale-105" sizes="(max-width: 768px) 100vw, 50vw" quality={75} />
                 <a href={`https://www.youtube.com/watch?v=${videoId}`} target="_blank" rel="noopener noreferrer" className="absolute top-2 right-2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/80 transition-colors z-10">
                     <ExternalLink className="h-4 w-4" />
                 </a>
@@ -99,9 +89,7 @@ function HistoryCard({ videoId, data, onAnalyzeAgain }) {
             <CardContent className="p-0">
                  <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="item-1" className="border-b-0">
-                        <AccordionTrigger className="text-sm font-semibold text-emerald-700 hover:no-underline px-6 py-2">
-                            Bölümleri Göster
-                        </AccordionTrigger>
+                        <AccordionTrigger className="text-sm font-semibold text-emerald-700 hover:no-underline px-6 py-2">Bölümleri Göster</AccordionTrigger>
                         <AccordionContent className="px-6">
                              <ul className="space-y-2 text-sm max-h-48 overflow-y-auto border rounded-lg p-3 bg-slate-50">
                                 {data.chapters.map((chapter, index) => (
@@ -113,13 +101,8 @@ function HistoryCard({ videoId, data, onAnalyzeAgain }) {
                 </Accordion>
             </CardContent>
             <div className="p-4 border-t mt-2">
-                 <Button 
-                    variant="ghost"
-                    onClick={() => onAnalyzeAgain(`https://www.youtube.com/watch?v=${videoId}`)}
-                    className="w-full text-center text-xs font-semibold text-slate-600 hover:text-emerald-700"
-                >
-                    <Repeat className="mr-2 h-3 w-3" />
-                    Bu analizi yeniden yap
+                 <Button variant="ghost" onClick={() => onAnalyzeAgain(`https://www.youtube.com/watch?v=${videoId}`)} className="w-full text-xs text-slate-600 hover:text-emerald-700">
+                    <Repeat className="mr-2 h-3 w-3" /> Bu analizi yeniden yap
                 </Button>
             </div>
         </Card>
@@ -129,12 +112,12 @@ function HistoryCard({ videoId, data, onAnalyzeAgain }) {
 function HistorySkeleton() {
     return <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{[...Array(3)].map((_, i) => (<div key={i} className="bg-white rounded-xl border p-4 space-y-4 animate-pulse"><div className="bg-slate-200 rounded-md aspect-video"></div><div className="h-4 bg-slate-200 rounded w-full"></div><div className="h-4 bg-slate-200 rounded w-3/4"></div><div className="h-8 bg-slate-200 rounded w-full mt-4"></div></div>))}</div>
 }
+
 function InfoState({ title, message, icon: Icon }) {
     return (<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-16 px-6 bg-slate-100/80 rounded-2xl mt-8"><Icon className="mx-auto h-16 w-16 text-slate-400 mb-4" /><h3 className="text-2xl font-bold text-slate-700">{title}</h3><p className="text-slate-500 mt-2">{message}</p></motion.div>)
 }
 
-
-// --- ANA VİDEO ANALİZ SAYFASI ---
+// --- Ana Sayfa Bileşeni ---
 export default function VideoAnalysisPage() {
     const [url, setUrl] = useState("");
     const [currentAnalysisUrl, setCurrentAnalysisUrl] = useState("");
@@ -143,6 +126,9 @@ export default function VideoAnalysisPage() {
     const [error, setError] = useState(null);
     const [history, setHistory] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(true);
+    const [taskId, setTaskId] = useState(null);
+    const [statusMessage, setStatusMessage] = useState("");
+    const pollingIntervalRef = useRef(null);
 
     useEffect(() => {
         const fetchHistory = async () => {
@@ -156,33 +142,71 @@ export default function VideoAnalysisPage() {
         fetchHistory();
     }, []);
 
+    useEffect(() => {
+        const pollStatus = async () => {
+            if (!taskId) return;
+            try {
+                const response = await fetch(`${API_BASE_URL}/analyze/status/${taskId}`);
+                if (!response.ok) throw new Error("Durum sunucusuna ulaşılamadı.");
+                const data = await response.json();
+
+                if (data.status === "processing") {
+                    setStatusMessage(data.message);
+                } else if (data.status === "completed") {
+                    setAnalysisResult(data.result);
+                    setHistory(prev => [[extractVideoId(currentAnalysisUrl), data.result], ...prev.filter(([id]) => id !== extractVideoId(currentAnalysisUrl))]);
+                    setIsLoading(false);
+                    setTaskId(null);
+                    setUrl("");
+                } else if (data.status === "error") {
+                    setError(data.message);
+                    setIsLoading(false);
+                    setTaskId(null);
+                }
+            } catch (err) {
+                setError("Analiz durumu sorgulanırken bir hata oluştu.");
+                setIsLoading(false);
+                setTaskId(null);
+            }
+        };
+
+        if (taskId) {
+            pollingIntervalRef.current = setInterval(pollStatus, 5000);
+        }
+        return () => { if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current); };
+    }, [taskId, currentAnalysisUrl]);
+
     const handleAnalyze = async (e) => {
         if (e) e.preventDefault();
+        if (isLoading) return;
         const videoId = extractVideoId(url);
         if (!videoId) { setError("Lütfen geçerli bir YouTube linki girin."); return; }
         
-        setIsLoading(true); setError(null); setAnalysisResult(null); setCurrentAnalysisUrl(url);
+        setIsLoading(true);
+        setError(null);
+        setAnalysisResult(null);
+        setCurrentAnalysisUrl(url);
+        setStatusMessage("Analiz görevi başlatılıyor...");
 
         try {
             const params = new URLSearchParams({ url });
-            const response = await fetch(`${API_BASE_URL}/analyze_video?${params.toString()}`, { method: 'POST' });
-            if (!response.ok) { const err = await response.json(); throw new Error(err.detail || "Analiz sırasında sunucuda bir hata oluştu."); }
+            const response = await fetch(`${API_BASE_URL}/analyze/start?${params.toString()}`, { method: 'POST' });
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({ detail: "Analiz başlatılamadı." }));
+                throw new Error(errData.detail);
+            }
             const data = await response.json();
-            setAnalysisResult(data);
-            
-            setHistory(prev => {
-                const newHistory = prev.filter(([id]) => id !== videoId);
-                return [[videoId, data], ...newHistory];
-            });
-            setUrl("");
-        } catch (err) { setError(err.message); }
-        finally { setIsLoading(false); }
+            setTaskId(data.task_id);
+        } catch (err) {
+            setError(err.message);
+            setIsLoading(false);
+        }
     };
 
     const handleAnalyzeAgain = (historyUrl) => {
         setUrl(historyUrl);
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    };
 
     return (
         <div className="bg-slate-50 min-h-screen">
@@ -209,9 +233,9 @@ export default function VideoAnalysisPage() {
                 
                 <section className="mt-12 max-w-3xl mx-auto">
                      <AnimatePresence mode="wait">
-                        {isLoading && <motion.div key="loading"><AnalysisStatusCard /></motion.div>}
-                        {error && <motion.div key="error"><InfoState title="Bir Hata Oluştu" message={error} icon={ServerCrash} /></motion.div>}
-                        {analysisResult && <motion.div key="result"><AnalysisResultCard result={analysisResult} url={currentAnalysisUrl} /></motion.div>}
+                        {isLoading && <AnalysisStatusCard statusMessage={statusMessage} />}
+                        {error && <InfoState title="Bir Hata Oluştu" message={error} icon={ServerCrash} />}
+                        {analysisResult && <AnalysisResultCard result={analysisResult} url={currentAnalysisUrl} />}
                     </AnimatePresence>
                 </section>
 
