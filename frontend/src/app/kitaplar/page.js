@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const API_BASE_URL = https://yediulya-backend.onrender.com;
+const API_BASE_URL = "https://yediulya-backend.onrender.com";
 
 // --- ALT BİLEŞENLER (TÜM DÜZELTMELERLE) ---
 
