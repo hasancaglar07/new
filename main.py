@@ -1,5 +1,5 @@
 # main.py
-# Versiyon 2.0.1 - Eksik import'lar düzeltildi.
+# Versiyon 2.2.0 - /books_by_author ve /articles/by-category için önbellekleme eklendi.
 
 import logging
 import os
@@ -10,6 +10,8 @@ import asyncio
 import urllib.parse
 from pathlib import Path
 from typing import List, Optional
+import tempfile
+import time
 
 import fitz
 import requests
@@ -23,10 +25,7 @@ from whoosh.index import open_dir, Index
 from whoosh.qparser import MultifieldParser, AndGroup, QueryParser
 from whoosh.searching import Searcher
 
-# ★★★ EKSİK OLAN IMPORT'LAR BURAYA EKLENDİ ★★★
 from deepgram import DeepgramClient, PrerecordedOptions
-
-# Hem ana db'yi hem de makale db'sini import ediyoruz
 from data.db import init_db as init_main_db, update_task, get_task, get_all_completed_analyses
 from data.articles_db import get_all_articles_by_category, get_article_by_id, init_db as init_articles_db
 
@@ -37,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Mihmandar İlim Havuzu API",
-    version="2.0.1",
+    version="2.2.0",
     description="Tasavvufi eserlerde, makalelerde, YouTube videolarında ve video analizlerinde arama yapma API'si."
 )
 
@@ -56,13 +55,17 @@ DATA_DIR = BASE_DIR / "data"
 PDF_DIR = DATA_DIR / "pdfler"
 INDEX_DIR = DATA_DIR / "whoosh_index"
 
+# ★★★ YENİ: Hafızada tutulacak önbellek (cache) değişkenleri ★★★
+ARTICLES_CACHE = {"data": None, "timestamp": 0}
+BOOKS_CACHE = {"data": None, "timestamp": 0}
+CACHE_TTL = 86400  # 1 saat (saniye cinsinden)
+
 YOUTUBE_API_KEYS = [os.getenv(f"YOUTUBE_API_KEY{i}") for i in range(1, 7) if os.getenv(f"YOUTUBE_API_KEY{i}")]
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
 deepgram_client = DeepgramClient(DEEPGRAM_API_KEY) if DEEPGRAM_API_KEY else None
 deepseek_client = AsyncOpenAI(base_url="https://api.deepseek.com", api_key=DEEPSEEK_API_KEY) if DEEPSEEK_API_KEY else None
-
 
 @app.on_event("startup")
 async def startup_event():
@@ -79,7 +82,6 @@ def get_whoosh_index() -> Index:
 def get_searcher(ix: Index = Depends(get_whoosh_index)) -> Searcher:
     return ix.searcher()
     
-# (Diğer yardımcı fonksiyonlar - format_time, extract_video_id, download_audio_sync, run_video_analysis - aynı kalıyor)
 def format_time(seconds: float) -> str:
     minutes, seconds = divmod(int(seconds), 60)
     hours, minutes = divmod(minutes, 60)
@@ -104,16 +106,13 @@ async def run_video_analysis(task_id: str, url: str):
         update_task(task_id, "processing", message="Video Bilgileri Alınıyor...")
         with yt_dlp.YoutubeDL({'quiet': True, 'skip_download': True, 'no_warnings': True}) as ydl:
             metadata = await asyncio.to_thread(ydl.extract_info, url, download=False)
-
         update_task(task_id, "processing", message="Video Sesi İndiriliyor...")
         audio_content = await asyncio.to_thread(download_audio_sync, url, task_id)
-
         update_task(task_id, "processing", message="Ses Metne Dönüştürülüyor...")
         source = {'buffer': audio_content}
         options = PrerecordedOptions(model="nova-2", language="tr", smart_format=True, utterances=True)
         response = await deepgram_client.listen.asyncrest.v("1").transcribe_file(source, options)
         if not response.results or not response.results.utterances: raise ValueError("Videodan metin çıkarılamadı.")
-
         update_task(task_id, "processing", message="Konu Başlıkları Oluşturuluyor...")
         chapters, chunk_text, start_time = [], "", 0
         utterances = response.results.utterances
@@ -125,7 +124,6 @@ async def run_video_analysis(task_id: str, url: str):
                 title = comp_res.choices[0].message.content.strip().replace('"', '')
                 chapters.append(f"**{format_time(start_time)}** - {title}")
                 chunk_text = ""
-        
         result = {"title": metadata.get("title"), "thumbnail": metadata.get("thumbnail"), "chapters": chapters}
         update_task(task_id, "completed", result=result)
         logger.info(f"[{task_id}] Analiz başarıyla tamamlandı ve veritabanına kaydedildi.")
@@ -136,7 +134,7 @@ async def run_video_analysis(task_id: str, url: str):
 
 # --- API Endpoints ---
 @app.get("/")
-async def read_root(): return {"message": "Mihmandar API v2.0.1 Aktif"}
+async def read_root(): return {"message": "Mihmandar API v2.2.0 Aktif (Optimize Edilmiş)"}
 
 @app.get("/search/all")
 async def search_all(q: str, authors: Optional[List[str]] = Query(None), searcher: Searcher = Depends(get_searcher)):
@@ -169,7 +167,16 @@ async def search_all(q: str, authors: Optional[List[str]] = Query(None), searche
 
 @app.get("/articles/by-category")
 async def list_articles_by_category():
-    return await asyncio.to_thread(get_all_articles_by_category)
+    now = time.time()
+    if ARTICLES_CACHE["data"] and (now - ARTICLES_CACHE["timestamp"] < CACHE_TTL):
+        logger.info("Makale listesi önbellekten sunuldu.")
+        return ARTICLES_CACHE["data"]
+    
+    logger.info("Makale listesi veritabanından okunuyor ve önbellekleniyor...")
+    data = await asyncio.to_thread(get_all_articles_by_category)
+    ARTICLES_CACHE["data"] = data
+    ARTICLES_CACHE["timestamp"] = now
+    return data
 
 @app.get("/article/{article_id}")
 async def read_article(article_id: int):
@@ -186,24 +193,44 @@ async def get_all_authors(searcher: Searcher = Depends(get_searcher)):
     return await asyncio.to_thread(_get_authors)
 
 @app.get("/books_by_author")
-async def get_books_by_author(searcher: Searcher = Depends(get_searcher)):
-    def _process_books():
-        books_data = {}
-        book_results = searcher.search(QueryParser("type", searcher.schema).parse("book"), limit=None)
-        for fields in book_results:
-            author, book, pdf_file = fields.get('author', 'Bilinmeyen').title(), fields.get('title', 'Bilinmeyen').title(), fields.get('source')
-            if author not in books_data: books_data[author] = {}
-            if book not in books_data[author] and pdf_file:
-                 try:
-                    if (PDF_DIR / pdf_file).is_file():
-                        with fitz.open(PDF_DIR / pdf_file) as doc:
-                            books_data[author][book] = {"pdf_dosyasi": pdf_file, "toplam_sayfa": len(doc)}
-                 except Exception: continue
-        return {"kutuphane": [{"yazar": author, "kitaplar": [{"kitap_adi": title, **details} for title, details in books.items()]} for author, books in sorted(books_data.items())]}
-    return await asyncio.to_thread(_process_books)
+async def get_books_by_author():
+    now = time.time()
+    if BOOKS_CACHE["data"] and (now - BOOKS_CACHE["timestamp"] < CACHE_TTL):
+        logger.info("Kitap listesi önbellekten sunuldu.")
+        return BOOKS_CACHE["data"]
 
-# (Geri kalan tüm endpoint'ler - search/analyses, pdf/info, pdf/page_image, search/videos, analyze/start, analyze/status, analysis_history - aynı kalıyor)
-# Örnek olarak bir tanesini bırakıyorum, diğerleri sizde tam haliyle durmalı.
+    logger.info("Kitap listesi dosyadan okunuyor ve önbellekleniyor...")
+    try:
+        with open(DATA_DIR / "book_metadata.json", 'r', encoding='utf-8') as f:
+            all_books = json.load(f)
+        
+        books_by_author_data = {}
+        for book_info in all_books:
+            author = book_info['author']
+            if author not in books_by_author_data:
+                books_by_author_data[author] = []
+            
+            books_by_author_data[author].append({
+                "kitap_adi": book_info['book'],
+                "pdf_dosyasi": book_info['pdf_file'],
+                "toplam_sayfa": book_info['total_pages']
+            })
+
+        response_data = {"kutuphane": [
+            {"yazar": author, "kitaplar": books} for author, books in sorted(books_by_author_data.items())
+        ]}
+
+        BOOKS_CACHE["data"] = response_data
+        BOOKS_CACHE["timestamp"] = now
+        return response_data
+
+    except FileNotFoundError:
+        logger.error("book_metadata.json dosyası bulunamadı. Lütfen create_index.py script'ini çalıştırın.")
+        raise HTTPException(status_code=500, detail="Kitap verileri hazır değil.")
+    except Exception as e:
+        logger.error(f"Kitap listesi işlenirken hata: {e}")
+        raise HTTPException(status_code=500, detail="Kitap listesi işlenemedi.")
+
 @app.get("/search/analyses")
 async def search_analyses(q: str):
     if not q.strip(): return {"sonuclar": []}

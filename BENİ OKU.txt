@@ -1,0 +1,33 @@
+
+git add .
+
+git commit -m "Dosyalar güncellendi: app.py ve style.css değişiklikleri"
+
+git push origin main
+
+git push origin main --force
+
+
+uvicorn main:app --reload --port 8000
+npm run dev
+http://localhost:3000
+
+
+****KİTAP ÇEKME********
+****Şu an itibarıyla, projenizin backend tarafı yediulya.org'daki tüm makaleleri çekip kendi veritabanında saklayacak yeteneğe kavuştu.
+Bu script'i nasıl çalıştıracaksınız?
+Terminalde, projenizin ana dizinindeyken şu komutu çalıştırmanız yeterli:
+
+python scrape_articles.py
+
+
+*********YENİ DB************
+Arama İndeksini Sıfırlayın: Projenizin data klasöründeki whoosh_index klasörünü silin. Bu, eski şemaya sahip indeksten kurtulmak için gereklidir.
+Yeni İndeksi Oluşturun: Terminalde projenizin ana dizinine gidin ve şu komutu çalıştırın:
+
+python create_index.py
+
+
+********ÇEKİLEN METİNLERİ DÜZENLEME *******
+
+python format_articles.py
