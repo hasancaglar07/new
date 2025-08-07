@@ -240,29 +240,41 @@ export default function HomePage() {
         const analysisUrl = new URL(`${API_BASE_URL}/search/analyses`);
         analysisUrl.searchParams.append('q', currentQuery);
 
-        const [bookRes, videoRes, analysisRes] = await Promise.all([ fetch(bookUrl), fetch(videoUrl), fetch(analysisUrl) ]);
-        if (!bookRes.ok || !videoRes.ok || !analysisRes.ok) throw new Error("Arama sunucusuna ulaşılamadı.");
-       
-        const bookData = await bookRes.json(); 
-        const videoData = await videoRes.json();
-        const analysisData = await analysisRes.json();
+        // ★★★ DEĞİŞİKLİK: Promise.all yerine Promise.allSettled kullanıldı.
+        const results = await Promise.allSettled([
+          fetch(bookUrl),
+          fetch(videoUrl),
+          fetch(analysisUrl)
+        ]);
+        
+        // Başarısız olsa bile hatayı konsola yaz ama devam et
+        const bookRes = results[0].status === 'fulfilled' && results[0].value.ok ? await results[0].value.json() : { sonuclar: [] };
+        const videoRes = results[1].status === 'fulfilled' && results[1].value.ok ? await results[1].value.json() : { sonuclar: [] };
+        const analysisRes = results[2].status === 'fulfilled' && results[2].value.ok ? await results[2].value.json() : { sonuclar: [] };
+
+        if (results.some(res => res.status === 'rejected' || !res.value.ok)) {
+            console.warn("Bir veya daha fazla arama kaynağına ulaşılamadı. Sonuçlar kısmi olabilir.");
+        }
 
         setAllResults({ 
-          books: bookData?.sonuclar || [], 
-          videos: videoData?.sonuclar || [],
-          analyses: analysisData?.sonuclar || []
+          books: bookRes.sonuclar || [], 
+          videos: videoRes.sonuclar || [],
+          analyses: analysisRes.sonuclar || []
         });
 
-        const bookCount = bookData?.sonuclar?.length || 0;
-        const videoCount = videoData?.sonuclar?.length || 0;
-        const analysisCount = analysisData?.sonuclar?.length || 0;
+        const bookCount = bookRes.sonuclar?.length || 0;
+        const videoCount = videoRes.sonuclar?.length || 0;
+        const analysisCount = analysisRes.sonuclar?.length || 0;
 
         if (bookCount > 0) setActiveTab('kitaplar');
         else if (videoCount > 0) setActiveTab('videolar');
         else if (analysisCount > 0) setActiveTab('analizler');
         else setActiveTab('kitaplar');
 
-    } catch (error) { setError(error.message); }
+    } catch (error) { 
+        // Bu blok artık daha az olası, ama genel ağ hataları için duruyor.
+        setError("Arama yapılırken beklenmedik bir hata oluştu."); 
+    }
     finally { setIsLoading(false); }
   }, []);
  
@@ -300,7 +312,6 @@ export default function HomePage() {
           <AnimatePresence mode="wait">
             {isLoading ? <motion.div key="loading"><ResultsSkeleton /></motion.div> :
              error ? <motion.div key="error"><InfoState title="Bir Hata Oluştu" message={error} icon={ServerCrash} /></motion.div> :
-             // ★★★ DÜZELTİLMİŞ SATIR ★★★
              !hasResults && query.trim() ? <motion.div key="no-results"><InfoState title="Sonuç Bulunamadı" message={`Aramanız için bir sonuç bulunamadı: ${query}. Yazımı kontrol edebilir veya filtreleri temizleyebilirsiniz.`} icon={FileQuestion} onClearFilters={handleClearFilters} /></motion.div> :
              !hasResults && !query.trim() ? <motion.div key="initial"><InfoState title="Aramaya Hazır" message="Hangi konuda araştırma yapmak istersiniz? Arama çubuğunu kullanabilirsiniz." icon={BookOpen} /></motion.div> :
              hasResults && (
