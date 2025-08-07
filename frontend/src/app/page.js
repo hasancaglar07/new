@@ -1,13 +1,9 @@
-// frontend/src/app/page.js
-
 "use client";
-
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Check, ChevronsUpDown, Loader2, Search, BookOpen, Video, ArrowRight, ArrowLeft, FileQuestion, ServerCrash, X, Sparkles, ZoomIn, ZoomOut, RotateCcw, Download } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,28 +13,23 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-
 // --- Yardımcı Fonksiyonlar ve Bileşenler ---
 const formatDate = (dateString) => new Date(dateString).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
-
 function Highlight({ text, query }) {
     if (!text) return null;
     const sanitizedHtml = text.replace(/<b\b[^>]*>/gi, '<b class="font-bold text-emerald-700 bg-emerald-100/50 px-0.5 rounded-sm">');
     if (!query) return <span dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />;
-    
+   
     const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
     const parts = sanitizedHtml.split(new RegExp(`(${escapedQuery})`, 'gi'));
     const highlightedHtml = parts.map((part, i) => part.toLowerCase() === query.toLowerCase() ? `<mark class="bg-lime-200 text-lime-900 px-1 rounded-md">${part.replace(/<b\b[^>]*>|<\/b>/gi, "")}</mark>` : part).join('');
     return <span dangerouslySetInnerHTML={{ __html: highlightedHtml }} />;
 }
-
 function PagePreview({ pdfFile, pageNum }) {
     const [imageSrc, setImageSrc] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
-
     useEffect(() => {
         setIsLoading(true);
         setError(null);
@@ -51,7 +42,6 @@ function PagePreview({ pdfFile, pageNum }) {
             .finally(() => setIsLoading(false));
         return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
     }, [pdfFile, pageNum]);
-
     return (
         <div className="mt-2"><div className="relative flex justify-center items-center min-h-[200px] bg-slate-100 rounded-lg p-2">
             {isLoading && <Loader2 className="h-8 w-8 text-slate-400 animate-spin" />}
@@ -60,14 +50,12 @@ function PagePreview({ pdfFile, pageNum }) {
         </div></div>
     );
 }
-
 function BookViewerDialog({ book, onClose, isOpen }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isDownloading, setIsDownloading] = useState(false);
-
   useEffect(() => {
     if (book) {
       const pageNumber = parseInt(book.sayfa, 10);
@@ -79,14 +67,12 @@ function BookViewerDialog({ book, onClose, isOpen }) {
         .catch(() => setTotalPages('?'));
     }
   }, [book]);
-
   const imageUrl = useMemo(() => {
     if (!book) return null;
     return `${API_BASE_URL}/pdf/page_image?pdf_file=${encodeURIComponent(book.pdf_dosyasi)}&page_num=${currentPage}`;
   }, [book, currentPage]);
-  
+ 
   useEffect(() => { setIsLoading(true); setError(null); }, [currentPage]);
-
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!isOpen || !totalPages) return;
@@ -99,7 +85,6 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, currentPage, totalPages]);
-
   const handleDownload = async () => {
     if (!imageUrl || isDownloading) return;
     setIsDownloading(true);
@@ -119,9 +104,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
       setIsDownloading(false);
     }
   };
-
   if (!book) return null;
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-none w-screen h-screen p-0 gap-0 flex flex-col bg-slate-800">
@@ -131,11 +114,11 @@ function BookViewerDialog({ book, onClose, isOpen }) {
             <X className="h-6 w-6"/>
           </Button>
         </DialogHeader>
-        
+       
         <div className="flex-grow w-full h-full flex justify-center items-center overflow-hidden relative">
           {isLoading && <Loader2 className="h-10 w-10 animate-spin text-slate-400 absolute z-10" />}
           {error && <div className="text-center text-red-500 p-4"><ServerCrash className="mx-auto h-8 w-8 mb-2" />{error}</div>}
-          
+         
           {imageUrl && !error && (
             <TransformWrapper limitToBounds={true} doubleClick={{ mode: 'reset' }} pinch={{ step: 1 }} wheel={{ step: 0.2 }}>
               {({ zoomIn, zoomOut, resetTransform }) => (
@@ -153,7 +136,6 @@ function BookViewerDialog({ book, onClose, isOpen }) {
             </TransformWrapper>
           )}
         </div>
-
         <DialogFooter className="flex-row justify-between items-center p-3 bg-slate-900/50 border-t border-slate-700 flex-shrink-0 text-white backdrop-blur-sm">
             <div className="flex items-center gap-2">
                <Button aria-label="Sayfayı indir" onClick={handleDownload} disabled={isDownloading} className="bg-slate-700 hover:bg-slate-600">
@@ -175,14 +157,13 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     </Dialog>
   );
 }
-
 function ResultCard({ result, onReadClick, query, index }) {
   const cardVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { delay: index * 0.05, ease: "easeOut" } }};
   return (
     <motion.div variants={cardVariants} className="h-full">
       <Card className="flex flex-col h-full overflow-hidden bg-white hover:shadow-2xl transition-shadow duration-300 group rounded-xl border">
         <CardHeader className="p-6"><CardTitle className="text-xl font-bold text-slate-800 group-hover:text-emerald-600 transition-colors">{result.kitap}</CardTitle><CardDescription>Yazar: {result.yazar}</CardDescription></CardHeader>
-        <CardContent className="flex-grow p-6 pt-0"><p className="text-slate-600 italic line-clamp-5">"...<Highlight text={result.alinti} query={query} />..."</p></CardContent>
+        <CardContent className="flex-grow p-6 pt-0"><p className="text-slate-600 italic line-clamp-5">&quot;...<Highlight text={result.alinti} query={query} />...&quot;</p></CardContent>
         <CardFooter className="flex-col items-start p-0 bg-slate-50/70">
             <Accordion type="single" collapsible className="w-full px-6"><AccordionItem value="item-1" className="border-b-0"><AccordionTrigger className="text-sm font-semibold text-emerald-700 hover:no-underline py-3">Sayfa {result.sayfa} Önizlemesi</AccordionTrigger><AccordionContent><PagePreview pdfFile={result.pdf_dosyasi} pageNum={result.sayfa} /></AccordionContent></AccordionItem></Accordion>
             <div className="p-4 w-full border-t"><Button onClick={() => onReadClick(result)} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">Bu Sayfayı Oku <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
@@ -191,7 +172,6 @@ function ResultCard({ result, onReadClick, query, index }) {
     </motion.div>
   );
 }
-
 function VideoCard({ video, index }) {
   const cardVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { delay: index * 0.05, ease: "easeOut" } }};
   return (
@@ -204,12 +184,10 @@ function VideoCard({ video, index }) {
     </motion.div>
   );
 }
-
 function Pill({ children, className }) { return <div className={`inline-block px-2.5 py-1 text-xs font-semibold rounded-full ${className}`}>{children}</div> }
-
 // DEĞİŞTİRİLDİ: Öneri etiketlerinden gereksiz animasyon kaldırıldı.
-function SuggestionTags({ onSelect }) { 
-    const suggestions = ["Rabıta", "Nefs", "Zikir", "Tasavvuf", "Mürşid", "Mektubat"]; 
+function SuggestionTags({ onSelect }) {
+    const suggestions = ["Rabıta", "Nefs", "Zikir", "Tasavvuf", "Mürşid", "Mektubat"];
     return (
         <div className="flex flex-wrap justify-center items-center gap-2 md:gap-3">
             <Sparkles className="h-5 w-5 text-slate-400 mr-2 shrink-0" />
@@ -219,12 +197,10 @@ function SuggestionTags({ onSelect }) {
                 </Button>
             ))}
         </div>
-    ) 
+    )
 }
-
 function ResultsSkeleton() { return (<div className="mt-8 space-y-8"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{[...Array(6)].map((_, i) => (<div key={i} className="bg-white rounded-xl border p-4 space-y-4 animate-pulse"><div className="h-5 bg-slate-200 rounded w-3/4"></div><div className="h-4 bg-slate-200 rounded w-1/2"></div><div className="pt-4 space-y-2"><div className="h-4 bg-slate-200 rounded w-full"></div><div className="h-4 bg-slate-200 rounded w-full"></div><div className="h-4 bg-slate-200 rounded w-5/6"></div></div><div className="h-10 bg-slate-200 rounded w-full mt-4"></div></div>))}</div></div>) }
 function InfoState({ title, message, icon: Icon, onClearFilters }) { return (<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-16 px-6 bg-slate-100/80 rounded-2xl mt-8 max-w-2xl mx-auto"><Icon className="mx-auto h-16 w-16 text-slate-400 mb-4" /><h3 className="text-2xl font-bold text-slate-700">{title}</h3><p className="text-slate-500 mt-2">{message}</p>{onClearFilters && <Button onClick={onClearFilters} className="mt-6"><X className="mr-2 h-4 w-4" /> Filtreleri Temizle</Button>}</motion.div>) }
-
 export default function HomePage() {
   const [authors, setAuthors] = useState([]);
   const [selectedAuthors, setSelectedAuthors] = useState(new Set());
@@ -235,9 +211,8 @@ export default function HomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState(null);
   const [activeTab, setActiveTab] = useState('kitaplar');
-
   useEffect(() => { fetch(`${API_BASE_URL}/authors`).then(res => res.json()).then(data => setAuthors(data.authors || [])).catch(() => setError("Yazar listesi yüklenemedi.")); }, []);
-  
+ 
   const performSearch = useCallback(async (currentQuery, currentAuthors) => {
     if (!currentQuery.trim()) { setAllResults({ books: [], videos: [] }); setError(null); return; }
     setIsLoading(true); setError(null);
@@ -247,32 +222,29 @@ export default function HomePage() {
         currentAuthors.forEach(author => bookUrl.searchParams.append('authors', author));
         const videoUrl = new URL(`${API_BASE_URL}/search/videos`);
         videoUrl.searchParams.append('q', currentQuery);
-
         const [bookRes, videoRes] = await Promise.all([ fetch(bookUrl), fetch(videoUrl) ]);
         if (!bookRes.ok || !videoRes.ok) throw new Error("Arama sunucusuna ulaşılamadı.");
-        
+       
         const bookData = await bookRes.json(); const videoData = await videoRes.json();
         setAllResults({ books: bookData?.sonuclar || [], videos: videoData?.sonuclar || [] });
         setActiveTab((bookData?.sonuclar?.length || 0) > 0 ? 'kitaplar' : 'videolar');
-    } catch (error) { setError(error.message); } 
+    } catch (error) { setError(error.message); }
     finally { setIsLoading(false); }
   }, []);
-  
+ 
   useEffect(() => { const handler = setTimeout(() => { performSearch(query, Array.from(selectedAuthors)); }, 500); return () => clearTimeout(handler); }, [query, selectedAuthors, performSearch]);
-
   const handleReadClick = (book) => { setSelectedBook(book); setIsModalOpen(true); };
   const handleAuthorChange = (author) => { const newSet = new Set(selectedAuthors); newSet.has(author) ? newSet.delete(author) : newSet.add(author); setSelectedAuthors(newSet); };
   const handleClearFilters = () => { setQuery(""); setSelectedAuthors(new Set()); };
   const hasResults = allResults.books.length > 0 || allResults.videos.length > 0;
-  
+ 
   return (
     <div className="bg-slate-50 min-h-screen w-full font-sans">
       <main className="container mx-auto px-4 py-12 md:py-20">
-        
+       
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1.5, delay: 0.2 }} className="text-center mb-8">
             <p className="text-2xl md:text-3xl text-slate-600" style={{ fontFamily: "'Noto Naskh Arabic', serif" }}>بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ</p>
         </motion.div>
-
         <motion.header initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: "easeOut" }} className="text-center mb-12 md:mb-16">
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter text-slate-800"><span className="bg-clip-text text-transparent bg-gradient-to-br from-emerald-600 to-green-500">Yediulya E-kütüphanesi</span></h1>
             <p className="mt-4 md:mt-6 text-lg md:text-xl text-slate-600 max-w-3xl mx-auto">Üstadlarımızın eserlerinde ve sohbetlerinde derinlemesine arama yapın.</p>
@@ -308,12 +280,11 @@ export default function HomePage() {
                 </CardContent>
             </Card>
         </motion.div>
-
         <div className="mt-12 md:mt-16 max-w-7xl mx-auto">
           <AnimatePresence mode="wait">
             {/* DEĞİŞTİRİLDİ: Arama başladığında eski sonuçları gizleyip her zaman iskelet yükleyiciyi gösterir. */}
-            {isLoading ? <motion.div key="loading"><ResultsSkeleton /></motion.div> : 
-             error ? <motion.div key="error"><InfoState title="Bir Hata Oluştu" message={error} icon={ServerCrash} /></motion.div> : 
+            {isLoading ? <motion.div key="loading"><ResultsSkeleton /></motion.div> :
+             error ? <motion.div key="error"><InfoState title="Bir Hata Oluştu" message={error} icon={ServerCrash} /></motion.div> :
              !hasResults && query.trim() ? <motion.div key="no-results"><InfoState title="Sonuç Bulunamadı" message={`“${query}” için bir sonuç bulunamadı. Yazımı kontrol edebilir veya filtreleri temizleyebilirsiniz.`} icon={FileQuestion} onClearFilters={handleClearFilters} /></motion.div> :
              !hasResults && !query.trim() ? <motion.div key="initial"><InfoState title="Aramaya Hazır" message="Hangi konuda araştırma yapmak istersiniz? Arama çubuğunu kullanabilirsiniz." icon={BookOpen} /></motion.div> :
              hasResults && (
