@@ -207,6 +207,7 @@ function VideoCard({ video, index }) {
 
 function Pill({ children, className }) { return <div className={`inline-block px-2.5 py-1 text-xs font-semibold rounded-full ${className}`}>{children}</div> }
 
+// DEĞİŞTİRİLDİ: Öneri etiketlerinden gereksiz animasyon kaldırıldı.
 function SuggestionTags({ onSelect }) { 
     const suggestions = ["Rabıta", "Nefs", "Zikir", "Tasavvuf", "Mürşid", "Mektubat"]; 
     return (
@@ -273,8 +274,8 @@ export default function HomePage() {
         </motion.div>
 
         <motion.header initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: "easeOut" }} className="text-center mb-12 md:mb-16">
-            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter text-slate-800"><span className="bg-clip-text text-transparent bg-gradient-to-br from-emerald-600 to-green-500">Mihmandar</span></h1>
-            <p className="mt-4 md:mt-6 text-lg md:text-xl text-slate-600 max-w-3xl mx-auto">Üstadlarımızın eserlerinde ve sohbetlerinde, yapay zeka destekli modern bir arayüzle derinlemesine arama yapın.</p>
+            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter text-slate-800"><span className="bg-clip-text text-transparent bg-gradient-to-br from-emerald-600 to-green-500">Yediulya E-kütüphanesi</span></h1>
+            <p className="mt-4 md:mt-6 text-lg md:text-xl text-slate-600 max-w-3xl mx-auto">Üstadlarımızın eserlerinde ve sohbetlerinde derinlemesine arama yapın.</p>
         </motion.header>
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}className="">
             <Card className="max-w-3xl mx-auto shadow-xl shadow-slate-200/70 border-t-4 border-emerald-500 bg-white/90 backdrop-blur-lg rounded-2xl">
@@ -298,6 +299,7 @@ export default function HomePage() {
                            )}
                         </div>
                     </div>
+                    {/* YENİ: Öneri etiketleri daha kolay erişim için arama kartının içine taşındı. */}
                     {!query.trim() && (
                       <div className="pt-6 border-t border-slate-200/80 mt-6">
                         <SuggestionTags onSelect={(tag) => setQuery(tag)} />
@@ -309,14 +311,10 @@ export default function HomePage() {
 
         <div className="mt-12 md:mt-16 max-w-7xl mx-auto">
           <AnimatePresence mode="wait">
+            {/* DEĞİŞTİRİLDİ: Arama başladığında eski sonuçları gizleyip her zaman iskelet yükleyiciyi gösterir. */}
             {isLoading ? <motion.div key="loading"><ResultsSkeleton /></motion.div> : 
              error ? <motion.div key="error"><InfoState title="Bir Hata Oluştu" message={error} icon={ServerCrash} /></motion.div> : 
-             !hasResults && query.trim() ? <motion.div key="no-results"><InfoState 
-                title="Sonuç Bulunamadı" 
-                // *** HATA DÜZELTİLDİ: Düz tırnak yerine kıvrımlı tırnak kullanıldı. ***
-                message={`“${query}” için bir sonuç bulunamadı. Yazımı kontrol edebilir veya filtreleri temizleyebilirsiniz.`} 
-                icon={FileQuestion} 
-                onClearFilters={handleClearFilters} /></motion.div> :
+             !hasResults && query.trim() ? <motion.div key="no-results"><InfoState title="Sonuç Bulunamadı" message={`“${query}” için bir sonuç bulunamadı. Yazımı kontrol edebilir veya filtreleri temizleyebilirsiniz.`} icon={FileQuestion} onClearFilters={handleClearFilters} /></motion.div> :
              !hasResults && !query.trim() ? <motion.div key="initial"><InfoState title="Aramaya Hazır" message="Hangi konuda araştırma yapmak istersiniz? Arama çubuğunu kullanabilirsiniz." icon={BookOpen} /></motion.div> :
              hasResults && (
               <motion.div key="results" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.02 } } }}>
