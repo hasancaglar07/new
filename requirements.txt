@@ -25,4 +25,3 @@ whoosh
 yt-dlp
 httpx
 aiofiles
-react-zoom-pan-pinch
