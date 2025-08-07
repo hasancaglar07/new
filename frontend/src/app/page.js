@@ -187,7 +187,6 @@ function ResultCard({ result, onReadClick, query, index }) {
   return (
     <motion.div variants={cardVariants} className="h-full"><Card className="flex flex-col h-full overflow-hidden bg-white hover:shadow-2xl transition-shadow duration-300 group rounded-xl border">
       <CardHeader className="p-6"><CardTitle className="text-xl font-bold text-slate-800 group-hover:text-emerald-600 transition-colors">{result.kitap}</CardTitle><CardDescription>Yazar: {result.yazar}</CardDescription></CardHeader>
-      {/* ★★★ DEĞİŞİKLİK: Tırnak işaretleri kaldırıldı. */}
       <CardContent className="flex-grow p-6 pt-0"><p className="text-slate-600 italic line-clamp-5">...<Highlight text={result.alinti} query={query} />...</p></CardContent>
       <CardFooter className="flex-col items-start p-0 bg-slate-50/70">
         <Accordion type="single" collapsible className="w-full px-6"><AccordionItem value="item-1" className="border-b-0"><AccordionTrigger className="text-sm font-semibold text-emerald-700 hover:no-underline py-3">Sayfa {result.sayfa} Önizlemesi</AccordionTrigger><AccordionContent><PagePreview pdfFile={result.pdf_dosyasi} pageNum={result.sayfa} /></AccordionContent></AccordionItem></Accordion>
@@ -301,6 +300,7 @@ export default function HomePage() {
           <AnimatePresence mode="wait">
             {isLoading ? <motion.div key="loading"><ResultsSkeleton /></motion.div> :
              error ? <motion.div key="error"><InfoState title="Bir Hata Oluştu" message={error} icon={ServerCrash} /></motion.div> :
+             // ★★★ DÜZELTİLMİŞ SATIR ★★★
              !hasResults && query.trim() ? <motion.div key="no-results"><InfoState title="Sonuç Bulunamadı" message={`Aramanız için bir sonuç bulunamadı: ${query}. Yazımı kontrol edebilir veya filtreleri temizleyebilirsiniz.`} icon={FileQuestion} onClearFilters={handleClearFilters} /></motion.div> :
              !hasResults && !query.trim() ? <motion.div key="initial"><InfoState title="Aramaya Hazır" message="Hangi konuda araştırma yapmak istersiniz? Arama çubuğunu kullanabilirsiniz." icon={BookOpen} /></motion.div> :
              hasResults && (
