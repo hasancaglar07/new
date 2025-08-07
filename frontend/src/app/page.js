@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Check, ChevronsUpDown, Loader2, Search, BookOpen, Video, ArrowRight, ArrowLeft, FileQuestion, ServerCrash, X, Sparkles, ZoomIn, ZoomOut, RotateCcw, Download, BotMessageSquare } from "lucide-react"; // BotMessageSquare eklendi
+import { Check, ChevronsUpDown, Loader2, Search, BookOpen, Video, ArrowRight, ArrowLeft, FileQuestion, ServerCrash, X, Sparkles, ZoomIn, ZoomOut, RotateCcw, Download, BotMessageSquare } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
@@ -145,7 +145,6 @@ function BookViewerDialog({ book, onClose, isOpen }) {
   );
 }
 
-// ★★★ YENİ KART BİLEŞENİ ★★★
 function AnalysisCard({ analysis, query, index }) {
   const cardVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { delay: index * 0.05, ease: "easeOut" } }};
   return (
@@ -214,12 +213,10 @@ function SuggestionTags({ onSelect }) {
 function ResultsSkeleton() { return (<div className="mt-8 space-y-8"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{[...Array(6)].map((_, i) => (<div key={i} className="bg-white rounded-xl border p-4 space-y-4 animate-pulse"><div className="h-5 bg-slate-200 rounded w-3/4"></div><div className="h-4 bg-slate-200 rounded w-1/2"></div><div className="pt-4 space-y-2"><div className="h-4 bg-slate-200 rounded w-full"></div><div className="h-4 bg-slate-200 rounded w-full"></div><div className="h-4 bg-slate-200 rounded w-5/6"></div></div><div className="h-10 bg-slate-200 rounded w-full mt-4"></div></div>))}</div></div>) }
 function InfoState({ title, message, icon: Icon, onClearFilters }) { return (<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-16 px-6 bg-slate-100/80 rounded-2xl mt-8 max-w-2xl mx-auto"><Icon className="mx-auto h-16 w-16 text-slate-400 mb-4" /><h3 className="text-2xl font-bold text-slate-700">{title}</h3><p className="text-slate-500 mt-2">{message}</p>{onClearFilters && <Button onClick={onClearFilters} className="mt-6"><X className="mr-2 h-4 w-4" /> Filtreleri Temizle</Button>}</motion.div>) }
 
-// --- Ana Sayfa Bileşeni ---
 export default function HomePage() {
   const [authors, setAuthors] = useState([]);
   const [selectedAuthors, setSelectedAuthors] = useState(new Set());
   const [query, setQuery] = useState("");
-  // ★★★ DEĞİŞİKLİK: State'e `analyses` eklendi.
   const [allResults, setAllResults] = useState({ books: [], videos: [], analyses: [] });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -240,11 +237,9 @@ export default function HomePage() {
         const videoUrl = new URL(`${API_BASE_URL}/search/videos`);
         videoUrl.searchParams.append('q', currentQuery);
 
-        // ★★★ DEĞİŞİKLİK: Yeni analiz arama endpoint'i eklendi.
         const analysisUrl = new URL(`${API_BASE_URL}/search/analyses`);
         analysisUrl.searchParams.append('q', currentQuery);
 
-        // ★★★ DEĞİŞİKLİK: 3 API isteği aynı anda yapılıyor.
         const [bookRes, videoRes, analysisRes] = await Promise.all([ fetch(bookUrl), fetch(videoUrl), fetch(analysisUrl) ]);
         if (!bookRes.ok || !videoRes.ok || !analysisRes.ok) throw new Error("Arama sunucusuna ulaşılamadı.");
        
@@ -252,14 +247,12 @@ export default function HomePage() {
         const videoData = await videoRes.json();
         const analysisData = await analysisRes.json();
 
-        // ★★★ DEĞİŞİKLİK: State yeni analiz sonuçlarıyla güncelleniyor.
         setAllResults({ 
           books: bookData?.sonuclar || [], 
           videos: videoData?.sonuclar || [],
           analyses: analysisData?.sonuclar || []
         });
 
-        // ★★★ DEĞİŞİKLİK: Aktif sekme öncelik sırasına göre belirleniyor.
         const bookCount = bookData?.sonuclar?.length || 0;
         const videoCount = videoData?.sonuclar?.length || 0;
         const analysisCount = analysisData?.sonuclar?.length || 0;
@@ -279,7 +272,6 @@ export default function HomePage() {
   const handleAuthorChange = (author) => { const newSet = new Set(selectedAuthors); newSet.has(author) ? newSet.delete(author) : newSet.add(author); setSelectedAuthors(newSet); };
   const handleClearFilters = () => { setQuery(""); setSelectedAuthors(new Set()); };
   
-  // ★★★ DEĞİŞİKLİK: `hasResults` kontrolü güncellendi.
   const hasResults = allResults.books.length > 0 || allResults.videos.length > 0 || allResults.analyses.length > 0;
  
   return (
@@ -313,18 +305,15 @@ export default function HomePage() {
              hasResults && (
               <motion.div key="results" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.02 } } }}>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  {/* ★★★ DEĞİŞİKLİK: Sekme listesi 3 sütunlu hale getirildi. */}
                   <TabsList className="grid w-full grid-cols-3 h-14 rounded-xl p-2 bg-slate-200/80">
                     <TabsTrigger value="kitaplar" className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 text-sm md:text-base gap-2 rounded-lg font-semibold"><BookOpen /> Kitaplar <Pill className="bg-emerald-100 text-emerald-800">{allResults.books.length}</Pill></TabsTrigger>
                     <TabsTrigger value="videolar" className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 text-sm md:text-base gap-2 rounded-lg font-semibold"><Video /> Videolar <Pill className="bg-sky-100 text-sky-800">{allResults.videos.length}</Pill></TabsTrigger>
-                    {/* ★★★ YENİ SEKME ★★★ */}
                     <TabsTrigger value="analizler" className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 text-sm md:text-base gap-2 rounded-lg font-semibold"><BotMessageSquare /> Analizler <Pill className="bg-violet-100 text-violet-800">{allResults.analyses.length}</Pill></TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="kitaplar" className="mt-8"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{allResults.books.map((r, i) => <ResultCard key={`book-${i}`} result={r} onReadClick={handleReadClick} query={query} index={i} />)}</div></TabsContent>
                   <TabsContent value="videolar" className="mt-8"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{allResults.videos.map((v, i) => <VideoCard key={`video-${i}`} video={v} index={i} />)}</div></TabsContent>
                   
-                  {/* ★★★ YENİ SEKME İÇERİĞİ ★★★ */}
                   <TabsContent value="analizler" className="mt-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                       {allResults.analyses.map((analysis, i) => (
