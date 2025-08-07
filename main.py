@@ -1,5 +1,5 @@
 # main.py
-# Versiyon 1.3.1 - Yerel geliştirme için modül import yolu düzeltildi.
+# Versiyon 1.5.0 - Analiz geçmişinde arama yapma özelliği eklendi.
 
 import logging
 import os
@@ -26,8 +26,7 @@ from whoosh.qparser import MultifieldParser, AndGroup
 from whoosh.searching import Searcher
 from deepgram import DeepgramClient, PrerecordedOptions
 
-# ★★★ ÇÖZÜM: Import yolu düzeltildi. ★★★
-from data.db import init_db, update_task, get_task 
+from data.db import init_db, update_task, get_task, get_all_completed_analyses
 
 # --- Kurulum ve Global Yapılandırma ---
 load_dotenv()
@@ -36,8 +35,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Mihmandar İlim Havuzu API",
-    version="1.3.1",
-    description="Tasavvufi eserlerde ve YouTube videolarında arama ve analiz yapma API'si."
+    version="1.5.0",
+    description="Tasavvufi eserlerde, YouTube videolarında ve video analizlerinde arama yapma API'si."
 )
 
 origins = [
@@ -54,9 +53,7 @@ BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
 PDF_DIR = DATA_DIR / "pdfler"
 INDEX_DIR = DATA_DIR / "whoosh_index"
-VIDEO_CACHE_FILE = DATA_DIR / "video_analysis_cache.json"
 
-# --- API İstemcileri ve Bağımlılıklar ---
 YOUTUBE_API_KEYS = [os.getenv(f"YOUTUBE_API_KEY{i}") for i in range(1, 7) if os.getenv(f"YOUTUBE_API_KEY{i}")]
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
@@ -64,12 +61,11 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 deepgram_client = DeepgramClient(DEEPGRAM_API_KEY) if DEEPGRAM_API_KEY else None
 deepseek_client = AsyncOpenAI(base_url="https://api.deepseek.com", api_key=DEEPSEEK_API_KEY) if DEEPSEEK_API_KEY else None
 
-# UYGULAMA BAŞLANGICINDA VERİTABANINI HAZIRLA
 @app.on_event("startup")
 async def startup_event():
     init_db()
 
-# --- Yardımcı Fonksiyonlar ve Bağımlılık Enjeksiyonu ---
+# --- Yardımcı Fonksiyonlar ve Bağımlılıklar ---
 def get_whoosh_index() -> Index:
     try: return open_dir(str(INDEX_DIR))
     except Exception as e:
@@ -78,15 +74,6 @@ def get_whoosh_index() -> Index:
 
 def get_searcher(ix: Index = Depends(get_whoosh_index)) -> Searcher:
     return ix.searcher()
-
-def load_video_cache() -> Dict[str, Any]:
-    if not VIDEO_CACHE_FILE.exists(): return {}
-    with open(VIDEO_CACHE_FILE, 'r', encoding='utf-8') as f:
-        try: return json.load(f)
-        except json.JSONDecodeError: return {}
-
-def save_video_cache(cache: Dict[str, Any]):
-    with open(VIDEO_CACHE_FILE, 'w', encoding='utf-8') as f: json.dump(cache, f, ensure_ascii=False, indent=4)
 
 def format_time(seconds: float) -> str:
     minutes, seconds = divmod(int(seconds), 60)
@@ -102,23 +89,15 @@ def download_audio_sync(url: str, task_id: str) -> bytes:
     temp_filepath = os.path.join(temp_dir, f"{task_id}_audio.m4a")
     ydl_opts = {'format': 'bestaudio/best', 'outtmpl': temp_filepath, 'quiet': True, 'no_warnings': True, 'noprogress': True}
     try:
-        logger.info(f"[{task_id}] yt-dlp ile indirme başlatılıyor: {temp_filepath}")
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-        logger.info(f"[{task_id}] Geçici dosyaya indirme tamamlandı.")
-        with open(temp_filepath, 'rb') as f:
-            return f.read()
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl: ydl.download([url])
+        with open(temp_filepath, 'rb') as f: return f.read()
     finally:
-        if os.path.exists(temp_filepath):
-            os.remove(temp_filepath)
-            logger.info(f"[{task_id}] Geçici dosya silindi: {temp_filepath}")
+        if os.path.exists(temp_filepath): os.remove(temp_filepath)
 
-# --- Arka Plan Görevi: Video Analizi (Veritabanı Kullanımlı) ---
 async def run_video_analysis(task_id: str, url: str):
     try:
         update_task(task_id, "processing", message="Video Bilgileri Alınıyor...")
-        meta_opts = {'quiet': True, 'skip_download': True, 'no_warnings': True}
-        with yt_dlp.YoutubeDL(meta_opts) as ydl:
+        with yt_dlp.YoutubeDL({'quiet': True, 'skip_download': True, 'no_warnings': True}) as ydl:
             metadata = await asyncio.to_thread(ydl.extract_info, url, download=False)
 
         update_task(task_id, "processing", message="Video Sesi İndiriliyor...")
@@ -143,22 +122,15 @@ async def run_video_analysis(task_id: str, url: str):
                 chunk_text = ""
         
         result = {"title": metadata.get("title"), "thumbnail": metadata.get("thumbnail"), "chapters": chapters}
-        video_id = extract_video_id(url)
-        if video_id:
-            cache = load_video_cache()
-            cache[video_id] = result
-            save_video_cache(cache)
-        
         update_task(task_id, "completed", result=result)
-        logger.info(f"[{task_id}] Analiz başarıyla tamamlandı.")
-
+        logger.info(f"[{task_id}] Analiz başarıyla tamamlandı ve veritabanına kaydedildi.")
     except Exception as e:
         logger.error(f"[{task_id}] Görev sırasında HATA oluştu: {e}", exc_info=True)
         update_task(task_id, "error", message=f"Analiz sırasında bir hata oluştu: {str(e)}")
 
 # --- API Endpoints ---
 @app.get("/")
-async def read_root(): return {"message": "Mihmandar API v1.3.1 Aktif"}
+async def read_root(): return {"message": "Mihmandar API v1.5.0 Aktif"}
 
 @app.get("/authors")
 async def get_all_authors(searcher: Searcher = Depends(get_searcher)):
@@ -179,6 +151,40 @@ async def search_books(q: str, authors: Optional[List[str]] = Query(None), searc
         return {"sonuclar": [{"kitap": hit["book"].title(), "yazar": hit["author"].title(), "sayfa": hit["page"], "alinti": hit.highlights("content") or hit["content"][:300], "pdf_dosyasi": hit["pdf_file"]} for hit in results]}
     return await asyncio.to_thread(_search)
 
+# ★★★ YENİ ENDPOINT ★★★
+@app.get("/search/analyses")
+async def search_analyses(q: str):
+    """
+    Veritabanındaki tamamlanmış analizlerin başlıklarında ve bölüm özetlerinde arama yapar.
+    """
+    if not q.strip():
+        return {"sonuclar": []}
+        
+    history = get_all_completed_analyses()
+    q_lower = q.lower()
+    matching_analyses = []
+    
+    for video_id, data in history.items():
+        if not isinstance(data, dict):
+            continue
+
+        title = data.get("title", "")
+        chapters = data.get("chapters", [])
+        chapters_text = " ".join(chapters)
+        
+        # Arama sorgusu başlıkta veya bölüm metinlerinde geçiyor mu kontrol et
+        if q_lower in title.lower() or q_lower in chapters_text.lower():
+            # Arama sonucuna video_id'yi de ekliyoruz
+            result_item = {
+                "video_id": video_id,
+                "title": title,
+                "thumbnail": data.get("thumbnail"),
+                "chapters": chapters
+            }
+            matching_analyses.append(result_item)
+            
+    return {"sonuclar": matching_analyses}
+
 @app.get("/books_by_author")
 async def get_books_by_author(searcher: Searcher = Depends(get_searcher)):
     def _process_books():
@@ -198,28 +204,23 @@ async def get_books_by_author(searcher: Searcher = Depends(get_searcher)):
 @app.get("/pdf/info")
 async def get_pdf_info(pdf_file: str):
     try:
-        decoded_pdf_file = urllib.parse.unquote(pdf_file)
-        pdf_path = PDF_DIR / decoded_pdf_file
+        pdf_path = PDF_DIR / urllib.parse.unquote(pdf_file)
         if not pdf_path.is_file(): raise HTTPException(status_code=404, detail="PDF bulunamadı.")
-        with fitz.open(pdf_path) as doc:
-            return {"total_pages": len(doc)}
+        with fitz.open(pdf_path) as doc: return {"total_pages": len(doc)}
     except Exception as e:
-        logger.error(f"PDF info hatası: pdf={pdf_file}, error={e}")
         raise HTTPException(status_code=500, detail="PDF bilgisi alınamadı.")
 
 @app.get("/pdf/page_image")
 def get_page_image(pdf_file: str, page_num: int = Query(..., gt=0)):
     try:
-        decoded_pdf_file = urllib.parse.unquote(pdf_file)
-        pdf_path = PDF_DIR / decoded_pdf_file
-        if not pdf_path.is_file(): raise HTTPException(status_code=404, detail=f"PDF bulunamadı: {decoded_pdf_file}")
+        pdf_path = PDF_DIR / urllib.parse.unquote(pdf_file)
+        if not pdf_path.is_file(): raise HTTPException(status_code=404, detail=f"PDF bulunamadı.")
         with fitz.open(pdf_path) as doc:
             if not (0 < page_num <= len(doc)): raise HTTPException(status_code=400, detail="Geçersiz sayfa.")
             page = doc.load_page(page_num - 1)
             pix = page.get_pixmap(dpi=150)
             return StreamingResponse(io.BytesIO(pix.tobytes("png")), media_type="image/png")
     except Exception as e:
-        logger.error(f"Sayfa resmi hatası: pdf={pdf_file}, page={page_num}, error={e}")
         raise HTTPException(status_code=500, detail="Sayfa resmi işlenirken hata oluştu.")
 
 @app.get("/search/videos")
@@ -243,8 +244,12 @@ async def search_videos(q: str):
 @app.post("/analyze/start")
 async def start_analysis(background_tasks: BackgroundTasks, url: str = Query(..., description="Analiz edilecek YouTube video URL'si")):
     if not deepgram_client or not deepseek_client: raise HTTPException(status_code=503, detail="Video analiz servisi yapılandırılmamış.")
-    if not extract_video_id(url): raise HTTPException(status_code=400, detail="Geçersiz YouTube URL'si.")
-    task_id = str(uuid.uuid4())
+    video_id = extract_video_id(url)
+    if not video_id: raise HTTPException(status_code=400, detail="Geçersiz YouTube URL'si.")
+    task_id = video_id
+    existing_task = get_task(task_id)
+    if existing_task and existing_task['status'] == 'completed':
+        return JSONResponse(status_code=200, content={"task_id": task_id, "message": "Bu video daha önce analiz edilmiş.", "result": existing_task['result']})
     update_task(task_id, "processing", message="Görev Başlatılıyor...")
     background_tasks.add_task(run_video_analysis, task_id, url)
     return JSONResponse(status_code=202, content={"task_id": task_id, "message": "Analiz başlatıldı."})
@@ -252,9 +257,9 @@ async def start_analysis(background_tasks: BackgroundTasks, url: str = Query(...
 @app.get("/analyze/status/{task_id}")
 async def get_analysis_status(task_id: str):
     task = get_task(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Görev bulunamadı.")
+    if not task: raise HTTPException(status_code=404, detail="Görev bulunamadı.")
     return task
 
 @app.get("/analysis_history")
-async def get_analysis_history(): return load_video_cache()
+async def get_analysis_history():
+    return get_all_completed_analyses()

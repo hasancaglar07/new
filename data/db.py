@@ -1,5 +1,5 @@
 # data/db.py
-# Versiyon 2.0 - Video analiz görevleri için veritabanı yönetimi eklendi.
+# Versiyon 2.1 - Kalıcı analiz geçmişi için fonksiyon eklendi.
 
 import sqlite3
 import os
@@ -26,7 +26,7 @@ def init_db():
         )
     """)
     
-    # YENİ: Video analiz görevleri için tablo
+    # Video analiz görevleri için tablo (kalıcı geçmişi de burada tutacağız)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS video_analysis_tasks (
             task_id TEXT PRIMARY KEY,
@@ -57,7 +57,7 @@ def get_all_qa():
     conn.close()
     return rows
 
-# --- YENİ GÖREV YÖNETİMİ FONKSİYONLARI ---
+# --- GÖREV YÖNETİMİ FONKSİYONLARI ---
 
 def update_task(task_id: str, status: str, message: str = None, result: dict = None):
     """Bir görevin durumunu atomik olarak oluşturur veya günceller."""
@@ -90,3 +90,32 @@ def get_task(task_id: str):
     
     result_dict = json.loads(row[3]) if row[3] else None
     return {"task_id": row[0], "status": row[1], "message": row[2], "result": result_dict}
+
+# ★★★ YENİ FONKSİYON ★★★
+def get_all_completed_analyses():
+    """
+    Veritabanındaki durumu 'completed' olan tüm analizleri getirir.
+    Bu fonksiyon, analiz geçmişi sayfasını doldurmak için kullanılır.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    # Sonucu olan ve tamamlanmış görevleri en yeniden en eskiye doğru sırala
+    cursor.execute("""
+        SELECT task_id, result FROM video_analysis_tasks 
+        WHERE status = 'completed' AND result IS NOT NULL 
+        ORDER BY created_at DESC
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+
+    history = {}
+    for row in rows:
+        video_id = row[0]  # Task_id artık video_id'yi temsil ediyor
+        try:
+            result_data = json.loads(row[1]) if row[1] else None
+            if result_data:
+                history[video_id] = result_data
+        except (json.JSONDecodeError, KeyError):
+            # Hatalı JSON verisi veya eksik anahtar varsa bu kaydı atla
+            continue
+    return history

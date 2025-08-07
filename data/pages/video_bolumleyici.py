@@ -1,4 +1,6 @@
 # pages/video_bolumleyici.py
+# Versiyon 2.0 - Geçmiş yönetimi API'ye bağlandı.
+
 import streamlit as st
 import os
 import re
@@ -9,6 +11,7 @@ import sys
 import subprocess
 import json
 import yt_dlp
+import requests # API isteği için eklendi
 from deepgram import DeepgramClient, PrerecordedOptions, FileSource
 
 # Logging ve Sayfa Yapılandırması
@@ -32,19 +35,23 @@ except Exception as e:
     st.error(f"API istemcileri başlatılamadı. Hata: {e}")
     st.stop()
 
-# --- GEÇMİŞ VERİSİ YÖNETİMİ ---
-HISTORY_FILE = "video_analiz_gecmisi.json"
+# --- GEÇMİŞ VERİSİ YÖNETİMİ (ARTIK API'DEN) ---
+# ★★★ DEĞİŞİKLİK: Backend API adresi. Yerelde çalışırken http://127.0.0.1:8000 olabilir.
+# Railway deploy'u için bu adres otomatik olarak ayarlanacaktır.
+API_URL = os.getenv("API_URL", "http://127.0.0.1:8000") 
 
+@st.cache_data(ttl=60) # Geçmişi 1 dakika cache'le
 def load_history():
-    if os.path.exists(HISTORY_FILE):
-        with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
-            try: return json.load(f)
-            except json.JSONDecodeError: return {}
-    return {}
+    """Artık yerel dosyadan değil, doğrudan FastAPI backend'inden geçmişi çeker."""
+    try:
+        response = requests.get(f"{API_URL}/analysis_history")
+        response.raise_for_status() # Hata varsa (4xx veya 5xx) exception fırlat
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        st.error(f"Geçmiş verisi alınamadı: {e}")
+        return {}
 
-def save_history(data):
-    with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+# save_history fonksiyonu artık gerekli değil ve silindi.
 
 # --- YARDIMCI FONKSİYONLAR ---
 @st.cache_data
@@ -127,11 +134,8 @@ chunk_duration = st.slider("Bölüm Uzunluğu (saniye)", min_value=60, max_value
 
 analysis_history = load_history()
 
-# --- ANALİZ SONUÇLARI İÇİN YER TUTUCU ---
-# Bu, analizin sonuçlarını geçmiş bölümünün üstünde göstermemizi sağlar.
 results_placeholder = st.container()
 
-# --- ANALİZ BAŞLATMA BUTONU ---
 if st.button("🎬 Analizi Başlat", type="primary", use_container_width=True):
     video_id = extract_video_id(youtube_link) if youtube_link else None
     if not video_id:
@@ -182,14 +186,13 @@ if st.button("🎬 Analizi Başlat", type="primary", use_container_width=True):
                         analysis_results_container.markdown("\n".join(f"- {c}" for c in all_chapters))
                     
                     st.success("Analiz tamamlandı!")
-
-                analysis_history[video_id] = {"title": metadata["title"], "thumbnail": metadata["thumbnail"], "chapters": all_chapters}
-                save_history(analysis_history)
+                
+                # ★★★ DEĞİŞİKLİK: save_history çağrısı kaldırıldı. Veri zaten backend'de saklanıyor.
                 st.info("Bu analiz sonucu gelecekteki sorgular için kaydedildi.")
             else:
                 st.error("Bu video için transkript alınamadı.")
 
-# --- GÖRSEL GEÇMİŞ BÖLÜMÜ (BUTONUN ALTINA TAŞINDI) ---
+# --- GÖRSEL GEÇMİŞ BÖLÜMÜ ---
 st.markdown("---")
 with st.expander("🖼️ Görsel Analiz Geçmişi", expanded=True):
     if not analysis_history:
