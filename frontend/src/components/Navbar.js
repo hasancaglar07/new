@@ -4,14 +4,15 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-// YENİ İKONLAR EKLENDİ
-import { Menu, X, LayoutGrid, Library, Youtube, Clapperboard } from 'lucide-react';
+// ★★★ Newspaper ikonu eklendi ★★★
+import { Menu, X, LayoutGrid, Library, Youtube, Clapperboard, Newspaper } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// YENİ: Her link için bir ikon tanımlıyoruz.
+// ★★★ navLinks dizisine "Makaleler" eklendi ★★★
 const navLinks = [
   { name: 'Ana Sayfa', href: '/', icon: <LayoutGrid className="h-5 w-5" /> },
   { name: 'Kitaplık', href: '/kitaplar', icon: <Library className="h-5 w-5" /> },
+  { name: 'Makaleler', href: '/makaleler', icon: <Newspaper className="h-5 w-5" /> }, // YENİ EKLENDİ
   { name: 'YouTube Arama', href: '/youtube-arama', icon: <Youtube className="h-5 w-5" /> },
   { name: 'Video Analizi', href: '/video-analizi', icon: <Clapperboard className="h-5 w-5" /> }, 
 ];
@@ -37,13 +38,10 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    // YENİ: Header artık sadece bir container, stil ana nav elemanında.
     <header className="sticky top-0 z-50 py-3">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        {/* YENİ: Yüzer ve oval tasarımlı ana navigasyon elemanı */}
         <nav className="relative flex justify-between items-center h-16 bg-white/80 backdrop-blur-xl rounded-full border border-slate-200/80 shadow-lg shadow-slate-300/10 px-6">
           
-          {/* Logo */}
           <div className="flex-shrink-0">
             <Link 
               href="/" 
@@ -54,7 +52,6 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Masaüstü Menüsü (İkonlu ve Hap Tasarımlı) */}
           <div className="hidden md:flex md:items-center md:space-x-2">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
@@ -62,7 +59,7 @@ export default function Navbar() {
                 <Link
                   key={link.name}
                   href={link.href}
-                  title={link.name} // İkonların üzerine gelince isim görünmesi için
+                  title={link.name}
                   className={`relative flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 ${
                     isActive 
                       ? 'bg-emerald-100 text-emerald-700' 
@@ -70,14 +67,12 @@ export default function Navbar() {
                   }`}
                 >
                   {link.icon}
-                  {/* YENİ: Yazı sadece geniş ekranlarda görünür */}
                   <span className="hidden lg:inline">{link.name}</span>
                 </Link>
               );
             })}
           </div>
 
-          {/* Mobil Menü Butonu (Hamburger) */}
           <div className="md:hidden flex items-center">
             <motion.button
               whileTap={{ scale: 0.9 }}
@@ -100,7 +95,6 @@ export default function Navbar() {
             </motion.button>
           </div>
           
-          {/* Mobil Menü Paneli (Yüzer Tasarım) */}
           <AnimatePresence>
             {isMenuOpen && (
               <motion.div
@@ -138,4 +132,4 @@ export default function Navbar() {
       </div>
     </header>
   );
-}
+}``

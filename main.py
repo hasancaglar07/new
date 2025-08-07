@@ -1,5 +1,5 @@
 # main.py
-# Versiyon 1.5.0 - Analiz geçmişinde arama yapma özelliği eklendi.
+# Versiyon 2.0.1 - Eksik import'lar düzeltildi.
 
 import logging
 import os
@@ -9,9 +9,7 @@ import re
 import asyncio
 import urllib.parse
 from pathlib import Path
-from typing import List, Optional, Dict, Any
-import uuid
-import tempfile
+from typing import List, Optional
 
 import fitz
 import requests
@@ -22,11 +20,15 @@ from fastapi import FastAPI, HTTPException, Query, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from whoosh.index import open_dir, Index
-from whoosh.qparser import MultifieldParser, AndGroup
+from whoosh.qparser import MultifieldParser, AndGroup, QueryParser
 from whoosh.searching import Searcher
+
+# ★★★ EKSİK OLAN IMPORT'LAR BURAYA EKLENDİ ★★★
 from deepgram import DeepgramClient, PrerecordedOptions
 
-from data.db import init_db, update_task, get_task, get_all_completed_analyses
+# Hem ana db'yi hem de makale db'sini import ediyoruz
+from data.db import init_db as init_main_db, update_task, get_task, get_all_completed_analyses
+from data.articles_db import get_all_articles_by_category, get_article_by_id, init_db as init_articles_db
 
 # --- Kurulum ve Global Yapılandırma ---
 load_dotenv()
@@ -35,8 +37,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Mihmandar İlim Havuzu API",
-    version="1.5.0",
-    description="Tasavvufi eserlerde, YouTube videolarında ve video analizlerinde arama yapma API'si."
+    version="2.0.1",
+    description="Tasavvufi eserlerde, makalelerde, YouTube videolarında ve video analizlerinde arama yapma API'si."
 )
 
 origins = [
@@ -61,9 +63,11 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 deepgram_client = DeepgramClient(DEEPGRAM_API_KEY) if DEEPGRAM_API_KEY else None
 deepseek_client = AsyncOpenAI(base_url="https://api.deepseek.com", api_key=DEEPSEEK_API_KEY) if DEEPSEEK_API_KEY else None
 
+
 @app.on_event("startup")
 async def startup_event():
-    init_db()
+    init_main_db()
+    init_articles_db()
 
 # --- Yardımcı Fonksiyonlar ve Bağımlılıklar ---
 def get_whoosh_index() -> Index:
@@ -74,7 +78,8 @@ def get_whoosh_index() -> Index:
 
 def get_searcher(ix: Index = Depends(get_whoosh_index)) -> Searcher:
     return ix.searcher()
-
+    
+# (Diğer yardımcı fonksiyonlar - format_time, extract_video_id, download_audio_sync, run_video_analysis - aynı kalıyor)
 def format_time(seconds: float) -> str:
     minutes, seconds = divmod(int(seconds), 60)
     hours, minutes = divmod(minutes, 60)
@@ -128,69 +133,65 @@ async def run_video_analysis(task_id: str, url: str):
         logger.error(f"[{task_id}] Görev sırasında HATA oluştu: {e}", exc_info=True)
         update_task(task_id, "error", message=f"Analiz sırasında bir hata oluştu: {str(e)}")
 
+
 # --- API Endpoints ---
 @app.get("/")
-async def read_root(): return {"message": "Mihmandar API v1.5.0 Aktif"}
+async def read_root(): return {"message": "Mihmandar API v2.0.1 Aktif"}
 
-@app.get("/authors")
-async def get_all_authors(searcher: Searcher = Depends(get_searcher)):
-    def _get_authors(): return {"authors": sorted(list({f['author'].title() for f in searcher.all_stored_fields() if 'author' in f}))}
-    return await asyncio.to_thread(_get_authors)
-
-@app.get("/search/books")
-async def search_books(q: str, authors: Optional[List[str]] = Query(None), searcher: Searcher = Depends(get_searcher)):
+@app.get("/search/all")
+async def search_all(q: str, authors: Optional[List[str]] = Query(None), searcher: Searcher = Depends(get_searcher)):
     def _search():
-        parser = MultifieldParser(["content", "author"], schema=searcher.schema, group=AndGroup)
-        query_parts = [f"content:({q.lower()})"]
+        parser = MultifieldParser(["title", "content", "author"], schema=searcher.schema, group=AndGroup)
+        query_parts = [f"({q.lower()})"]
         if authors:
             author_filter = " OR ".join([f'author:"{a.lower()}"' for a in authors])
             query_parts.append(f"({author_filter})")
         final_query_str = " AND ".join(query_parts)
         parsed_query = parser.parse(final_query_str)
         results = searcher.search(parsed_query, limit=150)
-        return {"sonuclar": [{"kitap": hit["book"].title(), "yazar": hit["author"].title(), "sayfa": hit["page"], "alinti": hit.highlights("content") or hit["content"][:300], "pdf_dosyasi": hit["pdf_file"]} for hit in results]}
+        formatted_results = []
+        for hit in results:
+            result_type = hit.get('type')
+            if result_type == 'book':
+                formatted_results.append({
+                    "type": "book", "kitap": hit["title"], "yazar": hit["author"],
+                    "sayfa": hit["page_or_id"], "alinti": hit.highlights("content") or hit.get("content", "")[:300],
+                    "pdf_dosyasi": hit["source"]
+                })
+            elif result_type == 'article':
+                formatted_results.append({
+                    "type": "article", "id": hit["page_or_id"], "baslik": hit["title"],
+                    "yazar": hit["author"], "kategori": hit["category"], "url": hit["source"],
+                    "alinti": hit.highlights("content") or hit.get("content", "")[:300]
+                })
+        return {"sonuclar": formatted_results}
     return await asyncio.to_thread(_search)
 
-# ★★★ YENİ ENDPOINT ★★★
-@app.get("/search/analyses")
-async def search_analyses(q: str):
-    """
-    Veritabanındaki tamamlanmış analizlerin başlıklarında ve bölüm özetlerinde arama yapar.
-    """
-    if not q.strip():
-        return {"sonuclar": []}
-        
-    history = get_all_completed_analyses()
-    q_lower = q.lower()
-    matching_analyses = []
-    
-    for video_id, data in history.items():
-        if not isinstance(data, dict):
-            continue
+@app.get("/articles/by-category")
+async def list_articles_by_category():
+    return await asyncio.to_thread(get_all_articles_by_category)
 
-        title = data.get("title", "")
-        chapters = data.get("chapters", [])
-        chapters_text = " ".join(chapters)
-        
-        # Arama sorgusu başlıkta veya bölüm metinlerinde geçiyor mu kontrol et
-        if q_lower in title.lower() or q_lower in chapters_text.lower():
-            # Arama sonucuna video_id'yi de ekliyoruz
-            result_item = {
-                "video_id": video_id,
-                "title": title,
-                "thumbnail": data.get("thumbnail"),
-                "chapters": chapters
-            }
-            matching_analyses.append(result_item)
-            
-    return {"sonuclar": matching_analyses}
+@app.get("/article/{article_id}")
+async def read_article(article_id: int):
+    article = await asyncio.to_thread(get_article_by_id, article_id)
+    if not article:
+        raise HTTPException(status_code=404, detail="Makale bulunamadı.")
+    return article
+
+@app.get("/authors")
+async def get_all_authors(searcher: Searcher = Depends(get_searcher)):
+    def _get_authors():
+        all_authors = {f['author'].title() for f in searcher.all_stored_fields() if 'author' in f and f['author']}
+        return {"authors": sorted(list(all_authors))}
+    return await asyncio.to_thread(_get_authors)
 
 @app.get("/books_by_author")
 async def get_books_by_author(searcher: Searcher = Depends(get_searcher)):
     def _process_books():
         books_data = {}
-        for fields in searcher.all_stored_fields():
-            author, book, pdf_file = fields.get('author', 'Bilinmeyen').title(), fields.get('book', 'Bilinmeyen').title(), fields.get('pdf_file')
+        book_results = searcher.search(QueryParser("type", searcher.schema).parse("book"), limit=None)
+        for fields in book_results:
+            author, book, pdf_file = fields.get('author', 'Bilinmeyen').title(), fields.get('title', 'Bilinmeyen').title(), fields.get('source')
             if author not in books_data: books_data[author] = {}
             if book not in books_data[author] and pdf_file:
                  try:
@@ -200,6 +201,26 @@ async def get_books_by_author(searcher: Searcher = Depends(get_searcher)):
                  except Exception: continue
         return {"kutuphane": [{"yazar": author, "kitaplar": [{"kitap_adi": title, **details} for title, details in books.items()]} for author, books in sorted(books_data.items())]}
     return await asyncio.to_thread(_process_books)
+
+# (Geri kalan tüm endpoint'ler - search/analyses, pdf/info, pdf/page_image, search/videos, analyze/start, analyze/status, analysis_history - aynı kalıyor)
+# Örnek olarak bir tanesini bırakıyorum, diğerleri sizde tam haliyle durmalı.
+@app.get("/search/analyses")
+async def search_analyses(q: str):
+    if not q.strip(): return {"sonuclar": []}
+    history = get_all_completed_analyses()
+    q_lower = q.lower()
+    matching_analyses = []
+    for video_id, data in history.items():
+        if not isinstance(data, dict): continue
+        title = data.get("title", "")
+        chapters = data.get("chapters", [])
+        chapters_text = " ".join(chapters)
+        if q_lower in title.lower() or q_lower in chapters_text.lower():
+            matching_analyses.append({
+                "video_id": video_id, "title": title,
+                "thumbnail": data.get("thumbnail"), "chapters": chapters
+            })
+    return {"sonuclar": matching_analyses}
 
 @app.get("/pdf/info")
 async def get_pdf_info(pdf_file: str):

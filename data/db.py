@@ -1,9 +1,13 @@
 # data/db.py
-# Versiyon 2.1 - Kalıcı analiz geçmişi için fonksiyon eklendi.
+# Versiyon 2.2 - Makale tablosu ve ilgili fonksiyonlar eklendi.
 
 import sqlite3
 import os
 import json
+import logging
+
+# Hata ayıklama ve bilgi mesajları için logging yapılandırması
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 DB_FILE = os.path.join(os.path.dirname(__file__), "qa_database.db")
 
@@ -26,7 +30,7 @@ def init_db():
         )
     """)
     
-    # Video analiz görevleri için tablo (kalıcı geçmişi de burada tutacağız)
+    # Video analiz görevleri için tablo
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS video_analysis_tasks (
             task_id TEXT PRIMARY KEY,
@@ -34,6 +38,19 @@ def init_db():
             message TEXT,
             result TEXT, -- Sonuç JSON string olarak burada saklanacak
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # ★★★ YENİ: Makaleler için tablo ★★★
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS articles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            category TEXT NOT NULL,
+            url TEXT UNIQUE NOT NULL, -- Aynı makaleyi tekrar eklememek için
+            author TEXT,
+            scraped_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
     
@@ -56,6 +73,72 @@ def get_all_qa():
     rows = cursor.fetchall()
     conn.close()
     return rows
+
+# ★★★ YENİ FONKSİYON: Makale kaydetmek için ★★★
+def save_article(title, content, category, url, author):
+    """
+    Çekilen bir makaleyi veritabanına kaydeder.
+    Eğer URL zaten varsa, üzerine yazmaz (IGNORE).
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT OR IGNORE INTO articles (title, content, category, url, author)
+            VALUES (?, ?, ?, ?, ?)
+        """, (title, content, category, url, author))
+        conn.commit()
+        # Eğer yeni bir satır eklendiyse (yani makale zaten mevcut değilse), cursor.rowcount > 0 olur.
+        if cursor.rowcount > 0:
+            logging.info(f"Yeni makale veritabanına eklendi: {title}")
+        # else:
+            # Her seferinde loglamamak için bu satırı yorumda bırakabiliriz.
+            # logging.info(f"Bu makale zaten veritabanında mevcut: {title}")
+
+    except sqlite3.IntegrityError:
+        # Bu hata INSERT OR IGNORE ile genellikle oluşmaz ama bir güvenlik katmanı olarak kalabilir.
+        logging.warning(f"Bu URL zaten kayıtlı (IntegrityError): {url}")
+    except Exception as e:
+        logging.error(f"Makale kaydedilirken hata oluştu: {e}")
+    finally:
+        conn.close()
+
+# ★★★ YENİ FONKSİYON: Makaleleri kategorilere göre çekmek için ★★★
+def get_all_articles_by_category():
+    """Tüm makaleleri kategorilerine göre gruplanmış şekilde döndürür."""
+    conn = get_connection()
+    # Sonuçları sözlük olarak almak için row_factory kullanıyoruz
+    conn.row_factory = sqlite3.Row 
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT id, title, category, author, url FROM articles ORDER BY category, title")
+    rows = cursor.fetchall()
+    
+    articles_by_category = {}
+    for row in rows:
+        category = row['category']
+        if category not in articles_by_category:
+            articles_by_category[category] = []
+        
+        # Her bir makaleyi sözlük olarak ekle
+        articles_by_category[category].append(dict(row))
+        
+    conn.close()
+    return articles_by_category
+
+# ★★★ YENİ FONKSİYON: Tek bir makaleyi ID ile çekmek için ★★★
+def get_article_by_id(article_id: int):
+    """Verilen ID'ye sahip makalenin tüm detaylarını döndürür."""
+    conn = get_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM articles WHERE id = ?", (article_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    return dict(row) if row else None
+
 
 # --- GÖREV YÖNETİMİ FONKSİYONLARI ---
 
@@ -91,7 +174,6 @@ def get_task(task_id: str):
     result_dict = json.loads(row[3]) if row[3] else None
     return {"task_id": row[0], "status": row[1], "message": row[2], "result": result_dict}
 
-# ★★★ YENİ FONKSİYON ★★★
 def get_all_completed_analyses():
     """
     Veritabanındaki durumu 'completed' olan tüm analizleri getirir.
@@ -99,7 +181,6 @@ def get_all_completed_analyses():
     """
     conn = get_connection()
     cursor = conn.cursor()
-    # Sonucu olan ve tamamlanmış görevleri en yeniden en eskiye doğru sırala
     cursor.execute("""
         SELECT task_id, result FROM video_analysis_tasks 
         WHERE status = 'completed' AND result IS NOT NULL 
@@ -110,12 +191,11 @@ def get_all_completed_analyses():
 
     history = {}
     for row in rows:
-        video_id = row[0]  # Task_id artık video_id'yi temsil ediyor
+        video_id = row[0]
         try:
             result_data = json.loads(row[1]) if row[1] else None
             if result_data:
                 history[video_id] = result_data
         except (json.JSONDecodeError, KeyError):
-            # Hatalı JSON verisi veya eksik anahtar varsa bu kaydı atla
             continue
     return history
