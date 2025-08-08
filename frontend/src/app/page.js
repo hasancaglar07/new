@@ -186,7 +186,7 @@ export default function HomePage() {
                     Yediulya E-kütüphanesi
                 </span>
             </h1>
-            <p className="mt-3 md:mt-5 text-base md:text-xl text-slate-600 max-w-3xl mx-auto">Üstadlarımızın eserlerinde, sohbetlerinde ve analizlerinde derinlemesine arama yapın.</p>
+            <p className="mt-3 md:mt-5 text-base md:text-xl text-slate-600 max-w-3xl mx-auto">Üstadlarımızın eserlerinde, sohbetlerinde derinlemesine arama yapın.</p>
             <LogoCarousel />
           </motion.header>
 

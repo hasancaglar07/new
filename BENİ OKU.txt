@@ -13,6 +13,11 @@ npm run dev
 http://localhost:3000
 
 
+**DEEPSEEK APİ** ÖDEME VAR !
+**railway.com BACKEND** ÖDEME VAR 5$
+**VERCEL** ÖDEME YOK !
+**TURSO VERITBANI KAYIT ORTAK** ÖDEME YOK ŞİMDİLİK !
+
 ****KİTAP ÇEKME********
 ****Şu an itibarıyla, projenizin backend tarafı yediulya.org'daki tüm makaleleri çekip kendi veritabanında saklayacak yeteneğe kavuştu.
 Bu script'i nasıl çalıştıracaksınız?
@@ -31,3 +36,9 @@ python create_index.py
 ********ÇEKİLEN METİNLERİ DÜZENLEME *******
 
 python format_articles.py
+
+
+
+*****TURSO SQL KAYITLAR***** BU TURSO VERİTABANI KAYDEDİYOR.
+libsql://yediulya-analiz-hasancaglar07.aws-eu-west-1.turso.io
+eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NTQ2MDkxMjUsImlkIjoiNDNlMDA1OTctMzRmNC00ZTAyLTljZDctMjU4ZTZkMDk5ZmNiIiwicmlkIjoiZTk3MjQ5ZjUtNmNhNS00MDJkLWE5MDQtYTRhODc3ZWU3NTA2In0.Fy_QpxmRgAmSYWGE48zqvtCjN1kKZ4hRc1w-Qu1aM5n0AS1z9R3oaSoi0xevYIiQT0_smT0T_zLQeVrCNyYVAQ

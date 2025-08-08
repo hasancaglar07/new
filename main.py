@@ -1,5 +1,5 @@
 # main.py
-# Versiyon 2.2.0 - /books_by_author ve /articles/by-category için önbellekleme eklendi.
+# Versiyon 3.2 - Geriye dönük uyumluluk için tüm ClientOptions importları kaldırıldı.
 
 import logging
 import os
@@ -25,9 +25,12 @@ from whoosh.index import open_dir, Index
 from whoosh.qparser import MultifieldParser, AndGroup, QueryParser
 from whoosh.searching import Searcher
 
+# ★★★ DÜZELTME: SORUNLU IMPORT TAMAMEN KALDIRILDI ★★★
 from deepgram import DeepgramClient, PrerecordedOptions
-from data.db import init_db as init_main_db, update_task, get_task, get_all_completed_analyses
-from data.articles_db import get_all_articles_by_category, get_article_by_id, init_db as init_articles_db
+
+# data.db ve articles_db importları doğru.
+from data.db import init_db, update_task, get_task, get_all_completed_analyses
+from data.articles_db import get_all_articles_by_category, get_article_by_id
 
 # --- Kurulum ve Global Yapılandırma ---
 load_dotenv()
@@ -36,8 +39,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Mihmandar İlim Havuzu API",
-    version="2.2.0",
-    description="Tasavvufi eserlerde, makalelerde, YouTube videolarında ve video analizlerinde arama yapma API'si."
+    version="3.2",
+    description="Tasavvufi eserlerde, makalelerde ve YouTube videolarında arama yapma API'si. Analiz geçmişi Turso'da saklanır."
 )
 
 origins = [
@@ -55,25 +58,23 @@ DATA_DIR = BASE_DIR / "data"
 PDF_DIR = DATA_DIR / "pdfler"
 INDEX_DIR = DATA_DIR / "whoosh_index"
 
-# ★★★ YENİ: Hafızada tutulacak önbellek (cache) değişkenleri ★★★
 ARTICLES_CACHE = {"data": None, "timestamp": 0}
 BOOKS_CACHE = {"data": None, "timestamp": 0}
-CACHE_TTL = 86400  # 1 saat (saniye cinsinden)
+CACHE_TTL = 3600
 
 YOUTUBE_API_KEYS = [os.getenv(f"YOUTUBE_API_KEY{i}") for i in range(1, 7) if os.getenv(f"YOUTUBE_API_KEY{i}")]
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
-deepgram_client = DeepgramClient(DEEPGRAM_API_KEY) if DEEPGRAM_API_KEY else None
+# ★★★ DÜZELTME: Deepgram istemcisini sadece ihtiyaç anında, en basit haliyle oluşturacağız. ★★★
 deepseek_client = AsyncOpenAI(base_url="https://api.deepseek.com", api_key=DEEPSEEK_API_KEY) if DEEPSEEK_API_KEY else None
 
 @app.on_event("startup")
 async def startup_event():
-    init_main_db()
-    init_articles_db()
+    init_db()
 
-# --- Yardımcı Fonksiyonlar ve Bağımlılıklar ---
-def get_whoosh_index() -> Index:
+# --- Yardımcı Fonksiyonlar ---
+def get_whoosh_index():
     try: return open_dir(str(INDEX_DIR))
     except Exception as e:
         logger.error(f"Kritik Hata: Whoosh indeksi '{INDEX_DIR}' adresinde bulunamadı: {e}")
@@ -101,18 +102,29 @@ def download_audio_sync(url: str, task_id: str) -> bytes:
     finally:
         if os.path.exists(temp_filepath): os.remove(temp_filepath)
 
+# --- ANA İŞLEV ---
 async def run_video_analysis(task_id: str, url: str):
     try:
         update_task(task_id, "processing", message="Video Bilgileri Alınıyor...")
         with yt_dlp.YoutubeDL({'quiet': True, 'skip_download': True, 'no_warnings': True}) as ydl:
             metadata = await asyncio.to_thread(ydl.extract_info, url, download=False)
+            
         update_task(task_id, "processing", message="Video Sesi İndiriliyor...")
         audio_content = await asyncio.to_thread(download_audio_sync, url, task_id)
+        
         update_task(task_id, "processing", message="Ses Metne Dönüştürülüyor...")
+        
+        # ★★★ DÜZELTME: İstemciyi en basit ve hatasız haliyle oluşturuyoruz. ★★★
+        # Zaman aşımı ayarı şimdilik kaldırıldı.
+        deepgram_client = DeepgramClient(DEEPGRAM_API_KEY)
+
         source = {'buffer': audio_content}
         options = PrerecordedOptions(model="nova-2", language="tr", smart_format=True, utterances=True)
+        
         response = await deepgram_client.listen.asyncrest.v("1").transcribe_file(source, options)
+        
         if not response.results or not response.results.utterances: raise ValueError("Videodan metin çıkarılamadı.")
+        
         update_task(task_id, "processing", message="Konu Başlıkları Oluşturuluyor...")
         chapters, chunk_text, start_time = [], "", 0
         utterances = response.results.utterances
@@ -124,9 +136,11 @@ async def run_video_analysis(task_id: str, url: str):
                 title = comp_res.choices[0].message.content.strip().replace('"', '')
                 chapters.append(f"**{format_time(start_time)}** - {title}")
                 chunk_text = ""
+                
         result = {"title": metadata.get("title"), "thumbnail": metadata.get("thumbnail"), "chapters": chapters}
         update_task(task_id, "completed", result=result)
-        logger.info(f"[{task_id}] Analiz başarıyla tamamlandı ve veritabanına kaydedildi.")
+        logger.info(f"[{task_id}] Analiz başarıyla tamamlandı ve Turso veritabanına kaydedildi.")
+        
     except Exception as e:
         logger.error(f"[{task_id}] Görev sırasında HATA oluştu: {e}", exc_info=True)
         update_task(task_id, "error", message=f"Analiz sırasında bir hata oluştu: {str(e)}")
@@ -134,8 +148,26 @@ async def run_video_analysis(task_id: str, url: str):
 
 # --- API Endpoints ---
 @app.get("/")
-async def read_root(): return {"message": "Mihmandar API v2.2.0 Aktif (Optimize Edilmiş)"}
+async def read_root(): return {"message": "Mihmandar API v3.2 Aktif"}
 
+@app.post("/analyze/start")
+async def start_analysis(background_tasks: BackgroundTasks, url: str = Query(..., description="Analiz edilecek YouTube video URL'si")):
+    if not DEEPGRAM_API_KEY or not DEEPSEEK_API_KEY: 
+        raise HTTPException(status_code=503, detail="Video analiz servisi yapılandırılmamış.")
+        
+    video_id = extract_video_id(url)
+    if not video_id: raise HTTPException(status_code=400, detail="Geçersiz YouTube URL'si.")
+        
+    task_id = video_id
+    existing_task = get_task(task_id)
+    if existing_task and existing_task['status'] == 'completed':
+        return JSONResponse(status_code=200, content={"task_id": task_id, "message": "Bu video daha önce analiz edilmiş.", "result": existing_task['result']})
+        
+    update_task(task_id, "processing", message="Görev Başlatılıyor...")
+    background_tasks.add_task(run_video_analysis, task_id, url)
+    return JSONResponse(status_code=202, content={"task_id": task_id, "message": "Analiz başlatıldı."})
+
+# ... Diğer tüm endpointleriniz ...
 @app.get("/search/all")
 async def search_all(q: str, authors: Optional[List[str]] = Query(None), searcher: Searcher = Depends(get_searcher)):
     def _search():
@@ -169,18 +201,15 @@ async def search_all(q: str, authors: Optional[List[str]] = Query(None), searche
 async def list_articles_by_category():
     now = time.time()
     if ARTICLES_CACHE["data"] and (now - ARTICLES_CACHE["timestamp"] < CACHE_TTL):
-        logger.info("Makale listesi önbellekten sunuldu.")
         return ARTICLES_CACHE["data"]
-    
-    logger.info("Makale listesi veritabanından okunuyor ve önbellekleniyor...")
-    data = await asyncio.to_thread(get_all_articles_by_category)
+    data = get_all_articles_by_category()
     ARTICLES_CACHE["data"] = data
     ARTICLES_CACHE["timestamp"] = now
     return data
 
 @app.get("/article/{article_id}")
 async def read_article(article_id: int):
-    article = await asyncio.to_thread(get_article_by_id, article_id)
+    article = get_article_by_id(article_id)
     if not article:
         raise HTTPException(status_code=404, detail="Makale bulunamadı.")
     return article
@@ -196,10 +225,8 @@ async def get_all_authors(searcher: Searcher = Depends(get_searcher)):
 async def get_books_by_author():
     now = time.time()
     if BOOKS_CACHE["data"] and (now - BOOKS_CACHE["timestamp"] < CACHE_TTL):
-        logger.info("Kitap listesi önbellekten sunuldu.")
         return BOOKS_CACHE["data"]
 
-    logger.info("Kitap listesi dosyadan okunuyor ve önbellekleniyor...")
     try:
         with open(DATA_DIR / "book_metadata.json", 'r', encoding='utf-8') as f:
             all_books = json.load(f)
@@ -225,10 +252,8 @@ async def get_books_by_author():
         return response_data
 
     except FileNotFoundError:
-        logger.error("book_metadata.json dosyası bulunamadı. Lütfen create_index.py script'ini çalıştırın.")
         raise HTTPException(status_code=500, detail="Kitap verileri hazır değil.")
     except Exception as e:
-        logger.error(f"Kitap listesi işlenirken hata: {e}")
         raise HTTPException(status_code=500, detail="Kitap listesi işlenemedi.")
 
 @app.get("/search/analyses")
@@ -288,19 +313,6 @@ async def search_videos(q: str):
                 elif response.status_code == 403: continue
             except requests.RequestException: break
     return {"sonuclar": all_videos}
-
-@app.post("/analyze/start")
-async def start_analysis(background_tasks: BackgroundTasks, url: str = Query(..., description="Analiz edilecek YouTube video URL'si")):
-    if not deepgram_client or not deepseek_client: raise HTTPException(status_code=503, detail="Video analiz servisi yapılandırılmamış.")
-    video_id = extract_video_id(url)
-    if not video_id: raise HTTPException(status_code=400, detail="Geçersiz YouTube URL'si.")
-    task_id = video_id
-    existing_task = get_task(task_id)
-    if existing_task and existing_task['status'] == 'completed':
-        return JSONResponse(status_code=200, content={"task_id": task_id, "message": "Bu video daha önce analiz edilmiş.", "result": existing_task['result']})
-    update_task(task_id, "processing", message="Görev Başlatılıyor...")
-    background_tasks.add_task(run_video_analysis, task_id, url)
-    return JSONResponse(status_code=202, content={"task_id": task_id, "message": "Analiz başlatıldı."})
 
 @app.get("/analyze/status/{task_id}")
 async def get_analysis_status(task_id: str):
