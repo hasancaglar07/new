@@ -1,5 +1,5 @@
 # main.py
-# Versiyon 3.2 - Geriye dönük uyumluluk için tüm ClientOptions importları kaldırıldı.
+# Versiyon 3.3 - Sunucu önbelleklemesini önlemek için /analysis_history endpoint'ine Cache-Control başlığı eklendi.
 
 import logging
 import os
@@ -18,14 +18,14 @@ import requests
 import yt_dlp
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query, Depends, BackgroundTasks
+# ★★★ DEĞİŞİKLİK: Response sınıfını FastAPI'den import ediyoruz ★★★
+from fastapi import FastAPI, HTTPException, Query, Depends, BackgroundTasks, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from whoosh.index import open_dir, Index
 from whoosh.qparser import MultifieldParser, AndGroup, QueryParser
 from whoosh.searching import Searcher
 
-# ★★★ DÜZELTME: SORUNLU IMPORT TAMAMEN KALDIRILDI ★★★
 from deepgram import DeepgramClient, PrerecordedOptions
 
 # data.db ve articles_db importları doğru.
@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Mihmandar İlim Havuzu API",
-    version="3.2",
+    version="3.3",
     description="Tasavvufi eserlerde, makalelerde ve YouTube videolarında arama yapma API'si. Analiz geçmişi Turso'da saklanır."
 )
 
@@ -66,7 +66,6 @@ YOUTUBE_API_KEYS = [os.getenv(f"YOUTUBE_API_KEY{i}") for i in range(1, 7) if os.
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
-# ★★★ DÜZELTME: Deepgram istemcisini sadece ihtiyaç anında, en basit haliyle oluşturacağız. ★★★
 deepseek_client = AsyncOpenAI(base_url="https://api.deepseek.com", api_key=DEEPSEEK_API_KEY) if DEEPSEEK_API_KEY else None
 
 @app.on_event("startup")
@@ -114,8 +113,6 @@ async def run_video_analysis(task_id: str, url: str):
         
         update_task(task_id, "processing", message="Ses Metne Dönüştürülüyor...")
         
-        # ★★★ DÜZELTME: İstemciyi en basit ve hatasız haliyle oluşturuyoruz. ★★★
-        # Zaman aşımı ayarı şimdilik kaldırıldı.
         deepgram_client = DeepgramClient(DEEPGRAM_API_KEY)
 
         source = {'buffer': audio_content}
@@ -148,7 +145,7 @@ async def run_video_analysis(task_id: str, url: str):
 
 # --- API Endpoints ---
 @app.get("/")
-async def read_root(): return {"message": "Mihmandar API v3.2 Aktif"}
+async def read_root(): return {"message": "Mihmandar API v3.3 Aktif"}
 
 @app.post("/analyze/start")
 async def start_analysis(background_tasks: BackgroundTasks, url: str = Query(..., description="Analiz edilecek YouTube video URL'si")):
@@ -320,6 +317,15 @@ async def get_analysis_status(task_id: str):
     if not task: raise HTTPException(status_code=404, detail="Görev bulunamadı.")
     return task
 
+# ★★★ ANA DEĞİŞİKLİK BURADA ★★★
 @app.get("/analysis_history")
-async def get_analysis_history():
+async def get_analysis_history(response: Response):
+    """
+    Tüm tamamlanmış analizleri getirir ve sunucu tarafı önbelleklemesini engeller.
+    """
+    # Bu başlıklar, Vercel/Railway gibi platformlara bu cevabı asla önbelleğe almamasını söyler.
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    
     return get_all_completed_analyses()

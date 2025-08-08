@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, History, Loader2, ServerCrash, FileQuestion, Repeat, ExternalLink, AlertTriangle, CheckCircle2, Circle, Lightbulb } from "lucide-react";
@@ -30,7 +30,6 @@ function EnhancedAnalysisStatusCard({ statusMessage }) {
     const [progress, setProgress] = useState(13);
     const [currentTip, setCurrentTip] = useState(0);
 
-    // ★★★ SAĞLAMLAŞTIRILMIŞ ANAHTAR KELİMELER ★★★
     const steps = [
         { id: 1, text: "Görev Başlatılıyor", keyword: "başlat" },
         { id: 2, text: "Video Bilgileri Alınıyor", keyword: "bilgi" },
@@ -96,10 +95,6 @@ function EnhancedAnalysisStatusCard({ statusMessage }) {
         </motion.div>
     );
 }
-
-// --- DİĞER BİLEŞENLER ---
-// (Diğer bileşenlerde değişiklik yok, olduğu gibi kalabilirler)
-// ...
 
 function AnalysisResultCard({ result, url }) {
     const videoId = extractVideoId(url);
@@ -188,22 +183,41 @@ export default function VideoAnalysisPage() {
     const [analysisResult, setAnalysisResult] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [history, setHistory] = useState([]);
+    const [history, setHistory] = useState([]); // ★★★ DÜZELTME: Boş dizi ile başlatıldı
     const [historyLoading, setHistoryLoading] = useState(true);
     const [taskId, setTaskId] = useState(null);
     const [statusMessage, setStatusMessage] = useState("");
     const pollingIntervalRef = useRef(null);
 
+    const fetchHistory = useCallback(async () => {
+        setHistoryLoading(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/analysis_history`);
+            const data = await response.json();
+            // ★★★ DÜZELTME: API'den gelen obje, düzgün bir diziye çevriliyor
+            const formattedHistory = Object.entries(data).map(([videoId, videoData]) => ({
+                id: videoId,
+                data: videoData,
+            })).reverse(); // En yeni en üste
+            setHistory(formattedHistory);
+        } catch (err) {
+            console.error("Geçmiş alınamadı:", err);
+            setError("Analiz geçmişi yüklenirken bir hata oluştu.");
+        } finally {
+            setHistoryLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
-        const fetchHistory = async () => {
-            try {
-                const response = await fetch(`${API_BASE_URL}/analysis_history`);
-                const data = await response.json();
-                setHistory(Object.entries(data).reverse());
-            } catch (err) { console.error("Geçmiş alınamadı:", err); }
-            finally { setHistoryLoading(false); }
-        };
         fetchHistory();
+    }, [fetchHistory]);
+    
+    // ★★★ İYİLEŞTİRME: useCallback ile fonksiyonun gereksiz yere yeniden oluşması engellendi
+    const stopPolling = useCallback(() => {
+        if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+        }
     }, []);
 
     useEffect(() => {
@@ -214,23 +228,25 @@ export default function VideoAnalysisPage() {
                 if (!response.ok) throw new Error("Durum sunucusuna ulaşılamadı.");
                 const data = await response.json();
 
-                // ★★★ HATA AYIKLAMA İÇİN KONSOL LOG'U ★★★
-                console.log("Gelen Durum Mesajı:", data.message);
-
                 if (data.status === "processing") {
                     setStatusMessage(data.message);
                 } else if (data.status === "completed") {
+                    stopPolling();
                     setAnalysisResult(data.result);
-                    setHistory(prev => [[extractVideoId(currentAnalysisUrl), data.result], ...prev.filter(([id]) => id !== extractVideoId(currentAnalysisUrl))]);
+                    // ★★★ İYİLEŞTİRME: Geçmiş listesi daha güvenli güncelleniyor
+                    const newEntry = { id: taskId, data: data.result };
+                    setHistory(prev => [newEntry, ...prev.filter(item => item.id !== taskId)]);
                     setIsLoading(false);
                     setTaskId(null);
                     setUrl("");
                 } else if (data.status === "error") {
+                    stopPolling();
                     setError(data.message);
                     setIsLoading(false);
                     setTaskId(null);
                 }
             } catch (err) {
+                stopPolling();
                 setError("Analiz durumu sorgulanırken bir hata oluştu.");
                 setIsLoading(false);
                 setTaskId(null);
@@ -240,8 +256,8 @@ export default function VideoAnalysisPage() {
         if (taskId) {
             pollingIntervalRef.current = setInterval(pollStatus, 5000);
         }
-        return () => { if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current); };
-    }, [taskId, currentAnalysisUrl]);
+        return stopPolling; // Component unmount olduğunda polling'i durdur
+    }, [taskId, stopPolling]);
 
     const handleAnalyze = async (e) => {
         if (e) e.preventDefault();
@@ -269,9 +285,23 @@ export default function VideoAnalysisPage() {
             setIsLoading(false);
         }
     };
+    
+    // ★★★ İYİLEŞTİRME: Yeniden analiz için daha sağlam bir yapı
+    const [urlToAnalyze, setUrlToAnalyze] = useState('');
+    
+    useEffect(() => {
+        if (urlToAnalyze) {
+            setUrl(urlToAnalyze);
+            // Formu submit etmek için butona tıklamış gibi davranıyoruz.
+            // Bu, state güncellemelerinin senkronize olmasını sağlar.
+            const form = document.getElementById('analysis-form');
+            if (form) form.requestSubmit();
+            setUrlToAnalyze(''); // State'i temizle
+        }
+    }, [urlToAnalyze]);
 
     const handleAnalyzeAgain = (historyUrl) => {
-        setUrl(historyUrl);
+        setUrlToAnalyze(historyUrl);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -285,7 +315,7 @@ export default function VideoAnalysisPage() {
 
                 <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
                     <Card className="max-w-3xl mx-auto p-6 md:p-8">
-                        <form onSubmit={handleAnalyze} className="space-y-4">
+                        <form onSubmit={handleAnalyze} id="analysis-form" className="space-y-4">
                             <div>
                                 <label htmlFor="youtube_url" className="block mb-2 text-sm font-medium text-slate-700">YouTube Video Linki</label>
                                 <Input id="youtube_url" type="text" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="w-full h-12 text-base rounded-lg" />
@@ -315,8 +345,9 @@ export default function VideoAnalysisPage() {
                         {!historyLoading && history.length === 0 && <InfoState title="Geçmişiniz Boş" message="Henüz bir video analizi yapmadınız." icon={FileQuestion} />}
                         {!historyLoading && history.length > 0 && 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                                {history.map(([videoId, data]) => (
-                                    <HistoryCard key={videoId} videoId={videoId} data={data} onAnalyzeAgain={handleAnalyzeAgain} />
+                                {/* ★★★ DÜZELTME: history.map() doğru şekilde kullanılıyor ★★★ */}
+                                {history.map(({ id, data }) => (
+                                    <HistoryCard key={id} videoId={id} data={data} onAnalyzeAgain={handleAnalyzeAgain} />
                                 ))}
                             </div>
                         }

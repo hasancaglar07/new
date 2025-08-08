@@ -1,4 +1,10 @@
 
+extra youtube api key
+
+AIzaSyDP5DqpvsGrcUyqjLbvsxHbzZXnGer5VMs
+
+
+
 git add .
 
 git commit -m "Dosyalar güncellendi: app.py ve style.css değişiklikleri"
