@@ -1,10 +1,11 @@
-# Dockerfile (Versiyon 2.1 - Detaylı Loglama ile)
+# Dockerfile (Versiyon 2.2 - Torch ve FAISS için tam çözüm)
 
 FROM python:3.11-slim
 
-# ... (önceki apt-get komutları aynı kalabilir) ...
+# Gerekli tüm sistem kütüphaneleri (cmake eklendi)
 RUN apt-get update && apt-get install -y \
     build-essential \
+    cmake \
     git \
     git-lfs \
     ffmpeg \
@@ -16,10 +17,8 @@ WORKDIR /app
 
 RUN git clone https://github.com/hasancaglar07/new.git . && git lfs pull
 
-# --- DEĞİŞİKLİK BURADA ---
-# pip install komutuna '--verbose' bayrağını ekleyerek daha detaylı çıktı alıyoruz.
-RUN pip install --no-cache-dir --verbose -r requirements.txt
-# -------------------------
+# Python bağımlılıklarını kur (Artık doğru torch versiyonunu bulacak)
+RUN pip install --no-cache-dir -r requirements.txt
 
 RUN chmod +x /app/entrypoint.sh
 
