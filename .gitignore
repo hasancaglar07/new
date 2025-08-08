@@ -31,6 +31,7 @@ yarn-error.log*
 # Video analiz cache'ini gönderme
 /data/video_analysis_cache.json
 /data/video_analiz_gecmisi.json
+/data/audio
 
 # ### İşletim Sistemi Dosyaları ###
 .DS_Store

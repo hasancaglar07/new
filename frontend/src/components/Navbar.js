@@ -4,33 +4,23 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-// ★★★ Newspaper ikonu eklendi ★★★
+// ★★★ Newspaper ve diğer ikonlar yerinde duruyor ★★★
 import { Menu, X, LayoutGrid, Library, Youtube, Clapperboard, Newspaper } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+// ★★★ Next.js'in Image bileşenini import ediyoruz ★★★
+import Image from 'next/image';
 
-// ★★★ navLinks dizisine "Makaleler" eklendi ★★★
 const navLinks = [
   { name: 'Ana Sayfa', href: '/', icon: <LayoutGrid className="h-5 w-5" /> },
   { name: 'Kitaplık', href: '/kitaplar', icon: <Library className="h-5 w-5" /> },
-  { name: 'Makaleler', href: '/makaleler', icon: <Newspaper className="h-5 w-5" /> }, // YENİ EKLENDİ
+  { name: 'Makaleler', href: '/makaleler', icon: <Newspaper className="h-5 w-5" /> },
   { name: 'YouTube Arama', href: '/youtube-arama', icon: <Youtube className="h-5 w-5" /> },
   { name: 'Video Analizi', href: '/video-analizi', icon: <Clapperboard className="h-5 w-5" /> }, 
 ];
 
-// Mobil menü için animasyon varyantları
 const mobileMenuVariants = {
-  hidden: {
-    opacity: 0,
-    scale: 0.95,
-    y: -10,
-    transition: { duration: 0.2, ease: "easeOut" }
-  },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    y: 0,
-    transition: { duration: 0.2, ease: "easeIn" }
-  },
+  hidden: { opacity: 0, scale: 0.95, y: -10, transition: { duration: 0.2, ease: "easeOut" } },
+  visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.2, ease: "easeIn" } },
 };
 
 export default function Navbar() {
@@ -42,16 +32,25 @@ export default function Navbar() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <nav className="relative flex justify-between items-center h-16 bg-white/80 backdrop-blur-xl rounded-full border border-slate-200/80 shadow-lg shadow-slate-300/10 px-6">
           
+          {/* ★★★ LOGO ALANI DEĞİŞTİRİLDİ ★★★ */}
           <div className="flex-shrink-0">
             <Link 
               href="/" 
-              className="text-2xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-green-500"
               onClick={() => setIsMenuOpen(false)}
             >
-              Mihmandar
+              {/* public klasörüne eklediğiniz logo dosyasını kullanıyoruz */}
+              <Image
+                src="/logo-seffaf.svg" // Dosya adını kendi dosyanızla değiştirin
+                alt="Mihmandar Logo"
+                width={200} // Logonuzun orijinal genişliği
+                height={48}  // Logonuzun orijinal yüksekliği
+                className="h-10 w-auto" // Yüksekliği 40px (h-10) olarak ayarladık, genişlik otomatik ayarlanacak
+                priority // Logonun öncelikli yüklenmesini sağlar
+              />
             </Link>
           </div>
 
+          {/* Menü linkleri ve diğer kısımlar aynı kalıyor */}
           <div className="hidden md:flex md:items-center md:space-x-2">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
@@ -132,4 +131,4 @@ export default function Navbar() {
       </div>
     </header>
   );
-}``
+}
