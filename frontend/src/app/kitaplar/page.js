@@ -19,24 +19,14 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // --- YARDIMCI FONKSİYONLAR ---
 
-// Her yazar için deterministik ve estetik bir renk paleti döndürür.
+// Tek soft yeşil tema paleti - logonuzun renginde
 const authorColorPalettes = [
-    { border: "border-emerald-500", text: "text-emerald-600" },
-    { border: "border-sky-500", text: "text-sky-600" },
-    { border: "border-amber-500", text: "text-amber-600" },
-    { border: "border-rose-500", text: "text-rose-600" },
-    { border: "border-indigo-500", text: "text-indigo-600" },
-    { border: "border-teal-500", text: "text-teal-600" },
-    { border: "border-fuchsia-500", text: "text-fuchsia-600" },
+    { border: "border-emerald-400/60", text: "text-emerald-700/90", bg: "bg-emerald-50/40", accent: "emerald" },
 ];
 
 const getAuthorColors = (authorName) => {
-    if (!authorName) return authorColorPalettes[0];
-    let hash = 0;
-    for (let i = 0; i < authorName.length; i++) {
-        hash += authorName.charCodeAt(i);
-    }
-    return authorColorPalettes[hash % authorColorPalettes.length];
+    // Tüm yazarlar için aynı soft yeşil tema
+    return authorColorPalettes[0];
 };
 
 
@@ -137,20 +127,77 @@ function Highlight({ text, query }) {
     if (!query || !text) return text;
     const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
     const parts = text.split(new RegExp(`(${escapedQuery})`, 'gi'));
-    return <span>{parts.map((part, i) => part.toLowerCase() === query.toLowerCase() ? <mark key={i} className="bg-amber-200 text-amber-900 px-1 rounded-sm">{part}</mark> : part)}</span>;
+    return <span>{parts.map((part, i) => part.toLowerCase() === query.toLowerCase() ? <mark key={i} className="bg-emerald-200/70 text-emerald-900 px-2 py-0.5 rounded-md font-medium">{part}</mark> : part)}</span>;
 }
 
 function BookCard({ book, onReadClick, searchTerm, colors }) {
+    const cardVariants = {
+        hidden: { opacity: 0, y: 20, scale: 0.95 },
+        visible: { 
+            opacity: 1, 
+            y: 0, 
+            scale: 1,
+            transition: { 
+                duration: 0.5,
+                ease: [0.25, 0.46, 0.45, 0.94]
+            }
+        }
+    };
+
     return (
-        <motion.div layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.3, ease: "easeInOut" }}>
-            <Card className={`flex flex-col h-full overflow-hidden bg-white hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 rounded-xl border-t-4 ${colors.border}`}>
-                <CardHeader className="p-6">
-                    <CardTitle className="text-xl font-bold text-slate-800 leading-snug h-16 mb-2"><Highlight text={book.kitap_adi} query={searchTerm} /></CardTitle>
-                    <p className={`text-sm font-semibold ${colors.text}`}>{book.toplam_sayfa} sayfa</p>
+        <motion.div 
+            layout 
+            variants={cardVariants}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            whileHover={{ 
+                y: -8,
+                transition: { duration: 0.3, ease: "easeOut" }
+            }}
+        >
+            <Card className={`flex flex-col h-full overflow-hidden bg-white hover:shadow-2xl transition-all duration-300 rounded-xl border border-gray-200 hover:${colors.border.replace('/70', '')}`}>
+                {/* Header with gradient background */}
+                <div className={`${colors.bg} border-b border-gray-100/50 relative overflow-hidden`}>
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent" />
+                    <CardHeader className="p-6 relative z-10">
+                        <div className="flex items-center gap-2 mb-3">
+                            <BookOpen className={`h-5 w-5 ${colors.text}`} />
+                            <span className={`text-sm font-medium ${colors.text} bg-white/70 px-2 py-1 rounded-full`}>
+                                {book.toplam_sayfa} sayfa
+                            </span>
+                        </div>
+                        <CardTitle className="text-xl font-bold text-slate-800 leading-tight line-clamp-3 min-h-[4.5rem]">
+                            <Highlight text={book.kitap_adi} query={searchTerm} />
+                        </CardTitle>
                 </CardHeader>
-                <CardContent className="flex-grow" />
-                <CardFooter className="bg-slate-50/70 p-4">
-                    <Button onClick={onReadClick} className="w-full bg-slate-700 hover:bg-slate-800 text-white"><BookOpen className="mr-2 h-4 w-4"/>Okumaya Başla</Button>
+                </div>
+
+                {/* Content Area */}
+                <CardContent className="flex-grow p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                        <div className="w-1 h-6 bg-gradient-to-b from-emerald-400/80 to-emerald-500/80 rounded-full"></div>
+                        <h3 className="text-lg font-semibold text-slate-700">Eser Bilgileri</h3>
+                    </div>
+                    <div className="bg-emerald-50/40 p-4 rounded-lg border border-emerald-100/50">
+                        <p className="text-slate-600 text-sm leading-relaxed">
+                            📖 {book.toplam_sayfa} sayfalık değerli bir eser
+                        </p>
+                        <p className="text-emerald-600/80 text-xs mt-2">
+                            Okumaya başlamak için aşağıdaki butona tıklayın
+                        </p>
+                    </div>
+                </CardContent>
+
+                {/* Footer */}
+                <CardFooter className="p-6 pt-0">
+                    <Button 
+                        onClick={onReadClick} 
+                        className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-semibold py-3 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg"
+                    >
+                        <BookOpen className="mr-2 h-5 w-5"/>
+                        Okumaya Başla
+                    </Button>
                 </CardFooter>
             </Card>
         </motion.div>
@@ -159,17 +206,143 @@ function BookCard({ book, onReadClick, searchTerm, colors }) {
 
 function LibrarySkeleton() {
     return (
-        <div className="container mx-auto px-4 py-12">
-            <div className="text-center mb-12"><div className="h-10 bg-slate-200 rounded-lg w-1/2 mx-auto animate-pulse"></div><div className="h-5 bg-slate-200 rounded-md w-1/3 mx-auto mt-4 animate-pulse"></div></div>
-            <div className="max-w-2xl mx-auto mb-12"><div className="h-28 bg-slate-200 rounded-xl animate-pulse"></div></div>
-            <div className="h-10 bg-slate-300 rounded-md w-1/4 mb-8 animate-pulse"></div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">{[...Array(4)].map((_, j) => (<div key={j} className="bg-slate-200 h-60 rounded-xl animate-pulse"></div>))}</div>
+        <div className="min-h-screen bg-gradient-to-br from-emerald-50/30 via-teal-50/20 to-green-50/30">
+            <div className="container mx-auto px-4 py-12">
+                {/* Header Skeleton */}
+                <div className="text-center mb-16">
+                    <div className="flex items-center justify-center gap-3 mb-6">
+                        <div className="w-2 h-12 bg-emerald-200 rounded-full animate-pulse"></div>
+                        <div className="h-16 bg-gradient-to-r from-emerald-200 to-teal-200 rounded-lg w-96 animate-pulse"></div>
+                        <div className="w-2 h-12 bg-teal-200 rounded-full animate-pulse"></div>
+                    </div>
+                    <div className="h-6 bg-slate-200 rounded-md w-80 mx-auto mb-4 animate-pulse"></div>
+                    <div className="h-5 bg-emerald-200 rounded-md w-40 mx-auto animate-pulse"></div>
+                </div>
+
+                {/* Filter Skeleton */}
+                <div className="max-w-4xl mx-auto mb-16">
+                    <div className="bg-white/90 rounded-2xl border border-emerald-200/50 overflow-hidden">
+                        <div className="bg-gradient-to-r from-emerald-50/60 to-teal-50/40 p-6 border-b border-emerald-100/50">
+                            <div className="h-6 bg-emerald-200 rounded-md w-48 mb-2 animate-pulse"></div>
+                            <div className="h-4 bg-slate-200 rounded-md w-72 animate-pulse"></div>
+                        </div>
+                        <div className="p-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <div className="h-4 bg-slate-200 rounded w-24 animate-pulse"></div>
+                                    <div className="h-12 bg-emerald-100 rounded-lg animate-pulse"></div>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="h-4 bg-slate-200 rounded w-24 animate-pulse"></div>
+                                    <div className="h-12 bg-emerald-100 rounded-lg animate-pulse"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Books Skeleton */}
+                <div className="space-y-16">
+                    {[...Array(2)].map((_, i) => (
+                        <div key={i} className="space-y-8">
+                            <div className="flex items-center gap-4">
+                                <div className="w-2 h-12 bg-gradient-to-b from-emerald-300 to-teal-400 rounded-full animate-pulse"></div>
+                                <div>
+                                    <div className="h-8 bg-emerald-200 rounded-lg w-48 mb-2 animate-pulse"></div>
+                                    <div className="h-5 bg-slate-200 rounded w-24 animate-pulse"></div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                                {[...Array(4)].map((_, j) => (
+                                    <div key={j} className="bg-white rounded-xl border border-gray-200 overflow-hidden animate-pulse">
+                                        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-6 border-b border-gray-100">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <div className="w-5 h-5 bg-emerald-300 rounded animate-pulse"></div>
+                                                <div className="h-6 bg-emerald-200 rounded-full w-20 animate-pulse"></div>
+                                            </div>
+                                            <div className="h-6 bg-slate-300 rounded w-full mb-2 animate-pulse"></div>
+                                            <div className="h-6 bg-slate-200 rounded w-3/4 animate-pulse"></div>
+                                        </div>
+                                        <div className="p-6 space-y-4">
+                                            <div className="h-4 bg-slate-200 rounded w-32 animate-pulse"></div>
+                                            <div className="h-16 bg-emerald-100 rounded-lg animate-pulse"></div>
+                                            <div className="h-12 bg-emerald-200 rounded-lg animate-pulse"></div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                
+                {/* Loading Indicator */}
+                <div className="text-center mt-12">
+                    <div className="flex items-center justify-center gap-3 mb-4">
+                        <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-teal-400 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                    </div>
+                    <p className="text-slate-600 font-medium">Kütüphane yükleniyor...</p>
+                </div>
+            </div>
         </div>
     )
 }
 
 function EmptyState() {
-    return (<div className="text-center py-20 px-6"><Library className="mx-auto h-20 w-20 text-slate-400 mb-6" /><h3 className="text-2xl font-bold text-slate-700">Kitap Bulunamadı</h3><p className="text-slate-500 mt-2 max-w-md mx-auto">Arama kriterlerinize veya seçtiğiniz filtreye uyan bir kitap bulunamadı. Lütfen farklı bir arama yapmayı deneyin.</p></div>)
+    return (
+        <motion.div 
+            initial={{ opacity: 0, y: 30, scale: 0.95 }} 
+            animate={{ opacity: 1, y: 0, scale: 1 }} 
+            transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="text-center py-24 px-8 bg-gradient-to-br from-white via-emerald-50/30 to-teal-50/20 rounded-3xl max-w-2xl mx-auto border border-emerald-200/50 shadow-xl backdrop-blur-sm relative overflow-hidden"
+        >
+            {/* Animated background pattern */}
+            <div className="absolute inset-0 opacity-5">
+                <div className="absolute top-10 left-10 w-20 h-20 bg-emerald-400 rounded-full animate-pulse" />
+                <div className="absolute bottom-10 right-10 w-16 h-16 bg-teal-400 rounded-full animate-pulse" style={{animationDelay: '1s'}} />
+                <div className="absolute top-1/2 left-1/4 w-12 h-12 bg-green-400 rounded-full animate-pulse" style={{animationDelay: '2s'}} />
+            </div>
+            
+            <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ delay: 0.2, duration: 0.8, ease: "easeOut" }}
+                className="relative z-10"
+            >
+                <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-emerald-200 to-teal-300 rounded-full flex items-center justify-center shadow-lg">
+                    <Library className="h-12 w-12 text-emerald-600" />
+                </div>
+            </motion.div>
+            
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.6 }}
+                className="relative z-10"
+            >
+                <h3 className="text-3xl font-bold text-slate-800 mb-4 bg-gradient-to-r from-emerald-700 to-teal-600 bg-clip-text text-transparent">
+                    Eser Bulunamadı
+                </h3>
+                <p className="text-lg text-slate-600 leading-relaxed max-w-lg mx-auto mb-6">
+                    Arama kriterlerinize veya seçtiğiniz filtreye uyan bir eser bulunamadı. 
+                    Lütfen farklı bir arama yapmayı deneyin.
+                </p>
+                
+                <div className="flex items-center justify-center gap-4 text-sm text-emerald-600">
+                    <div className="flex items-center gap-2">
+                        <Search className="h-4 w-4" />
+                        <span>Farklı kelimeler deneyin</span>
+                    </div>
+                    <div className="w-px h-4 bg-emerald-300"></div>
+                    <div className="flex items-center gap-2">
+                        <BookOpen className="h-4 w-4" />
+                        <span>Filtreleri değiştirin</span>
+                    </div>
+                </div>
+            </motion.div>
+        </motion.div>
+    )
 }
 
 // --- ANA KÜTÜPHANE SAYFASI ---
@@ -208,42 +381,118 @@ export default function LibraryPage() {
     if (isLoading) return <LibrarySkeleton />;
 
     return (
-        <div className="bg-slate-50 min-h-screen">
+        <div className="min-h-screen bg-gradient-to-br from-emerald-50/30 via-teal-50/20 to-green-50/30">
             <div className="container mx-auto px-4 py-12 md:py-20">
-                <motion.header initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-center mb-12">
-                    <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter text-slate-800">Eserler Kütüphanesi</h1>
-                    <p className="mt-4 text-lg md:text-xl text-slate-600">Mübareklerin tüm eserlerine göz atın, filtreleyin ve okumaya başlayın.</p>
+                {/* Header */}
+                <motion.header 
+                    initial={{ opacity: 0, y: -20 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    transition={{ duration: 0.5 }} 
+                    className="text-center mb-10"
+                >
+                    <h1 className="text-4xl md:text-5xl font-bold text-[#177267]">
+                        Eserler Kütüphanesi
+                    </h1>
+                    <p className="mt-3 text-base md:text-lg text-slate-600">Mübareklerin tüm eserlerine göz atın, filtreleyin ve okumaya başlayın</p>
                 </motion.header>
 
-                <Card className="max-w-2xl mx-auto sticky top-5 z-40 bg-white/80 backdrop-blur-lg p-4 mb-12 rounded-2xl border shadow-lg shadow-slate-200/50">
-                    <CardContent className="p-2">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Select value={selectedAuthor} onValueChange={setSelectedAuthor}>
-                            <SelectTrigger className="w-full h-12 text-base"><SelectValue placeholder="Bir yazar seçin..." /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Tüm Yazarlar</SelectItem>
-                                {libraryData.map(authorData => (<SelectItem key={authorData.yazar} value={authorData.yazar}>{authorData.yazar}</SelectItem>))}
-                            </SelectContent>
-                        </Select>
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                            <Input placeholder="Kitap adı ile ara..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full h-12 text-base pl-10" />
+                {/* Simple filter (non-sticky) */}
+                <div className="max-w-4xl mx-auto mb-10">
+                    <div className="w-full bg-white border border-slate-200 rounded-xl p-4">
+                        <div className="flex flex-col md:flex-row gap-3 md:items-center">
+                            {/* Author */}
+                            <div className="min-w-[240px]">
+                                <Select value={selectedAuthor} onValueChange={setSelectedAuthor}>
+                                    <SelectTrigger className="w-full h-11 text-base border-slate-300 focus:border-[#177267] focus:ring-0">
+                                        <SelectValue placeholder="Yazar seçin..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Tüm Yazarlar</SelectItem>
+                                        {libraryData.map(authorData => (
+                                            <SelectItem key={authorData.yazar} value={authorData.yazar}>{authorData.yazar}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {/* Search */}
+                            <div className="relative w-full">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#177267]" />
+                                <Input 
+                                    placeholder="Kitap adı ile ara..." 
+                                    value={searchTerm} 
+                                    onChange={(e) => setSearchTerm(e.target.value)} 
+                                    className="w-full h-11 pl-9 border-slate-300 focus:border-[#177267] focus:ring-0"
+                                />
+                            </div>
                         </div>
-                      </div>
-                    </CardContent>
-                </Card>
+                        {/* Suggestions */}
+                        <div className="flex flex-wrap gap-2 mt-3">
+                            {["Sohbetler", "Mektubat", "Divan", "Musahabe", "Seyr-i Süluk"].map((label) => (
+                                <button key={label} onClick={() => setSearchTerm(label)} className="px-3 py-1.5 text-sm rounded-full border border-slate-300 text-[#177267] hover:bg-slate-50">
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
 
-                <div className="space-y-16">
+                {/* Content Area */}
+                <div className="space-y-20">
                     <AnimatePresence>
                         {filteredData.length > 0 ? (
                             filteredData.map((authorData, index) => {
                                 const colors = getAuthorColors(authorData.yazar);
                                 return (
-                                <motion.section key={authorData.yazar} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: index * 0.1 }}>
-                                    <h2 className={`text-3xl md:text-4xl font-bold text-slate-700 mb-8 pb-3 border-b-4 ${colors.border} inline-block`}>{authorData.yazar}</h2>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
-                                        {authorData.kitaplar.map(book => (<BookCard key={book.kitap_adi} book={book} onReadClick={() => handleReadClick(book)} searchTerm={searchTerm} colors={colors} />))}
+                                <motion.section 
+                                    key={authorData.yazar} 
+                                    initial={{ opacity: 0, y: 30 }} 
+                                    animate={{ opacity: 1, y: 0 }} 
+                                    transition={{ duration: 0.6, delay: index * 0.1 }}
+                                    className="relative"
+                                >
+                                    {/* Author Header */}
+                                    <div className="mb-12">
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <div className={`w-2 h-12 bg-gradient-to-b from-${colors.accent}-400 to-${colors.accent}-600 rounded-full`}></div>
+                                            <div>
+                                                <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-2">
+                                                    {authorData.yazar}
+                                                </h2>
+                                                <div className="flex items-center gap-2 text-slate-600">
+                                                    <BookOpen className={`h-5 w-5 text-${colors.accent}-600`} />
+                                                    <span className={`text-${colors.accent}-600 font-semibold`}>
+                                                        {authorData.kitaplar.length}
+                                                    </span>
+                                                    <span>eser</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className={`h-1 bg-gradient-to-r from-${colors.accent}-400/60 via-${colors.accent}-500/80 to-transparent rounded-full max-w-md`}></div>
                                     </div>
+
+                                    {/* Books Grid */}
+                                    <motion.div 
+                                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8"
+                                        initial="hidden"
+                                        animate="visible"
+                                        variants={{
+                                            visible: {
+                                                transition: {
+                                                    staggerChildren: 0.08
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        {authorData.kitaplar.map(book => (
+                                            <BookCard 
+                                                key={book.kitap_adi} 
+                                                book={book} 
+                                                onReadClick={() => handleReadClick(book)} 
+                                                searchTerm={searchTerm} 
+                                                colors={colors} 
+                                            />
+                                        ))}
+                                    </motion.div>
                                 </motion.section>
                             )})
                         ) : ( <EmptyState /> )}

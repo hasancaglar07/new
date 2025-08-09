@@ -5,7 +5,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 // ★★★ Newspaper ve diğer ikonlar yerinde duruyor ★★★
-import { Menu, X, LayoutGrid, Library, Youtube, Clapperboard, Newspaper } from 'lucide-react';
+import { Menu, X, LayoutGrid, Library, Youtube, Clapperboard, Newspaper, Mic } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // ★★★ Next.js'in Image bileşenini import ediyoruz ★★★
 import Image from 'next/image';
@@ -14,6 +14,7 @@ const navLinks = [
   { name: 'Ana Sayfa', href: '/', icon: <LayoutGrid className="h-5 w-5" /> },
   { name: 'Kitaplık', href: '/kitaplar', icon: <Library className="h-5 w-5" /> },
   { name: 'Makaleler', href: '/makaleler', icon: <Newspaper className="h-5 w-5" /> },
+  { name: 'Ses Kayıtları', href: '/ses-kayitlari', icon: <Mic className="h-5 w-5" /> },
   { name: 'YouTube Arama', href: '/youtube-arama', icon: <Youtube className="h-5 w-5" /> },
   { name: 'Video Analizi', href: '/video-analizi', icon: <Clapperboard className="h-5 w-5" /> }, 
 ];
@@ -59,9 +60,9 @@ export default function Navbar() {
                   key={link.name}
                   href={link.href}
                   title={link.name}
-                  className={`relative flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 ${
+                  className={`relative flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 touch-target ${
                     isActive 
-                      ? 'bg-emerald-100 text-emerald-700' 
+                      ? 'bg-primary/10 text-primary' 
                       : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
@@ -76,7 +77,7 @@ export default function Navbar() {
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-full text-slate-700 hover:text-emerald-600 hover:bg-slate-100 focus:outline-none"
+              className="inline-flex items-center justify-center p-2 rounded-full text-slate-700 hover:text-primary hover:bg-slate-100 focus:outline-none touch-target"
               aria-expanded={isMenuOpen}
             >
               <span className="sr-only">Menüyü aç</span>
@@ -111,9 +112,9 @@ export default function Navbar() {
                         key={link.name}
                         href={link.href}
                         onClick={() => setIsMenuOpen(false)}
-                        className={`flex items-center gap-4 px-4 py-3 rounded-lg text-base font-medium transition-all ${
+                        className={`flex items-center gap-4 px-4 py-3 rounded-lg text-base font-medium transition-all touch-target ${
                           isActive 
-                            ? 'bg-emerald-50 text-emerald-700' 
+                            ? 'bg-primary/10 text-primary' 
                             : 'text-slate-700 hover:bg-slate-100'
                         }`}
                         aria-current={isActive ? 'page' : undefined}

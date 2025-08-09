@@ -119,36 +119,32 @@ export default function YouTubeSearchPage() {
             <div className="container mx-auto px-4 py-12 md:py-20">
                 <motion.header 
                     initial={{ opacity: 0, y: -20 }} 
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="text-center mb-12"
+                    animate={{ opacity: 1, y: 0 }} 
+                    transition={{ duration: 0.5 }} 
+                    className="text-center mb-10"
                 >
-                    <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter text-slate-800">
-                        YouTube Video Arama
-                    </h1>
-                    <p className="mt-4 text-lg md:text-xl text-slate-600">
-                        Belirtilen kanallardaki videolarda arama yapın.
-                    </p>
+                    <h1 className="text-4xl md:text-5xl font-bold text-[#177267]">YouTube Video Arama</h1>
+                    <p className="mt-3 text-base md:text-lg text-slate-600">Belirtilen kanallardaki videolarda arama yapın</p>
                 </motion.header>
 
                 <motion.section 
                     initial={{ opacity: 0, y: 20 }} 
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.1 }}
-                    className="max-w-2xl mx-auto"
+                    animate={{ opacity: 1, y: 0 }} 
+                    transition={{ duration: 0.5, delay: 0.1 }} 
+                    className="max-w-3xl mx-auto"
                 >
                     <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
                         <div className="relative flex-grow">
-                             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#177267]" />
                             <Input
                                 type="text"
                                 value={query}
                                 onChange={e => setQuery(e.target.value)}
                                 placeholder="Video konusu girin (ör: rabıta)..."
-                                className="w-full h-14 text-base pl-12 rounded-lg"
+                                className="w-full h-11 text-base pl-9 border-slate-300 focus:border-[#177267] focus:ring-0"
                             />
                         </div>
-                        <Button type="submit" disabled={isLoading} className="w-full sm:w-auto h-14 text-base px-8 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all transform hover:scale-105">
+                        <Button type="submit" disabled={isLoading} className="w-full sm:w-auto h-11 text-base px-6 bg-[#177267] hover:bg-[#116358] text-white">
                             {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Ara'}
                         </Button>
                     </form>
