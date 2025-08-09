@@ -25,6 +25,9 @@ INDEX_DIR = DATA_DIR / "whoosh_index"
 ARTICLES_DB_PATH = DATA_DIR / "articles_database.db"
 BOOK_METADATA_PATH = DATA_DIR / "book_metadata.json"
 
+# PDF dizini - Environment variable'dan al veya varsayılan kullan
+PDF_BASE_URL = os.getenv("PDF_BASE_URL")
+
 # HTML'i temiz metne dönüştüren yardımcı fonksiyon
 def html_to_text(html_content):
     if not html_content:
@@ -58,12 +61,18 @@ def create_search_index():
 
         # --- BÖLÜM 1: PDF'leri İşleme ve Meta Veri Toplama ---
         logger.info(">>> Adım 1: Kitaplar (PDF'ler) işleniyor...")
-        pdf_files = list(PDF_DIR.glob("*.pdf"))
         
+        # PDF dosyalarını kontrol et
+        pdf_files = list(PDF_DIR.glob("*.pdf"))
         book_metadata_list = []
 
         if not pdf_files:
-            logger.warning("İndekslenecek PDF bulunamadı. Bu bir hata değilse devam ediliyor.")
+            if PDF_BASE_URL:
+                logger.info(f"PDF'ler Backblaze'den çekilecek: {PDF_BASE_URL}")
+                # Backblaze'den PDF listesi al (şimdilik boş liste)
+                book_metadata_list = []
+            else:
+                logger.warning("İndekslenecek PDF bulunamadı ve PDF_BASE_URL ayarlanmamış. Bu bir hata değilse devam ediliyor.")
         else:
             for pdf_path in pdf_files:
                 try:

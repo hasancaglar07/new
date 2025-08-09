@@ -65,6 +65,8 @@ origins = [
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
+# PDF dizini - Environment variable'dan al veya varsayılan kullan
+PDF_BASE_URL = os.getenv("PDF_BASE_URL")
 PDF_DIR = DATA_DIR / "pdfler"
 INDEX_DIR = DATA_DIR / "whoosh_index"
 ARTICLES_CACHE = {"data": None, "timestamp": 0}
