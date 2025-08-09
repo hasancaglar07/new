@@ -4,6 +4,10 @@
     "builder": "DOCKERFILE",
     "dockerfilePath": "Dockerfile"
   },
+  "source": {
+    "repo": "hasancaglar07/new",
+    "branch": "main"
+  },
   "deploy": {
     "healthcheckPath": "/",
     "healthcheckTimeout": 300,

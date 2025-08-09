@@ -23,8 +23,8 @@ COPY requirements.txt .
 # NOT: Bu yöntemin çalışması için reponuzda .dockerignore dosyası olmamalıdır.
 COPY . .
 
-# git lfs pull komutunu burada çalıştırarak büyük dosyaların çekildiğinden emin olalım
-RUN git lfs pull
+# LFS dosyaları Railway'de otomatik olarak çekilir, manuel pull'a gerek yok
+# RUN git lfs pull
 
 # --- ANA DEĞİŞİKLİK ---
 # --no-cache-dir zaten vardı, ama en önemlisi artık basit bir komut kullanıyoruz.
