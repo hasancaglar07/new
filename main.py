@@ -17,20 +17,16 @@ import yt_dlp
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
 import httpx
-import asyncio
 from fastapi.responses import StreamingResponse
 from data.audio_db import get_all_audio_by_source, search_audio_chapters
-from data.audio_db import get_audio_path_by_id # <-- YENİ BİR FONKSİYON İÇİN IMPORT
-from fastapi import HTTPException
-# ★★★ DEĞİŞİKLİK: Response sınıfını FastAPI'den import ediyoruz ★★★
+from data.audio_db import get_audio_path_by_id
 from fastapi import FastAPI, HTTPException, Query, Depends, BackgroundTasks, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from whoosh.index import open_dir, Index
 from whoosh.qparser import MultifieldParser, AndGroup, QueryParser
 from whoosh.searching import Searcher
 from deepgram import DeepgramClient, PrerecordedOptions
-# data.db ve articles_db importları doğru.
 from data.db import init_db, update_task, get_task, get_all_completed_analyses
 from data.articles_db import get_all_articles_by_category, get_article_by_id
 from contextlib import asynccontextmanager
@@ -80,17 +76,8 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 deepseek_client = AsyncOpenAI(base_url="https://api.deepseek.com", api_key=DEEPSEEK_API_KEY) if DEEPSEEK_API_KEY else None
 # --- YENİ: Dosya sunucu adresini .env'den alacağız ---
 AUDIO_BASE_URL = os.getenv("AUDIO_BASE_URL") or "https://cdn.mihmandar.org/file/yediulya-ses-arsivi"
-@app.on_event("startup")
-async def startup_event():
-    init_db()
-    # HTTP client'ı başlat
-    app.state.httpx_client = httpx.AsyncClient(timeout=30.0)
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    # HTTP client'ı kapat
-    if hasattr(app.state, 'httpx_client'):
-        await app.state.httpx_client.aclose()
+# Database'i başlat
+init_db()
 # --- Yardımcı Fonksiyonlar ---
 def get_whoosh_index():
     try: return open_dir(str(INDEX_DIR))

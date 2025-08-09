@@ -16,6 +16,13 @@ Whoosh==2.7.4
 PyMuPDF==1.26.3
 pillow==11.3.0
 
+# Video processing
+yt-dlp==2024.3.10
+
+# AI/ML (essential only)
+openai==1.35.0
+deepgram==2.12.0
+
 # Data processing (minimal)
 pandas==2.3.1
 numpy==1.26.4
@@ -23,3 +30,6 @@ numpy==1.26.4
 # Web scraping
 beautifulsoup4==4.13.4
 lxml==6.0.0
+
+# Video processing
+yt-dlp==2024.3.10
