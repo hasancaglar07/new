@@ -78,6 +78,16 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 deepseek_client = AsyncOpenAI(base_url="https://api.deepseek.com", api_key=DEEPSEEK_API_KEY) if DEEPSEEK_API_KEY else None
 # --- YENİ: Dosya sunucu adresini .env'den alacağız ---
 AUDIO_BASE_URL = os.getenv("AUDIO_BASE_URL") or "https://cdn.mihmandar.org/file/yediulya-ses-arsivi"
+PDF_BASE_URL = os.getenv("PDF_BASE_URL")
+TURSO_ANALYSIS_URL = os.getenv("TURSO_ANALYSIS_URL")
+TURSO_ANALYSIS_TOKEN = os.getenv("TURSO_ANALYSIS_TOKEN")
+
+# Debug: Environment variables'ları logla
+print(f"🔍 DEBUG - AUDIO_BASE_URL: {AUDIO_BASE_URL}")
+print(f"🔍 DEBUG - PDF_BASE_URL: {PDF_BASE_URL}")
+print(f"🔍 DEBUG - TURSO_ANALYSIS_URL: {TURSO_ANALYSIS_URL}")
+print(f"🔍 DEBUG - TURSO_ANALYSIS_TOKEN: {'***' if TURSO_ANALYSIS_TOKEN else 'None'}")
+
 # Database'i başlat
 init_db()
 # --- Yardımcı Fonksiyonlar ---

@@ -126,6 +126,10 @@ def get_article_by_id(article_id: int):
 def update_task(task_id: str, status: str, message: str = None, result: dict = None):
     """Bir görevin durumunu Turso veritabanında oluşturur veya günceller."""
     client = get_persistent_connection()
+    if not client:
+        logging.warning(f"Turso bağlantısı yok, görev güncellenemedi: {task_id}")
+        return
+        
     result_json = json.dumps(result, ensure_ascii=False) if result else None
     
     # Turso/libSQL UPSERT (INSERT OR UPDATE) sözdizimini destekler.
@@ -143,6 +147,10 @@ def update_task(task_id: str, status: str, message: str = None, result: dict = N
 def get_task(task_id: str):
     """Turso veritabanından bir görevin durumunu alır."""
     client = get_persistent_connection()
+    if not client:
+        logging.warning(f"Turso bağlantısı yok, görev alınamadı: {task_id}")
+        return None
+        
     rs = client.execute("SELECT task_id, status, message, result, updated_at FROM video_analysis_tasks WHERE task_id = ?", (task_id,))
     
     if len(rs.rows) == 0:
@@ -156,6 +164,10 @@ def get_task(task_id: str):
 def get_all_completed_analyses():
     """Turso veritabanındaki durumu 'completed' olan tüm analizleri getirir."""
     client = get_persistent_connection()
+    if not client:
+        logging.warning("Turso bağlantısı yok, geçmiş analizler alınamadı")
+        return {}
+        
     rs = client.execute("""
         SELECT task_id, result FROM video_analysis_tasks 
         WHERE status = 'completed' AND result IS NOT NULL 

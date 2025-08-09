@@ -69,8 +69,18 @@ def create_search_index():
         if not pdf_files:
             if PDF_BASE_URL:
                 logger.info(f"PDF'ler Backblaze'den çekilecek: {PDF_BASE_URL}")
-                # Backblaze'den PDF listesi al (şimdilik boş liste)
-                book_metadata_list = []
+                # Railway'de index oluşturmayalım, sadece mevcut meta veriyi kullanalım
+                if os.path.exists(BOOK_METADATA_PATH):
+                    try:
+                        with open(BOOK_METADATA_PATH, 'r', encoding='utf-8') as f:
+                            book_metadata_list = json.load(f)
+                        logger.info(f"Mevcut kitap meta verisi yüklendi: {len(book_metadata_list)} kitap")
+                    except Exception as e:
+                        logger.warning(f"Meta veri yüklenirken hata: {e}")
+                        book_metadata_list = []
+                else:
+                    logger.info("Kitap meta verisi bulunamadı, boş liste kullanılıyor")
+                    book_metadata_list = []
             else:
                 logger.warning("İndekslenecek PDF bulunamadı ve PDF_BASE_URL ayarlanmamış. Bu bir hata değilse devam ediliyor.")
         else:
