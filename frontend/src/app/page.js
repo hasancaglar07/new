@@ -160,7 +160,7 @@ function ArticleResultCard({ result, onReadClick, query, index }) {
                     <div className="relative">
                         <div className="absolute -left-3 top-0 w-1 h-full bg-gradient-to-b from-slate-400 to-slate-500 rounded-full"></div>
                         <p className="text-base text-slate-600 italic leading-relaxed line-clamp-4 pl-4">
-                            "...<Highlight text={result.alinti} query={query} />..."
+                            &quot;...<Highlight text={result.alinti} query={query} />...&quot;
                         </p>
                     </div>
                 </CardContent>
@@ -223,7 +223,7 @@ function BookResultCard({ result, onReadClick, query, index }) {
                     </div>
                     <div className="relative bg-gradient-to-r from-emerald-50/40 to-transparent p-4 rounded-lg border border-emerald-100/60">
                         <p className="text-base text-slate-600 italic leading-relaxed line-clamp-4">
-                            "...<Highlight text={result.alinti} query={query} />..."
+                            &quot;...<Highlight text={result.alinti} query={query} />...&quot;
                         </p>
                     </div>
                 </CardContent>
@@ -539,7 +539,7 @@ function ResultsSkeleton() {
     useEffect(() => {
         const t = setInterval(() => setQuoteIndex((i) => (i + 1) % quotes.length), 2500);
         return () => clearInterval(t);
-    }, []);
+    }, [quotes.length]);
     return (
         <div className="mt-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
