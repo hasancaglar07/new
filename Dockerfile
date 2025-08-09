@@ -15,8 +15,8 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Önce minimal requirements dosyasını kopyalayarak Docker katman önbelleğinden faydalanalım
-COPY requirements-minimal.txt ./requirements.txt
+# Önce ultra minimal requirements dosyasını kopyalayarak Docker katman önbelleğinden faydalanalım
+COPY requirements-ultra-minimal.txt ./requirements.txt
 
 # LFS sorunu çözüldüğü için artık klonlamaya gerek yok, dosyaları doğrudan kopyalayabiliriz
 # Bu, build sürecini hızlandırır.

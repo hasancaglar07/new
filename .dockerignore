@@ -1,0 +1,50 @@
+# Büyük database dosyaları (Backblaze'den indirilecek)
+data/articles_database.db
+data/audio_database.db
+data/qa_database.db
+
+# Büyük index dosyaları (runtime'da oluşturulacak)
+data/whoosh_index/
+
+# PDF dosyaları (zaten Backblaze'de)
+data/pdfler/
+
+# Geçici dosyalar
+data/temp_audio/
+data/__pycache__/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+
+# Development dosyaları
+.git/
+.gitignore
+README.md
+*.md
+.env
+
+# Frontend build dosyaları
+frontend/node_modules/
+frontend/.next/
+frontend/dist/
+
+# Python development
+*.egg-info/
+.pytest_cache/
+.coverage
+.mypy_cache/
+
+# System dosyaları
+.DS_Store
+Thumbs.db
+
+# Original requirements (çok büyük)
+requirements.txt
+requirements-minimal.txt
+
+# Poetry dosyaları
+data/poetry.lock
+data/pyproject.toml
+
+# Log dosyaları
+*.log

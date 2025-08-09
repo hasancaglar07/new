@@ -1,6 +1,11 @@
 #!/bin/sh
 
-# Adım 1: Arama indeksini oluştur.
+# Adım 1: Database dosyalarını indir (eğer yoksa)
+echo "Downloading databases..."
+python download_databases.py
+echo "Database download finished."
+
+# Adım 2: Arama indeksini oluştur.
 # Bu komut, uygulamanın her başladığında çalışarak indeksin var olmasını garantiler.
 echo "Starting index creation..."
 python create_index.py
