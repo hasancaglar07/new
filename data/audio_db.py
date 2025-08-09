@@ -32,7 +32,8 @@ def get_all_audio_by_source():
                 results[source] = []
             
             # *** DEĞİŞİKLİK: Tam yol yerine sadece dosya adını (name) döndür ***
-            mp3_filename = Path(row['mp3_path']).name
+            # Windows ve Unix path separator'larını handle et
+            mp3_filename = Path(row['mp3_path'].replace('\\', '/')).name
             
             results[source].append({
                 "id": row['id'],
@@ -66,7 +67,8 @@ def search_audio_chapters(query: str):
             
             if matching_chapters:
                 # *** DEĞİŞİKLİK: Tam yol yerine sadece dosya adını (name) döndür ***
-                mp3_filename = Path(row['mp3_path']).name
+                # Windows ve Unix path separator'larını handle et
+                mp3_filename = Path(row['mp3_path'].replace('\\', '/')).name
                 results.append({
                     "id": row['id'],
                     "title": row['title'],

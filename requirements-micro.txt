@@ -26,4 +26,4 @@ beautifulsoup4==4.13.4
 lxml==6.0.0
 
 # Database (Turso)
-libsql-client==0.1.0
+libsql-client==0.3.0
