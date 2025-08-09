@@ -29,9 +29,10 @@ def get_persistent_connection():
     token = os.getenv("TURSO_ANALYSIS_TOKEN")
     
     if not url or not token:
-        # Eğer ortam değişkenleri ayarlanmamışsa, hata ver.
-        # Bu, uygulamanın yanlış yapılandırılmasını önler.
-        raise ValueError("Turso veritabanı için TURSO_ANALYSIS_URL ve TURSO_ANALYSIS_TOKEN ortam değişkenleri ayarlanmalı.")
+        # Eğer ortam değişkenleri ayarlanmamışsa, None döndür
+        # Bu, uygulamanın çökmesini önler
+        logging.warning("Turso veritabanı için TURSO_ANALYSIS_URL ve TURSO_ANALYSIS_TOKEN ortam değişkenleri ayarlanmamış. Video analizi devre dışı.")
+        return None
         
     return libsql_client.create_client_sync(url=url, auth_token=token)
 
@@ -62,12 +63,15 @@ def init_db():
     # === Kalıcı Turso Veritabanı Tablosu ===
     try:
         client = get_persistent_connection()
-        client.execute("""
-            CREATE TABLE IF NOT EXISTS video_analysis_tasks (
-                task_id TEXT PRIMARY KEY, status TEXT NOT NULL, message TEXT, result TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )""")
-        logging.info(f"Kalıcı Turso veritabanı bağlantısı başarılı ve tablo hazır.")
+        if client:
+            client.execute("""
+                CREATE TABLE IF NOT EXISTS video_analysis_tasks (
+                    task_id TEXT PRIMARY KEY, status TEXT NOT NULL, message TEXT, result TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )""")
+            logging.info(f"Kalıcı Turso veritabanı bağlantısı başarılı ve tablo hazır.")
+        else:
+            logging.warning("Turso veritabanı bağlantısı kurulamadı. Video analizi devre dışı.")
     except Exception as e:
         logging.error(f"Kalıcı Turso veritabanı başlatılırken HATA oluştu: {e}")
         # Uygulamanın çökmemesi için burada devam etmesine izin verilir,
