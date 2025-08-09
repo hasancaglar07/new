@@ -15,8 +15,8 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Önce requirements.txt dosyasını kopyalayarak Docker katman önbelleğinden faydalanalım
-COPY requirements.txt .
+# Önce minimal requirements dosyasını kopyalayarak Docker katman önbelleğinden faydalanalım
+COPY requirements-minimal.txt ./requirements.txt
 
 # LFS sorunu çözüldüğü için artık klonlamaya gerek yok, dosyaları doğrudan kopyalayabiliriz
 # Bu, build sürecini hızlandırır.
@@ -27,8 +27,8 @@ COPY . .
 # RUN git lfs pull
 
 # --- ANA DEĞİŞİKLİK ---
-# --no-cache-dir zaten vardı, ama en önemlisi artık basit bir komut kullanıyoruz.
-# Bellek sorunlarını aşmak için temel ve tek bir kurulum komutu.
+# Bellek sorunlarını aşmak için minimal paket listesi kullanıyoruz
+RUN pip install --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
 
 # --------------------
