@@ -1,4 +1,4 @@
-# Ultra minimal requirements for Railway deployment
+# Micro requirements for Railway deployment - Sadece temel paketler
 fastapi==0.116.1
 uvicorn==0.35.0
 gunicorn==23.0.0
@@ -14,19 +14,9 @@ Whoosh==2.7.4
 
 # PDF processing (minimal)
 PyMuPDF==1.26.3
-pillow==11.3.0
 
 # Video processing
 yt-dlp==2024.3.10
 
-# AI/ML (essential only)
+# AI/ML (minimal)
 openai==1.35.0
-deepgram==2.12.0
-
-# Data processing (minimal)
-pandas==2.3.1
-numpy==1.26.4
-
-# Web scraping
-beautifulsoup4==4.13.4
-lxml==6.0.0

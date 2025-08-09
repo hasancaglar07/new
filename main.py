@@ -26,7 +26,7 @@ from fastapi.responses import JSONResponse
 from whoosh.index import open_dir, Index
 from whoosh.qparser import MultifieldParser, AndGroup, QueryParser
 from whoosh.searching import Searcher
-from deepgram import DeepgramClient, PrerecordedOptions
+# from deepgram import DeepgramClient, PrerecordedOptions  # Şimdilik kaldırıldı
 from data.db import init_db, update_task, get_task, get_all_completed_analyses
 from data.articles_db import get_all_articles_by_category, get_article_by_id
 from contextlib import asynccontextmanager
@@ -115,27 +115,27 @@ async def run_video_analysis(task_id: str, url: str):
       
         update_task(task_id, "processing", message="Ses Metne Dönüştürülüyor...")
       
-        deepgram_client = DeepgramClient(DEEPGRAM_API_KEY)
-        source = {'buffer': audio_content}
-        options = PrerecordedOptions(model="nova-2", language="tr", smart_format=True, utterances=True)
+        # deepgram_client = DeepgramClient(DEEPGRAM_API_KEY)  # Şimdilik kaldırıldı
+        # source = {'buffer': audio_content}
+        # options = PrerecordedOptions(model="nova-2", language="tr", smart_format=True, utterances=True)
       
-        response = await deepgram_client.listen.asyncrest.v("1").transcribe_file(source, options)
+        # response = await deepgram_client.listen.asyncrest.v("1").transcribe_file(source, options)
       
-        if not response.results or not response.results.utterances: raise ValueError("Videodan metin çıkarılamadı.")
+        # if not response.results or not response.results.utterances: raise ValueError("Videodan metin çıkarılamadı.")
       
         update_task(task_id, "processing", message="Konu Başlıkları Oluşturuluyor...")
-        chapters, chunk_text, start_time = [], "", 0
-        utterances = response.results.utterances
-        for i, utt in enumerate(utterances):
-            if not chunk_text: start_time = utt.start
-            chunk_text += utt.transcript + " "
-            if (utt.end - start_time) >= 120 or (i == len(utterances) - 1 and chunk_text.strip()):
-                comp_res = await deepseek_client.chat.completions.create(model="deepseek-chat", messages=[{"role": "system", "content": "Verilen metnin ana konusunu özetleyen 4-6 kelimelik kısa bir başlık oluştur."}, {"role": "user", "content": chunk_text}], max_tokens=20)
-                title = comp_res.choices[0].message.content.strip().replace('"', '')
-                chapters.append(f"**{format_time(start_time)}** - {title}")
-                chunk_text = ""
+        # chapters, chunk_text, start_time = [], "", 0
+        # utterances = response.results.utterances
+        # for i, utt in enumerate(utterances):
+        #     if not chunk_text: start_time = utt.start
+        #     chunk_text += utt.transcript + " "
+        #     if (utt.end - start_time) >= 120 or (i == len(utterances) - 1 and chunk_text.strip()):
+        #         comp_res = await deepseek_client.chat.completions.create(model="deepseek-chat", messages=[{"role": "system", "content": "Verilen metnin ana konusunu özetleyen 4-6 kelimelik kısa bir başlık oluştur."}, {"role": "user", "content": chunk_text}], max_tokens=20)
+        #         title = comp_res.choices[0].message.content.strip().replace('"', '')
+        #         chapters.append(f"**{format_time(start_time)}** - {title}")
+        #         chunk_text = ""
               
-        result = {"title": metadata.get("title"), "thumbnail": metadata.get("thumbnail"), "chapters": chapters}
+        result = {"title": metadata.get("title"), "thumbnail": metadata.get("thumbnail"), "chapters": ["Deepgram şimdilik devre dışı - ses analizi yapılamıyor."]}
         update_task(task_id, "completed", result=result)
         logger.info(f"[{task_id}] Analiz başarıyla tamamlandı ve Turso veritabanına kaydedildi.")
       
