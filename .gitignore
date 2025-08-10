@@ -35,6 +35,10 @@ yarn-error.log*
 /data/audio
 /data/processed_audio
 
+# ### İNDEKS PAKETLERİ ###
+# Backblaze'e yüklenecek indeks paketleri
+whoosh_index_package_*.zip
+
 # ### İşletim Sistemi Dosyaları ###
 .DS_Store
 Thumbs.db
