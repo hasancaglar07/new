@@ -28,3 +28,8 @@ lxml==6.0.0
 # Transcript & Speech
 youtube-transcript-api==1.2.2
 deepgram-sdk==4.8.1
+
+# YouTube bot koruması çözümleri
+fake-useragent==1.4.0
+urllib3==2.2.2
+requests[socks]==2.32.4

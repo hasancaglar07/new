@@ -1,4 +1,4 @@
-# Dockerfile (Versiyon 3.0 - Basitleştirilmiş ve Güvenilir)
+# Dockerfile (Versiyon 3.1 - YouTube Bot Koruması Çözümleri ile)
 
 FROM python:3.11-slim
 
@@ -11,7 +11,19 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     libjpeg-dev \
     zlib1g-dev \
+    ca-certificates \
+    curl \
+    wget \
     && rm -rf /var/lib/apt/lists/*
+
+# YouTube bot koruması için ek yapılandırmalar
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# YouTube için gerekli environment variables
+ENV YOUTUBE_API_KEY=""
+ENV HTTP_PROXY=""
+ENV HTTPS_PROXY=""
 
 WORKDIR /app
 
@@ -31,8 +43,21 @@ COPY . .
 RUN pip install --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
 
+# YouTube bot koruması için ek paketler
+RUN pip install --no-cache-dir \
+    fake-useragent \
+    requests[socks] \
+    urllib3
+
 # --------------------
 
+# YouTube cookies dosyası için gerekli izinler
+RUN chmod 644 /app/data/youtube-cookies.txt || true
+
 RUN chmod +x /app/entrypoint.sh
+
+# Health check ekle
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/ || exit 1
 
 CMD ["/app/entrypoint.sh"]

@@ -149,21 +149,73 @@ def extract_video_id(url: str) -> Optional[str]:
 def download_audio_sync(url: str, task_id: str) -> bytes:
     temp_dir = tempfile.gettempdir()
     temp_filepath = os.path.join(temp_dir, f"{task_id}_audio.m4a")
+    # Cookie dosyası (403 azaltmak için)
+    cookies_path = Path(__file__).parent / "data" / "youtube-cookies.txt"
+    
+    # Proxy ayarları (opsiyonel)
+    proxy_settings = {}
+    if os.getenv('HTTP_PROXY'):
+        proxy_settings['proxy'] = os.getenv('HTTP_PROXY')
+    elif os.getenv('HTTPS_PROXY'):
+        proxy_settings['proxy'] = os.getenv('HTTPS_PROXY')
+    
     ydl_opts = {
         'format': 'bestaudio/best',
         'outtmpl': temp_filepath,
         'quiet': True,
         'no_warnings': True,
-        'noprogress': True
+        'noprogress': True,
+        'noplaylist': True,
+        'restrictfilenames': True,
+        'geo_bypass': True,
+        'geo_bypass_country': 'TR',
+        'nocheckcertificate': True,
+        'extractor_retries': 3,
+        'fragment_retries': 3,
+        'retries': 3,
+        **proxy_settings,  # Proxy varsa ekle
+        **({'cookiefile': str(cookies_path)} if cookies_path.exists() else {}),
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Accept-Encoding': 'gzip, deflate',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        },
     }
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-        with open(temp_filepath, 'rb') as f:
-            return f.read()
-    finally:
-        if os.path.exists(temp_filepath):
-            os.remove(temp_filepath)
+    
+    # Retry mekanizması ile ses indirme
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            # Rate limiting - her istek arasında kısa bekleme
+            if attempt > 0:
+                wait_time = min(2 ** attempt, 10)  # Max 10 saniye
+                logger.info(f"Ses indirme rate limiting: {wait_time} saniye bekleniyor...")
+                time.sleep(wait_time)
+            
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+            with open(temp_filepath, 'rb') as f:
+                return f.read()
+        except Exception as e:
+            error_msg = str(e).lower()
+            if any(bot_indicator in error_msg for bot_indicator in [
+                "sign in to confirm you're not a bot",
+                "bot",
+                "captcha",
+                "rate limit",
+                "too many requests"
+            ]) and attempt < max_retries - 1:
+                logger.warning(f"Ses indirme sırasında bot koruması/rate limit tespit edildi, {attempt + 1}/{max_retries} deneme. Bekleniyor...")
+                continue
+            else:
+                raise e
+        finally:
+            if os.path.exists(temp_filepath):
+                os.remove(temp_filepath)
 
 # Transkript alma yardımcı fonksiyonu (YouTube ücretsiz)
 def fetch_youtube_transcript(video_id: str) -> list[dict]:
@@ -192,12 +244,113 @@ def fetch_youtube_transcript(video_id: str) -> list[dict]:
         return []
     return []
 
+# YouTube API ile metadata alma (alternatif yöntem)
+def get_video_metadata_via_api(video_id: str) -> Optional[dict]:
+    """YouTube Data API v3 ile video metadata alma"""
+    try:
+        # YouTube Data API v3 endpoint
+        api_url = f"https://www.googleapis.com/youtube/v3/videos"
+        params = {
+            'id': video_id,
+            'key': os.getenv('YOUTUBE_API_KEY'),  # .env'den al
+            'part': 'snippet,contentDetails,statistics'
+        }
+        
+        response = requests.get(api_url, params=params, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('items'):
+                item = data['items'][0]
+                snippet = item.get('snippet', {})
+                return {
+                    'title': snippet.get('title'),
+                    'thumbnail': snippet.get('thumbnails', {}).get('high', {}).get('url'),
+                    'description': snippet.get('description'),
+                    'duration': item.get('contentDetails', {}).get('duration'),
+                    'view_count': item.get('statistics', {}).get('viewCount')
+                }
+    except Exception as e:
+        logger.warning(f"YouTube API ile metadata alma hatası: {e}")
+    return None
+
 # --- ANA İŞLEV ---
 async def run_video_analysis(task_id: str, url: str):
     try:
         update_task(task_id, "processing", message="Video Bilgileri Alınıyor...")
-        with yt_dlp.YoutubeDL({'quiet': True, 'skip_download': True, 'no_warnings': True}) as ydl:
-            metadata = await asyncio.to_thread(ydl.extract_info, url, download=False)
+        
+        # Gelişmiş yt-dlp konfigürasyonu - bot korumasını aşmak için
+        cookies_path = Path(__file__).parent / "data" / "youtube-cookies.txt"
+        
+        # Proxy ayarları (opsiyonel)
+        proxy_settings = {}
+        if os.getenv('HTTP_PROXY'):
+            proxy_settings['proxy'] = os.getenv('HTTP_PROXY')
+        elif os.getenv('HTTPS_PROXY'):
+            proxy_settings['proxy'] = os.getenv('HTTPS_PROXY')
+        
+        ydl_opts = {
+            'quiet': True,
+            'skip_download': True,
+            'no_warnings': True,
+            'nocheckcertificate': True,
+            'geo_bypass': True,
+            'geo_bypass_country': 'TR',
+            'extractor_retries': 3,
+            'fragment_retries': 3,
+            'retries': 3,
+            **proxy_settings,  # Proxy varsa ekle
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Accept-Encoding': 'gzip, deflate',
+                'DNT': '1',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+            },
+            **({'cookiefile': str(cookies_path)} if cookies_path.exists() else {}),
+        }
+        
+        # Retry mekanizması ile metadata alma
+        metadata = None
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                # Rate limiting - her istek arasında kısa bekleme
+                if attempt > 0:
+                    wait_time = min(2 ** attempt, 10)  # Max 10 saniye
+                    logger.info(f"Rate limiting: {wait_time} saniye bekleniyor...")
+                    await asyncio.sleep(wait_time)
+                
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    metadata = await asyncio.to_thread(ydl.extract_info, url, download=False)
+                break  # Başarılı olursa döngüden çık
+            except Exception as e:
+                error_msg = str(e).lower()
+                if any(bot_indicator in error_msg for bot_indicator in [
+                    "sign in to confirm you're not a bot",
+                    "bot",
+                    "captcha",
+                    "rate limit",
+                    "too many requests"
+                ]) and attempt < max_retries - 1:
+                    logger.warning(f"Bot koruması/rate limit tespit edildi, {attempt + 1}/{max_retries} deneme. Bekleniyor...")
+                    continue
+                else:
+                    # yt-dlp başarısız olursa YouTube API'yi dene
+                    video_id = extract_video_id(url)
+                    if video_id:
+                        logger.info("yt-dlp başarısız, YouTube API deneniyor...")
+                        api_metadata = get_video_metadata_via_api(video_id)
+                        if api_metadata:
+                            metadata = api_metadata
+                            logger.info("YouTube API ile metadata alındı")
+                            break
+                    raise e
+        
+        if not metadata:
+            raise RuntimeError("Video metadata alınamadı")
+            
         video_title = metadata.get("title")
         thumbnail = metadata.get("thumbnail")
 
@@ -206,47 +359,51 @@ async def run_video_analysis(task_id: str, url: str):
 
         # 1) Deepgram (birincil)
         if deepgram_client and DEEPGRAM_API_KEY:
-            update_task(task_id, "processing", message="Ses indiriliyor...")
-            audio_content = await asyncio.to_thread(download_audio_sync, url, task_id)
-            update_task(task_id, "processing", message="Deepgram ile transkripsiyon...")
             try:
-                options = PrerecordedOptions(model="nova-2", language="tr", smart_format=True, utterances=True)
-                # Deepgram SDK senkron çalışıyor; bloklamamak için thread'e al
-                def _dg_transcribe():
-                    return deepgram_client.listen.prerecorded.v("1").transcribe_file({"buffer": audio_content}, options)
-                dg_response = await asyncio.to_thread(_dg_transcribe)
-                utterances = (dg_response.results.utterances or []) if getattr(dg_response, 'results', None) else []
-                # Utterances varsa doğrudan başlıklar oluştur
-                chunk_text = ""
-                start_time = 0.0
-                for i, utt in enumerate(utterances):
-                    if not chunk_text:
-                        start_time = getattr(utt, 'start', 0.0) or 0.0
-                    chunk_text += " " + (getattr(utt, 'transcript', '') or '')
-                    end_time = getattr(utt, 'end', start_time) or start_time
-                    if (end_time - start_time) >= 120 or (i == len(utterances) - 1 and chunk_text.strip()):
-                        if deepseek_client:
-                            comp_res = await deepseek_client.chat.completions.create(
-                                model="deepseek-chat",
-                                messages=[
-                                    {"role": "system", "content": "Verilen metnin ana konusunu özetleyen 4-6 kelimelik kısa bir başlık oluştur."},
-                                    {"role": "user", "content": chunk_text.strip()}
-                                ],
-                                max_tokens=20
-                            )
-                            title = comp_res.choices[0].message.content.strip().replace('"', '')
-                        else:
-                            words = chunk_text.strip().split()
-                            title = " ".join(words[:6]) if words else "Başlık"
-                        # Zaman formatı
-                        m, s = divmod(int(start_time), 60)
-                        h, m = divmod(m, 60)
-                        chapters.append(f"**{h:02d}:{m:02d}:{s:02d}** - {title}")
-                        chunk_text = ""
-                # Deepgram başarılı ise transcript oluşturmayı atlayabiliriz
+                update_task(task_id, "processing", message="Ses indiriliyor...")
+                audio_content = await asyncio.to_thread(download_audio_sync, url, task_id)
+                update_task(task_id, "processing", message="Deepgram ile transkripsiyon...")
+                try:
+                    options = PrerecordedOptions(model="nova-2", language="tr", smart_format=True, utterances=True)
+                    # Deepgram SDK senkron çalışıyor; bloklamamak için thread'e al
+                    def _dg_transcribe():
+                        return deepgram_client.listen.prerecorded.v("1").transcribe_file({"buffer": audio_content}, options)
+                    dg_response = await asyncio.to_thread(_dg_transcribe)
+                    utterances = (dg_response.results.utterances or []) if getattr(dg_response, 'results', None) else []
+                    # Utterances varsa doğrudan başlıklar oluştur
+                    chunk_text = ""
+                    start_time = 0.0
+                    for i, utt in enumerate(utterances):
+                        if not chunk_text:
+                            start_time = getattr(utt, 'start', 0.0) or 0.0
+                        chunk_text += " " + (getattr(utt, 'transcript', '') or '')
+                        end_time = getattr(utt, 'end', start_time) or start_time
+                        if (end_time - start_time) >= 120 or (i == len(utterances) - 1 and chunk_text.strip()):
+                            if deepseek_client:
+                                comp_res = await deepseek_client.chat.completions.create(
+                                    model="deepseek-chat",
+                                    messages=[
+                                        {"role": "system", "content": "Verilen metnin ana konusunu özetleyen 4-6 kelimelik kısa bir başlık oluştur."},
+                                        {"role": "user", "content": chunk_text.strip()}
+                                    ],
+                                    max_tokens=20
+                                )
+                                title = comp_res.choices[0].message.content.strip().replace('"', '')
+                            else:
+                                words = chunk_text.strip().split()
+                                title = " ".join(words[:6]) if words else "Başlık"
+                            # Zaman formatı
+                            m, s = divmod(int(start_time), 60)
+                            h, m = divmod(m, 60)
+                            chapters.append(f"**{h:02d}:{m:02d}:{s:02d}** - {title}")
+                            chunk_text = ""
+                    # Deepgram başarılı ise transcript oluşturmayı atlayabiliriz
+                except Exception as e:
+                    logger.warning(f"Deepgram transkripsiyon hatası, YouTube transkriptine düşülecek: {e}")
+                    chapters = []  # sıfırla ve fallback'e izin ver
             except Exception as e:
-                logger.warning(f"Deepgram transkripsiyon hatası, YouTube transkriptine düşülecek: {e}")
-                chapters = []  # sıfırla ve fallback'e izin ver
+                logger.warning(f"Ses indirilemedi, YouTube transkriptine düşülecek: {e}")
+                chapters = []
         else:
             logger.info("Deepgram yapılandırılmamış; YouTube transkript fallback kullanılacak.")
 

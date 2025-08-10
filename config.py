@@ -7,6 +7,11 @@ from dotenv import load_dotenv
 
 # .env dosyasını proje kökünden yükle (prod ortam değişkenlerini ezmeden)
 load_dotenv(dotenv_path=Path(__file__).parent / ".env", override=False)
+# Alternatif: dotfiles engelli ortamlarda 'env.backend' dosyasını da dene
+try:
+    load_dotenv(dotenv_path=Path(__file__).parent / "env.backend", override=False)
+except Exception:
+    pass
 
 # Temel dizinler
 BASE_DIR = Path(__file__).parent

@@ -56,37 +56,48 @@ def get_regular_connection():
 
 
 def get_supabase_connection():
-    """Supabase Postgres bağlantısı (psycopg2). İlk hatada devre dışı bırakır."""
+    """Supabase Postgres bağlantısı (psycopg2). İlk hatada devre dışı bırakır.
+    Öncelik: parçalı env ile güvenli DSN > SUPABASE_DB_URL."""
     global _SUPABASE_DISABLED, _SUPABASE_DISABLED_REASON
 
     if _SUPABASE_DISABLED:
         return None
-    if not SUPABASE_DB_URL or not psycopg2:
+    if not psycopg2:
         _SUPABASE_DISABLED = True
-        _SUPABASE_DISABLED_REASON = "URL yok veya psycopg2 yok"
+        _SUPABASE_DISABLED_REASON = "psycopg2 yok"
         return None
-    # DSN içinde Türkçe/özel karakter varsa psycopg2 hata verebilir: parçalı env'den yeniden kurmayı dene
+
     def _build_dsn_from_parts() -> Optional[str]:
-        if not (SUPABASE_HOST and SUPABASE_DBNAME and SUPABASE_USER and SUPABASE_PASSWORD):
+        host = (SUPABASE_HOST or "").strip()
+        db = (SUPABASE_DBNAME or "").strip()
+        user = (SUPABASE_USER or "").strip()
+        pwd = (SUPABASE_PASSWORD or "").strip()
+        port = (SUPABASE_PORT or "5432").strip() or "5432"
+        if not (host and db and user and pwd):
             return None
-        safe_user = quote(SUPABASE_USER, safe="")
-        safe_pass = quote(SUPABASE_PASSWORD, safe="")
-        host = SUPABASE_HOST
-        port = SUPABASE_PORT or "5432"
-        db = SUPABASE_DBNAME
+        safe_user = quote(user, safe="")
+        safe_pass = quote(pwd, safe="")
         return f"postgresql://{safe_user}:{safe_pass}@{host}:{port}/{db}"
 
-    # Önce mevcut URL'i deneyelim; ASCII değilse parçalı kurulum deneriz
-    try:
-        SUPABASE_DB_URL.encode("ascii")
-        candidate_dsn = SUPABASE_DB_URL
-    except UnicodeEncodeError:
-        candidate_dsn = _build_dsn_from_parts()
-        if not candidate_dsn:
-            _SUPABASE_DISABLED = True
-            _SUPABASE_DISABLED_REASON = "SUPABASE_DB_URL ASCII dışı; parçalı env eksik"
-            logging.warning("Supabase devre dışı: URL ASCII dışı ve parçalı env yok. SQLite kullanılacak.")
-            return None
+    candidate_dsn: Optional[str] = None
+    # Öncelik: parçalı env ile kurulan DSN
+    candidate_dsn = _build_dsn_from_parts()
+    if not candidate_dsn:
+        # Parçalı yoksa URL'i dene
+        url = (SUPABASE_DB_URL or "").strip()
+        if url:
+            try:
+                url.encode("ascii")
+                candidate_dsn = url
+            except UnicodeEncodeError:
+                candidate_dsn = None
+
+    if not candidate_dsn:
+        _SUPABASE_DISABLED = True
+        _SUPABASE_DISABLED_REASON = "DSN oluşturulamadı (URL yok/ASCII dışı ve parçalı env eksik)"
+        logging.warning("Supabase devre dışı: DSN oluşturulamadı. SQLite kullanılacak.")
+        return None
+
     try:
         conn = psycopg2.connect(candidate_dsn)
         conn.autocommit = True
