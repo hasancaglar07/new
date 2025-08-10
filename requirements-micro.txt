@@ -11,6 +11,7 @@ requests==2.32.4
 
 # Database
 Whoosh==2.7.4
+libsql-client==0.3.1
 
 # PDF processing (minimal)
 PyMuPDF==1.26.3
@@ -25,5 +26,6 @@ openai==1.35.0
 beautifulsoup4==4.13.4
 lxml==6.0.0
 
-# Database (Turso)
-libsql-client==0.3.0
+# Transcript & Speech
+youtube-transcript-api==0.6.2
+deepgram-sdk==4.8.1

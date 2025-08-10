@@ -34,7 +34,11 @@ from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, No
 from deepgram import DeepgramClient, PrerecordedOptions
 
 # --- Kurulum ve Global Yapılandırma ---
-load_dotenv()
+# .env dosyasını proje kökünden açıkça yükle (lokal çalışmada CWD farklarını engellemek için)
+try:
+    load_dotenv(dotenv_path=Path(__file__).parent / ".env", override=True)
+except Exception:
+    load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
