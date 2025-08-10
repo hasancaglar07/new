@@ -18,9 +18,12 @@ def download_and_extract_index():
     base_dir = Path(__file__).parent
     data_dir = base_dir / "data"
     
-               # Backblaze'den indeks paketini indir
-           # Not: Bu dosyayı manuel olarak yükleyin ve URL'yi güncelleyin
-           index_package_url = "https://cdn.mihmandar.org/file/yediulya-index/whoosh_index_package_20250810_032102.zip"
+    # Backblaze'den indeks paketini indir
+    # Not: Bu dosyayı manuel olarak yükleyin ve URL'yi güncelleyin; ortam değişkeni ile de geçilebilir
+    index_package_url = os.getenv(
+        "INDEX_PACKAGE_URL",
+        "https://cdn.mihmandar.org/file/yediulya-index/whoosh_index_package_20250810_032102.zip",
+    )
     
     print(f"🔗 İndeks paketi indiriliyor: {index_package_url}")
     
@@ -50,7 +53,7 @@ def download_and_extract_index():
                 file_path = Path(file_info.filename)
                 
                 # data/ klasörüne çıkar
-                if file_path.parts[0] == "whoosh_index":
+                if file_path.parts and file_path.parts[0] == "whoosh_index":
                     # whoosh_index klasörü için
                     target_path = data_dir / file_path
                 else:

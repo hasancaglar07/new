@@ -21,7 +21,7 @@ from fastapi.responses import StreamingResponse
 from data.audio_db import get_all_audio_by_source, search_audio_chapters
 from data.audio_db import get_audio_path_by_id
 from fastapi import FastAPI, HTTPException, Query, Depends, BackgroundTasks, Response
-# CORS import'u kaldırıldı
+# CORS middleware import removed
 from fastapi.responses import JSONResponse
 from whoosh.index import open_dir, Index
 from whoosh.qparser import MultifieldParser, AndGroup, QueryParser
@@ -62,33 +62,48 @@ app = FastAPI(
     description="Tasavvufi eserlerde, makalelerde ve YouTube videolarında arama yapma API'si. Analiz geçmişi Turso'da saklanır.",
     lifespan=lifespan
 )
-origins = [
-    "http://localhost:3000",
-    "https://new-git-main-yediulyas-projects.vercel.app",
-    "https://mihmandar.org",
-    "https://www.mihmandar.org",
-    "https://new-mu-self.vercel.app",
-    "https://new-yediulyas-projects.vercel.app",
-    "https://new.vercel.app",
-    "*"  # Geçici olarak tüm domainlere izin ver
-]
-
-# Basit CORS middleware - sadece gerekli header'lar
-from fastapi.middleware.cors import CORSMiddleware
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"]
-)
+# Remove CORSMiddleware usage entirely
 # Cache ve diğer ayarlar
 ARTICLES_CACHE = {"data": None, "timestamp": 0}
 BOOKS_CACHE = {"data": None, "timestamp": 0}
 
-# Global CORS middleware kaldırıldı
-
+# Single global CORS middleware that force-adds permissive headers for all responses
+@app.middleware("http")
+async def force_cors_headers(request, call_next):
+    if request.method == "OPTIONS":
+        return Response(
+            status_code=200,
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "*",
+                "Access-Control-Allow-Headers": "*",
+                "Access-Control-Max-Age": "86400",
+                "Access-Control-Expose-Headers": "*",
+                "Vary": "Origin",
+            },
+        )
+    try:
+        response = await call_next(request)
+    except Exception:
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal Server Error"},
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "*",
+                "Access-Control-Allow-Headers": "*",
+                "Access-Control-Max-Age": "86400",
+                "Access-Control-Expose-Headers": "*",
+                "Vary": "Origin",
+            },
+        )
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Max-Age"] = "86400"
+    response.headers["Access-Control-Expose-Headers"] = "*"
+    response.headers["Vary"] = "Origin"
+    return response
 # DeepSeek client'ı oluştur
 deepseek_client = AsyncOpenAI(base_url="https://api.deepseek.com", api_key=DEEPSEEK_API_KEY) if DEEPSEEK_API_KEY else None
 
