@@ -24,17 +24,30 @@ def get_regular_connection():
     return sqlite3.connect(REGULAR_DB_PATH)
 
 def get_persistent_connection():
-    """Kalıcı Turso bulut veritabanı için bir istemci (client) oluşturur."""
-    url = os.getenv("TURSO_ANALYSIS_URL")
-    token = os.getenv("TURSO_ANALYSIS_TOKEN")
-    
-    if not url or not token:
-        # Eğer ortam değişkenleri ayarlanmamışsa, None döndür
-        # Bu, uygulamanın çökmesini önler
-        logging.warning("Turso veritabanı için TURSO_ANALYSIS_URL ve TURSO_ANALYSIS_TOKEN ortam değişkenleri ayarlanmamış. Video analizi devre dışı.")
-        return None
+    """Video analizi için yerel SQLite veritabanı bağlantısı oluşturur."""
+    try:
+        # Turso yerine yerel SQLite kullan
+        db_path = os.path.join(os.path.dirname(__file__), "video_analyses.db")
+        conn = sqlite3.connect(db_path)
         
-    return libsql_client.create_client_sync(url=url, auth_token=token)
+        # Video analizi tablosunu oluştur
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS video_analysis_tasks (
+                task_id TEXT PRIMARY KEY, 
+                status TEXT NOT NULL, 
+                message TEXT, 
+                result TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+        
+        logging.info(f"Yerel SQLite video analizi veritabanı başlatıldı: {db_path}")
+        return conn
+    except Exception as e:
+        logging.error(f"SQLite veritabanı başlatılırken hata: {e}")
+        return None
 
 # --- Veritabanı Başlatma ---
 
@@ -124,42 +137,51 @@ def get_article_by_id(article_id: int):
 # --- GÖREV YÖNETİMİ FONKSİYONLARI (Turso DB'de çalışır) ---
 
 def update_task(task_id: str, status: str, message: str = None, result: dict = None):
-    """Bir görevin durumunu Turso veritabanında oluşturur veya günceller."""
-    client = get_persistent_connection()
-    if not client:
-        logging.warning(f"Turso bağlantısı yok, görev güncellenemedi: {task_id}")
+    """Bir görevin durumunu SQLite veritabanında oluşturur veya günceller."""
+    conn = get_persistent_connection()
+    if not conn:
+        logging.warning(f"SQLite bağlantısı yok, görev güncellenemedi: {task_id}")
         return
         
     result_json = json.dumps(result, ensure_ascii=False) if result else None
     
-    # Turso/libSQL UPSERT (INSERT OR UPDATE) sözdizimini destekler.
-    sql = """
-        INSERT INTO video_analysis_tasks (task_id, status, message, result, created_at)
-        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(task_id) DO UPDATE SET
-            status=excluded.status,
-            message=excluded.message,
-            result=excluded.result,
-            updated_at=CURRENT_TIMESTAMP
-    """
-    client.execute(sql, (task_id, status, message, result_json))
+    try:
+        # SQLite UPSERT (INSERT OR REPLACE) sözdizimi
+        sql = """
+            INSERT OR REPLACE INTO video_analysis_tasks 
+            (task_id, status, message, result, created_at, updated_at)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        """
+        conn.execute(sql, (task_id, status, message, result_json))
+        conn.commit()
+        logging.info(f"Görev güncellendi: {task_id} - {status}")
+    except Exception as e:
+        logging.error(f"Görev güncellenirken hata: {e}")
+    finally:
+        conn.close()
 
 def get_task(task_id: str):
-    """Turso veritabanından bir görevin durumunu alır."""
-    client = get_persistent_connection()
-    if not client:
-        logging.warning(f"Turso bağlantısı yok, görev alınamadı: {task_id}")
+    """SQLite veritabanından bir görevin durumunu alır."""
+    conn = get_persistent_connection()
+    if not conn:
+        logging.warning(f"SQLite bağlantısı yok, görev alınamadı: {task_id}")
         return None
         
-    rs = client.execute("SELECT task_id, status, message, result, updated_at FROM video_analysis_tasks WHERE task_id = ?", (task_id,))
-    
-    if len(rs.rows) == 0:
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT task_id, status, message, result, updated_at FROM video_analysis_tasks WHERE task_id = ?", (task_id,))
+        row = cursor.fetchone()
+        
+        if not row:
+            return None
+        
+        result_dict = json.loads(row[3]) if row[3] else None
+        return {"task_id": row[0], "status": row[1], "message": row[2], "result": result_dict, "updated_at": row[4]}
+    except Exception as e:
+        logging.error(f"Görev alınırken hata: {e}")
         return None
-    
-    row = rs.rows[0]
-    result_dict = json.loads(row[3]) if row[3] else None
-    # 'updated_at' sütununu da döndürmek için ekledik.
-    return {"task_id": row[0], "status": row[1], "message": row[2], "result": result_dict, "updated_at": row[4]}
+    finally:
+        conn.close()
 
 def get_all_completed_analyses():
     """Turso veritabanındaki durumu 'completed' olan tüm analizleri getirir."""

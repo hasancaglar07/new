@@ -1,5 +1,5 @@
 # create_index.py
-# Versiyon 2.1 - Kitap meta verilerini 'book_metadata.json' dosyasına önceden işler.
+# Versiyon 2.2 - Backblaze'den PDF'leri indirip indeksleme
 
 import os
 from pathlib import Path
@@ -9,6 +9,8 @@ import sys
 import sqlite3
 from bs4 import BeautifulSoup
 import json
+import requests
+import tempfile
 
 from whoosh.index import create_in
 from whoosh.fields import Schema, TEXT, ID
@@ -34,6 +36,30 @@ def html_to_text(html_content):
         return ""
     soup = BeautifulSoup(html_content, 'html.parser')
     return soup.get_text(separator=' ', strip=True)
+
+def download_pdf_from_backblaze(pdf_filename):
+    """Backblaze'den PDF dosyasını indirir ve geçici dosya olarak kaydeder"""
+    if not PDF_BASE_URL:
+        return None
+    
+    try:
+        pdf_url = f"{PDF_BASE_URL}/{pdf_filename}"
+        logger.info(f"PDF indiriliyor: {pdf_url}")
+        
+        response = requests.get(pdf_url, timeout=30)
+        response.raise_for_status()
+        
+        # Geçici dosya oluştur
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+        temp_file.write(response.content)
+        temp_file.close()
+        
+        logger.info(f"PDF başarıyla indirildi: {pdf_filename}")
+        return temp_file.name
+        
+    except Exception as e:
+        logger.error(f"PDF indirilemedi {pdf_filename}: {e}")
+        return None
 
 def create_search_index():
     """
@@ -62,28 +88,70 @@ def create_search_index():
         # --- BÖLÜM 1: PDF'leri İşleme ve Meta Veri Toplama ---
         logger.info(">>> Adım 1: Kitaplar (PDF'ler) işleniyor...")
         
+        # Önce mevcut meta veriyi yükle
+        book_metadata_list = []
+        if os.path.exists(BOOK_METADATA_PATH):
+            try:
+                with open(BOOK_METADATA_PATH, 'r', encoding='utf-8') as f:
+                    book_metadata_list = json.load(f)
+                logger.info(f"Mevcut kitap meta verisi yüklendi: {len(book_metadata_list)} kitap")
+            except Exception as e:
+                logger.warning(f"Meta veri yüklenirken hata: {e}")
+                book_metadata_list = []
+        
         # PDF dosyalarını kontrol et
         pdf_files = list(PDF_DIR.glob("*.pdf"))
-        book_metadata_list = []
-
-        if not pdf_files:
-            if PDF_BASE_URL:
-                logger.info(f"PDF'ler Backblaze'den çekilecek: {PDF_BASE_URL}")
-                # Railway'de index oluşturmayalım, sadece mevcut meta veriyi kullanalım
-                if os.path.exists(BOOK_METADATA_PATH):
+        
+        if not pdf_files and PDF_BASE_URL:
+            logger.info(f"PDF'ler Backblaze'den indirilecek: {PDF_BASE_URL}")
+            
+            # Her kitap için PDF'i indir ve indeksle
+            for book_info in book_metadata_list:
+                pdf_filename = book_info['pdf_file']
+                temp_pdf_path = download_pdf_from_backblaze(pdf_filename)
+                
+                if temp_pdf_path:
                     try:
-                        with open(BOOK_METADATA_PATH, 'r', encoding='utf-8') as f:
-                            book_metadata_list = json.load(f)
-                        logger.info(f"Mevcut kitap meta verisi yüklendi: {len(book_metadata_list)} kitap")
+                        doc = fitz.open(temp_pdf_path)
+                        book_name = book_info['book']
+                        author_name = book_info['author']
+                        
+                        logger.info(f"Kitap indeksleniyor: {book_name} - {author_name}")
+                        
+                        # Her sayfayı indeksle
+                        for page_num in range(len(doc)):
+                            page = doc.load_page(page_num)
+                            text = page.get_text("text")
+                            if text:
+                                writer.add_document(
+                                    type='book',
+                                    title=book_name,
+                                    author=author_name,
+                                    content=text,
+                                    source=pdf_filename,
+                                    page_or_id=str(page_num + 1),
+                                    category=None
+                                )
+                        
+                        doc.close()
+                        
+                        # Geçici dosyayı sil
+                        os.unlink(temp_pdf_path)
+                        
                     except Exception as e:
-                        logger.warning(f"Meta veri yüklenirken hata: {e}")
-                        book_metadata_list = []
+                        logger.error(f"PDF işlenirken hata oluştu {pdf_filename}: {e}")
+                        if temp_pdf_path and os.path.exists(temp_pdf_path):
+                            os.unlink(temp_pdf_path)
+                        continue
                 else:
-                    logger.info("Kitap meta verisi bulunamadı, boş liste kullanılıyor")
-                    book_metadata_list = []
-            else:
-                logger.warning("İndekslenecek PDF bulunamadı ve PDF_BASE_URL ayarlanmamış. Bu bir hata değilse devam ediliyor.")
-        else:
+                    logger.warning(f"PDF indirilemedi, atlanıyor: {pdf_filename}")
+            
+            logger.info(">>> Kitapların indekslenmesi tamamlandı (Backblaze'den).")
+            
+        elif pdf_files:
+            # Yerel PDF'ler varsa onları kullan
+            logger.info(f"Yerel PDF'ler bulundu: {len(pdf_files)} dosya")
+            
             for pdf_path in pdf_files:
                 try:
                     doc = fitz.open(pdf_path)
@@ -98,7 +166,7 @@ def create_search_index():
                         book_name = base_name.title()
                         author_name = "Bilinmiyor"
                     
-                    # ★★★ Kitap meta verisini listeye ekle ★★★
+                    # Kitap meta verisini listeye ekle
                     book_metadata_list.append({
                         "author": author_name,
                         "book": book_name,
@@ -125,13 +193,15 @@ def create_search_index():
                 except Exception as e:
                     logger.error(f"PDF işlenirken hata oluştu {pdf_path.name}: {e}")
                     continue
+            
+            logger.info(">>> Kitapların indekslenmesi tamamlandı (yerel dosyalardan).")
+        else:
+            logger.warning("PDF bulunamadı ve PDF_BASE_URL ayarlanmamış. Kitaplar indekslenmeyecek.")
         
-        # ★★★ Toplanan kitap bilgilerini JSON dosyasına yaz ★★★
+        # Kitap meta verilerini JSON dosyasına yaz
         with open(BOOK_METADATA_PATH, 'w', encoding='utf-8') as f:
             json.dump(book_metadata_list, f, ensure_ascii=False, indent=2)
         logger.info(f"Kitap meta verileri başarıyla '{BOOK_METADATA_PATH}' dosyasına kaydedildi.")
-
-        logger.info(">>> Kitapların indekslenmesi tamamlandı.")
 
         # --- BÖLÜM 2: MAKALELERİ İndeksleme ---
         logger.info(">>> Adım 2: Makaleler (Veritabanından) indeksleniyor...")

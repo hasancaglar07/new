@@ -35,6 +35,14 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Yapılandırma dosyasını import et
+try:
+    from config import *
+    print_config()  # Debug bilgilerini yazdır
+except ImportError:
+    # Eski yöntem - environment variable'lardan oku
+    pass
+
 # --- Lifespan Manager: Uygulama ömrü boyunca yaşayacak nesneler ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -58,35 +66,19 @@ origins = [
     "http://localhost:3000",
     "https://new-git-main-yediulyas-projects.vercel.app",
     "https://mihmandar.org",
+    "https://www.mihmandar.org",
     "https://new-mu-self.vercel.app",
     "https://new-yediulyas-projects.vercel.app",
     "https://new.vercel.app",
+    "*"  # Geçici olarak tüm domainlere izin ver
 ]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-BASE_DIR = Path(__file__).parent
-DATA_DIR = BASE_DIR / "data"
-# PDF dizini - Environment variable'dan al veya varsayılan kullan
-PDF_BASE_URL = os.getenv("PDF_BASE_URL")
-PDF_DIR = DATA_DIR / "pdfler"
-INDEX_DIR = DATA_DIR / "whoosh_index"
+# Cache ve diğer ayarlar
 ARTICLES_CACHE = {"data": None, "timestamp": 0}
 BOOKS_CACHE = {"data": None, "timestamp": 0}
-CACHE_TTL = 3600
-YOUTUBE_API_KEYS = [os.getenv(f"YOUTUBE_API_KEY{i}") for i in range(1, 7) if os.getenv(f"YOUTUBE_API_KEY{i}")]
-DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-deepseek_client = AsyncOpenAI(base_url="https://api.deepseek.com", api_key=DEEPSEEK_API_KEY) if DEEPSEEK_API_KEY else None
-# --- YENİ: Dosya sunucu adresini .env'den alacağız ---
-AUDIO_BASE_URL = os.getenv("AUDIO_BASE_URL") or "https://cdn.mihmandar.org/file/yediulya-ses-arsivi"
-PDF_BASE_URL = os.getenv("PDF_BASE_URL")
-TURSO_ANALYSIS_URL = os.getenv("TURSO_ANALYSIS_URL")
-TURSO_ANALYSIS_TOKEN = os.getenv("TURSO_ANALYSIS_TOKEN")
 
-# Debug: Environment variables'ları logla
-print(f"🔍 DEBUG - AUDIO_BASE_URL: {AUDIO_BASE_URL}")
-print(f"🔍 DEBUG - PDF_BASE_URL: {PDF_BASE_URL}")
-print(f"🔍 DEBUG - TURSO_ANALYSIS_URL: {TURSO_ANALYSIS_URL}")
-print(f"🔍 DEBUG - TURSO_ANALYSIS_TOKEN: {'***' if TURSO_ANALYSIS_TOKEN else 'None'}")
+# DeepSeek client'ı oluştur
+deepseek_client = AsyncOpenAI(base_url="https://api.deepseek.com", api_key=DEEPSEEK_API_KEY) if DEEPSEEK_API_KEY else None
 
 # Database'i başlat
 init_db()
@@ -272,9 +264,15 @@ async def get_books_by_author():
             if author not in books_by_author_data:
                 books_by_author_data[author] = []
           
+            # PDF URL'sini oluştur (Backblaze'den erişim için)
+            pdf_url = None
+            if PDF_BASE_URL:
+                pdf_url = f"{PDF_BASE_URL}/{book_info['pdf_file']}"
+            
             books_by_author_data[author].append({
                 "kitap_adi": book_info['book'],
                 "pdf_dosyasi": book_info['pdf_file'],
+                "pdf_url": pdf_url,  # Backblaze URL'si eklendi
                 "toplam_sayfa": book_info['total_pages']
             })
         response_data = {"kutuphane": [
@@ -286,6 +284,7 @@ async def get_books_by_author():
     except FileNotFoundError:
         raise HTTPException(status_code=500, detail="Kitap verileri hazır değil.")
     except Exception as e:
+        logger.error(f"Kitap listesi işlenirken hata: {e}")
         raise HTTPException(status_code=500, detail="Kitap listesi işlenemedi.")
 @app.get("/search/analyses")
 async def search_analyses(q: str):
@@ -307,22 +306,151 @@ async def search_analyses(q: str):
 @app.get("/pdf/info")
 async def get_pdf_info(pdf_file: str):
     try:
+        # Önce yerel PDF'i kontrol et
         pdf_path = PDF_DIR / urllib.parse.unquote(pdf_file)
-        if not pdf_path.is_file(): raise HTTPException(status_code=404, detail="PDF bulunamadı.")
-        with fitz.open(pdf_path) as doc: return {"total_pages": len(doc)}
+        
+        if pdf_path.is_file():
+            # Yerel PDF varsa onu kullan
+            with fitz.open(pdf_path) as doc: 
+                return {"total_pages": len(doc)}
+        
+        elif PDF_BASE_URL:
+            # Yerel PDF yoksa Backblaze'den indir
+            import tempfile
+            import requests
+            
+            pdf_url = f"{PDF_BASE_URL}/{urllib.parse.unquote(pdf_file)}"
+            logger.info(f"PDF bilgisi için Backblaze'den indiriliyor: {pdf_url}")
+            
+            response = requests.get(pdf_url, timeout=30)
+            response.raise_for_status()
+            
+            # Geçici dosya oluştur
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+            temp_file.write(response.content)
+            temp_file.close()
+            
+            try:
+                with fitz.open(temp_file.name) as doc:
+                    return {"total_pages": len(doc)}
+            finally:
+                # Geçici dosyayı sil
+                if os.path.exists(temp_file.name):
+                    os.unlink(temp_file.name)
+        else:
+            raise HTTPException(status_code=404, detail=f"PDF bulunamadı ve PDF_BASE_URL ayarlanmamış.")
+            
     except Exception as e:
+        logger.error(f"PDF bilgisi alınırken hata: {e}")
         raise HTTPException(status_code=500, detail="PDF bilgisi alınamadı.")
+@app.get("/books/list")
+async def get_all_books():
+    """Tüm kitapları PDF URL'leri ile birlikte listeler"""
+    try:
+        with open(DATA_DIR / "book_metadata.json", 'r', encoding='utf-8') as f:
+            all_books = json.load(f)
+        
+        books_with_urls = []
+        for book_info in all_books:
+            book_data = {
+                "id": len(books_with_urls) + 1,
+                "title": book_info['book'],
+                "author": book_info['author'],
+                "pdf_file": book_info['pdf_file'],
+                "total_pages": book_info['total_pages']
+            }
+            
+            # PDF URL'sini ekle
+            if PDF_BASE_URL:
+                book_data["pdf_url"] = f"{PDF_BASE_URL}/{book_info['pdf_file']}"
+                book_data["pdf_download_url"] = f"/pdf/access?pdf_file={urllib.parse.quote(book_info['pdf_file'])}"
+            
+            books_with_urls.append(book_data)
+        
+        return {
+            "total_books": len(books_with_urls),
+            "books": books_with_urls
+        }
+        
+    except FileNotFoundError:
+        raise HTTPException(status_code=500, detail="Kitap verileri hazır değil.")
+    except Exception as e:
+        logger.error(f"Kitap listesi alınırken hata: {e}")
+        raise HTTPException(status_code=500, detail="Kitap listesi alınamadı.")
+
+@app.get("/pdf/access")
+async def access_pdf_from_backblaze(pdf_file: str):
+    """PDF dosyasına Backblaze'den doğrudan erişim sağlar"""
+    if not PDF_BASE_URL:
+        raise HTTPException(status_code=404, detail="PDF_BASE_URL ayarlanmamış.")
+    
+    try:
+        pdf_url = f"{PDF_BASE_URL}/{urllib.parse.unquote(pdf_file)}"
+        logger.info(f"PDF erişimi için Backblaze'den indiriliyor: {pdf_url}")
+        
+        # PDF'i Backblaze'den indir
+        response = requests.get(pdf_url, timeout=30)
+        response.raise_for_status()
+        
+        # PDF içeriğini döndür
+        return Response(
+            content=response.content,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"inline; filename={pdf_file}"}
+        )
+        
+    except requests.exceptions.RequestException as e:
+        logger.error(f"PDF indirilemedi {pdf_file}: {e}")
+        raise HTTPException(status_code=404, detail="PDF bulunamadı veya erişilemedi.")
+    except Exception as e:
+        logger.error(f"PDF erişiminde hata: {e}")
+        raise HTTPException(status_code=500, detail="PDF erişiminde hata oluştu.")
+
 @app.get("/pdf/page_image")
 def get_page_image(pdf_file: str, page_num: int = Query(..., gt=0)):
     try:
+        # Önce yerel PDF'i kontrol et
         pdf_path = PDF_DIR / urllib.parse.unquote(pdf_file)
-        if not pdf_path.is_file(): raise HTTPException(status_code=404, detail=f"PDF bulunamadı.")
-        with fitz.open(pdf_path) as doc:
-            if not (0 < page_num <= len(doc)): raise HTTPException(status_code=400, detail="Geçersiz sayfa.")
-            page = doc.load_page(page_num - 1)
-            pix = page.get_pixmap(dpi=150)
-            return StreamingResponse(io.BytesIO(pix.tobytes("png")), media_type="image/png")
+        
+        if pdf_path.is_file():
+            # Yerel PDF varsa onu kullan
+            with fitz.open(pdf_path) as doc:
+                if not (0 < page_num <= len(doc)): raise HTTPException(status_code=400, detail="Geçersiz sayfa.")
+                page = doc.load_page(page_num - 1)
+                pix = page.get_pixmap(dpi=150)
+                return StreamingResponse(io.BytesIO(pix.tobytes("png")), media_type="image/png")
+        
+        elif PDF_BASE_URL:
+            # Yerel PDF yoksa Backblaze'den indir
+            import tempfile
+            import requests
+            
+            pdf_url = f"{PDF_BASE_URL}/{urllib.parse.unquote(pdf_file)}"
+            logger.info(f"PDF Backblaze'den indiriliyor: {pdf_url}")
+            
+            response = requests.get(pdf_url, timeout=30)
+            response.raise_for_status()
+            
+            # Geçici dosya oluştur
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+            temp_file.write(response.content)
+            temp_file.close()
+            
+            try:
+                with fitz.open(temp_file.name) as doc:
+                    if not (0 < page_num <= len(doc)): raise HTTPException(status_code=400, detail="Geçersiz sayfa.")
+                    page = doc.load_page(page_num - 1)
+                    pix = page.get_pixmap(dpi=150)
+                    return StreamingResponse(io.BytesIO(pix.tobytes("png")), media_type="image/png")
+            finally:
+                # Geçici dosyayı sil
+                if os.path.exists(temp_file.name):
+                    os.unlink(temp_file.name)
+        else:
+            raise HTTPException(status_code=404, detail=f"PDF bulunamadı ve PDF_BASE_URL ayarlanmamış.")
+            
     except Exception as e:
+        logger.error(f"PDF sayfa resmi işlenirken hata: {e}")
         raise HTTPException(status_code=500, detail="Sayfa resmi işlenirken hata oluştu.")
 @app.get("/search/videos")
 async def search_videos(q: str):
