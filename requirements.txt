@@ -238,6 +238,7 @@ wrapt==1.17.2
 wsproto==1.2.0
 yarl==1.20.1
 youtube-search-python==1.6.6
+youtube-transcript-api==0.6.2
 youtube-transcript-api==1.2.2
 yt-dlp==2025.7.21
 zstandard==0.23.0

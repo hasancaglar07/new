@@ -304,8 +304,7 @@ async def read_root():
 # OPTIONS handler kaldırıldı
 @app.post("/analyze/start")
 async def start_analysis(background_tasks: BackgroundTasks, url: str = Query(..., description="Analiz edilecek YouTube video URL'si")):
-    if not DEEPGRAM_API_KEY or not DEEPSEEK_API_KEY:
-        raise HTTPException(status_code=503, detail="Video analiz servisi yapılandırılmamış.")
+    # Anahtar zorunluluğu kaldırıldı: Deepgram yoksa YouTube transkript fallback kullanılacak
       
     video_id = extract_video_id(url)
     if not video_id: raise HTTPException(status_code=400, detail="Geçersiz YouTube URL'si.")
@@ -609,7 +608,9 @@ def get_page_image(pdf_file: str, page_num: int = Query(..., gt=0)):
         raise HTTPException(status_code=500, detail="Sayfa resmi işlenirken hata oluştu.")
 @app.get("/search/videos")
 async def search_videos(q: str):
-    if not YOUTUBE_API_KEYS: raise HTTPException(status_code=503, detail="YouTube servisi yapılandırılmamış.")
+    if not YOUTUBE_API_KEYS:
+        # YouTube API anahtarları yoksa boş sonuç döndür (503 yerine graceful degrade)
+        return {"sonuclar": []}
     all_videos, channels = [], ["UCvhlPtV-1MgZBQPmGjomhsA", "UCfYG6Ij2vIJXXplpottv02Q", "UC0FN4XBgk2Isvv1QmrbFn8w"]
     for channel_id in channels:
         for api_key in YOUTUBE_API_KEYS:
