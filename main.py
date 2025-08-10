@@ -21,7 +21,7 @@ from fastapi.responses import StreamingResponse
 from data.audio_db import get_all_audio_by_source, search_audio_chapters
 from data.audio_db import get_audio_path_by_id
 from fastapi import FastAPI, HTTPException, Query, Depends, BackgroundTasks, Response
-from fastapi.middleware.cors import CORSMiddleware
+# CORS import'u kaldırıldı
 from fastapi.responses import JSONResponse
 from whoosh.index import open_dir, Index
 from whoosh.qparser import MultifieldParser, AndGroup, QueryParser
@@ -73,14 +73,7 @@ origins = [
     "*"  # Geçici olarak tüm domainlere izin ver
 ]
 
-# Basit CORS middleware - eskiden çalışan hali
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Tüm origin'lere izin ver
-    allow_credentials=False,  # Credentials kapalı
-    allow_methods=["*"],  # Tüm method'lara izin ver
-    allow_headers=["*"]  # Tüm header'lara izin ver
-)
+# CORS middleware tamamen kaldırıldı
 # Cache ve diğer ayarlar
 ARTICLES_CACHE = {"data": None, "timestamp": 0}
 BOOKS_CACHE = {"data": None, "timestamp": 0}
