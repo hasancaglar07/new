@@ -71,8 +71,7 @@ const EnhancedVideoCard = ({
         const initPlayer = () => {
             if (playerRef.current || !playerElRef.current) return;
             
-            // eslint-disable-next-line no-undef
-            playerRef.current = new YT.Player(playerElRef.current, {
+            playerRef.current = new window.YT.Player(playerElRef.current, {
                 videoId,
                 height: '100%',
                 width: '100%',
@@ -90,8 +89,7 @@ const EnhancedVideoCard = ({
                         setDuration(event.target.getDuration());
                     },
                     onStateChange: (event) => {
-                        // eslint-disable-next-line no-undef
-                        setIsPlaying(event.data === YT.PlayerState.PLAYING);
+                        setIsPlaying(event.data === window.YT.PlayerState.PLAYING);
                     }
                 }
             });

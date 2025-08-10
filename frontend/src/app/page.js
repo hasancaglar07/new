@@ -446,7 +446,7 @@ function VideoCard({ video, index }) {
                     <div className="mt-auto">
                         <a href={`https://www.youtube.com/watch?v=${video.id}`} target="_blank" rel="noopener noreferrer" className="block">
                             <Button className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl transition-all duration-200 hover:shadow-lg">
-                                YouTube'da İzle
+                                YouTube&apos;da İzle
                                 <ArrowRight className="w-4 h-4 ml-2" />
                             </Button>
                         </a>
@@ -494,8 +494,7 @@ function AnalysisCard({ analysis, query, index }) {
 
         const init = () => {
             if (playerRef.current || !playerElRef.current) return;
-            // eslint-disable-next-line no-undef
-            playerRef.current = new YT.Player(playerElRef.current, {
+            playerRef.current = new window.YT.Player(playerElRef.current, {
                 videoId: analysis.video_id,
                 playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
             });
@@ -588,7 +587,7 @@ function AnalysisCard({ analysis, query, index }) {
                     
                     <div className="flex flex-col sm:flex-row gap-3 pt-2">
                         <a href={`https://www.youtube.com/watch?v=${analysis.video_id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium transition-colors">
-                            YouTube'da İzle
+                            YouTube&apos;da İzle
                         </a>
                         <Button onClick={handleScrollChapters} className="bg-white text-violet-700 border border-violet-600 hover:bg-violet-50">
                             Bölümleri Göster

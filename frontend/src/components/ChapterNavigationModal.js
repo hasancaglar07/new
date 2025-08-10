@@ -36,8 +36,7 @@ const ChapterNavigationModal = ({
 
         const init = () => {
             if (playerRef.current || !playerElRef.current) return;
-            // eslint-disable-next-line no-undef
-            playerRef.current = new YT.Player(playerElRef.current, {
+            playerRef.current = new window.YT.Player(playerElRef.current, {
                 videoId,
                 playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
             });
