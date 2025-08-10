@@ -18,8 +18,9 @@ def download_and_extract_index():
     base_dir = Path(__file__).parent
     data_dir = base_dir / "data"
     
-    # Backblaze'den indeks paketini indir
-    index_package_url = "https://cdn.mihmandar.org/file/yediulya-index/whoosh_index_package_latest.zip"
+               # Backblaze'den indeks paketini indir
+           # Not: Bu dosyayı manuel olarak yükleyin ve URL'yi güncelleyin
+           index_package_url = "https://cdn.mihmandar.org/file/yediulya-index/whoosh_index_package_20250810_032102.zip"
     
     print(f"🔗 İndeks paketi indiriliyor: {index_package_url}")
     

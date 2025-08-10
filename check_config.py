@@ -1,94 +1,69 @@
 #!/usr/bin/env python3
 # check_config.py
-# Yapılandırma kontrolü ve Railway için gerekli environment variable'ları gösterir
+# Railway deployment için gerekli environment variable'ları kontrol eder
 
 import os
-from pathlib import Path
+from config import *
 
-def check_config():
-    """Mevcut yapılandırmayı kontrol eder ve eksik olanları gösterir"""
+def main():
+    """Environment variable'ları kontrol eder"""
     
-    print("🔍 YAPILANDIRMA KONTROLÜ")
+    print("🔍 RAILWAY DEPLOYMENT KONTROLÜ")
     print("=" * 50)
     
-    # Temel dizinler
-    base_dir = Path(__file__).parent
-    data_dir = base_dir / "data"
+    # Backblaze URL'leri
+    print("\n📚 BACKBLAZE URL'LERİ:")
+    print(f"   PDF_BASE_URL: {PDF_BASE_URL}")
+    print(f"   AUDIO_BASE_URL: {AUDIO_BASE_URL}")
     
-    print(f"📁 Base Directory: {base_dir}")
-    print(f"📁 Data Directory: {data_dir}")
-    print(f"📁 PDF Directory: {data_dir / 'pdfler'}")
-    print(f"📁 Index Directory: {data_dir / 'whoosh_index'}")
+    # Backblaze B2 API anahtarları
+    print("\n🔑 BACKBLAZE B2 API ANAHTARLARI:")
+    print(f"   B2_APPLICATION_KEY_ID: {'✅ Ayarlandı' if B2_APPLICATION_KEY_ID else '❌ Eksik'}")
+    print(f"   B2_APPLICATION_KEY: {'✅ Ayarlandı' if B2_APPLICATION_KEY else '❌ Eksik'}")
+    print(f"   B2_BUCKET_NAME: {B2_BUCKET_NAME}")
     
-    # Dizin varlığı kontrolü
-    print("\n📋 Dizin Kontrolleri:")
-    print(f"   Data dir exists: {data_dir.exists()}")
-    print(f"   PDF dir exists: {data_dir.exists() and (data_dir / 'pdfler').exists()}")
-    print(f"   Index dir exists: {data_dir.exists() and (data_dir / 'whoosh_index').exists()}")
+    # Turso veritabanı
+    print("\n🗄️ TURSO VERİTABANI:")
+    print(f"   TURSO_ANALYSIS_URL: {'✅ Ayarlandı' if TURSO_ANALYSIS_URL else '❌ Eksik'}")
+    print(f"   TURSO_ANALYSIS_TOKEN: {'✅ Ayarlandı' if TURSO_ANALYSIS_TOKEN else '❌ Eksik'}")
     
-    # Environment variables kontrolü
-    print("\n🔧 Environment Variables:")
+    # API anahtarları
+    print("\n🔑 API ANAHTARLARI:")
+    print(f"   DEEPGRAM_API_KEY: {'✅ Ayarlandı' if DEEPGRAM_API_KEY else '❌ Eksik'}")
+    print(f"   DEEPSEEK_API_KEY: {'✅ Ayarlandı' if DEEPSEEK_API_KEY else '❌ Eksik'}")
+    print(f"   YOUTUBE_API_KEYS: {len(YOUTUBE_API_KEYS)} anahtar mevcut")
     
-    env_vars = {
-        "PDF_BASE_URL": "https://cdn.mihmandar.org/file/yediulya-pdf-arsivi",
-        "AUDIO_BASE_URL": "https://cdn.mihmandar.org/file/yediulya-ses-arsivi",
-        "TURSO_ANALYSIS_URL": "your_turso_url_here",
-        "TURSO_ANALYSIS_TOKEN": "your_turso_token_here",
-        "DEEPGRAM_API_KEY": "your_deepgram_key_here",
-        "DEEPSEEK_API_KEY": "your_deepseek_key_here",
-        "YOUTUBE_API_KEY1": "your_youtube_key_here"
-    }
+    # Öneriler
+    print("\n💡 RAILWAY'DE AYARLANMASI GEREKEN ENVIRONMENT VARIABLE'LAR:")
+    print("=" * 60)
     
-    for var, default_value in env_vars.items():
-        current_value = os.getenv(var)
-        status = "✅ SET" if current_value else "❌ NOT SET"
-        print(f"   {var}: {status}")
-        if current_value:
-            if "KEY" in var or "TOKEN" in var:
-                print(f"      Value: {'*' * min(len(current_value), 10)}")
-            else:
-                print(f"      Value: {current_value}")
-        else:
-            print(f"      Default: {default_value}")
-    
-    # Dosya varlığı kontrolü
-    print("\n📄 Dosya Kontrolleri:")
-    
-    important_files = [
-        "data/book_metadata.json",
-        "data/articles_database.db",
-        "data/whoosh_index"
+    required_vars = [
+        "PDF_BASE_URL",
+        "AUDIO_BASE_URL", 
+        "B2_APPLICATION_KEY_ID",
+        "B2_APPLICATION_KEY",
+        "B2_BUCKET_NAME",
+        "TURSO_ANALYSIS_URL",
+        "TURSO_ANALYSIS_TOKEN",
+        "DEEPGRAM_API_KEY",
+        "DEEPSEEK_API_KEY"
     ]
     
-    for file_path in important_files:
-        full_path = base_dir / file_path
-        exists = full_path.exists()
-        status = "✅ EXISTS" if exists else "❌ MISSING"
-        print(f"   {file_path}: {status}")
-        
-        if file_path == "data/book_metadata.json" and exists:
-            try:
-                import json
-                with open(full_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                print(f"      Books count: {len(data)}")
-            except Exception as e:
-                print(f"      Error reading: {e}")
+    for var in required_vars:
+        value = os.getenv(var)
+        if value:
+            print(f"   ✅ {var}: {value[:50]}{'...' if len(value) > 50 else ''}")
+        else:
+            print(f"   ❌ {var}: EKSİK!")
     
-    print("\n🚀 RAILWAY DEPLOYMENT İÇİN:")
-    print("=" * 50)
-    print("Railway'de aşağıdaki environment variable'ları ayarlayın:")
-    print()
+    # Özel notlar
+    print("\n📝 ÖZEL NOTLAR:")
+    print("   1. PDF_BASE_URL: Backblaze'deki PDF bucket'ının public URL'si")
+    print("   2. B2_APPLICATION_KEY_ID: Backblaze B2 API anahtar ID'si")
+    print("   3. B2_APPLICATION_KEY: Backblaze B2 API anahtarı")
+    print("   4. B2_BUCKET_NAME: PDF'lerin bulunduğu bucket adı")
     
-    for var, default_value in env_vars.items():
-        if not os.getenv(var):
-            print(f"   {var}={default_value}")
-    
-    print("\n💡 ÖNEMLİ NOTLAR:")
-    print("1. PDF_BASE_URL ve AUDIO_BASE_URL zaten doğru değerlere sahip")
-    print("2. TURSO_ANALYSIS_URL ve TURSO_ANALYSIS_TOKEN'ı kendi değerlerinizle değiştirin")
-    print("3. API anahtarlarını kendi değerlerinizle değiştirin")
-    print("4. Railway'de environment variable'ları ayarladıktan sonra uygulamayı yeniden deploy edin")
+    print("\n🚀 Railway'de bu değişkenleri ayarladıktan sonra deploy edin!")
 
 if __name__ == "__main__":
-    check_config()
+    main()

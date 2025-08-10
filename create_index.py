@@ -30,6 +30,11 @@ BOOK_METADATA_PATH = DATA_DIR / "book_metadata.json"
 # PDF dizini - Environment variable'dan al veya varsayılan kullan
 PDF_BASE_URL = os.getenv("PDF_BASE_URL")
 
+# Backblaze B2 API anahtarları
+B2_APPLICATION_KEY_ID = os.getenv("B2_APPLICATION_KEY_ID")
+B2_APPLICATION_KEY = os.getenv("B2_APPLICATION_KEY")
+B2_BUCKET_NAME = os.getenv("B2_BUCKET_NAME", "yediulya-pdf-arsivi")
+
 # HTML'i temiz metne dönüştüren yardımcı fonksiyon
 def html_to_text(html_content):
     if not html_content:
@@ -43,8 +48,9 @@ def download_pdf_from_backblaze(pdf_filename):
         return None
     
     try:
+        # Önce public URL ile dene
         pdf_url = f"{PDF_BASE_URL}/{pdf_filename}"
-        logger.info(f"PDF indiriliyor: {pdf_url}")
+        logger.info(f"PDF indiriliyor (public): {pdf_url}")
         
         response = requests.get(pdf_url, timeout=30)
         response.raise_for_status()
@@ -57,8 +63,32 @@ def download_pdf_from_backblaze(pdf_filename):
         logger.info(f"PDF başarıyla indirildi: {pdf_filename}")
         return temp_file.name
         
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 401:
+            # 401 hatası - API anahtarları ile dene
+            if B2_APPLICATION_KEY_ID and B2_APPLICATION_KEY:
+                logger.info(f"Public erişim başarısız, API anahtarları ile deneniyor: {pdf_filename}")
+                return download_pdf_with_b2_api(pdf_filename)
+            else:
+                logger.warning(f"PDF erişimi için B2 API anahtarları gerekli: {pdf_filename}")
+                return None
+        else:
+            logger.error(f"PDF indirilemedi {pdf_filename}: {e}")
+            return None
     except Exception as e:
         logger.error(f"PDF indirilemedi {pdf_filename}: {e}")
+        return None
+
+def download_pdf_with_b2_api(pdf_filename):
+    """B2 API anahtarları ile PDF dosyasını indirir"""
+    try:
+        # B2 API ile dosya indirme (basit implementasyon)
+        # Not: Tam B2 API implementasyonu için b2sdk kütüphanesi gerekli
+        logger.warning(f"B2 API implementasyonu henüz tamamlanmadı: {pdf_filename}")
+        return None
+        
+    except Exception as e:
+        logger.error(f"B2 API ile PDF indirilemedi {pdf_filename}: {e}")
         return None
 
 def create_search_index():
