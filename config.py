@@ -11,8 +11,9 @@ PDF_DIR = DATA_DIR / "pdfler"
 INDEX_DIR = DATA_DIR / "whoosh_index"
 
 # Backblaze URL'leri - Environment variable'dan al veya varsayılan kullan
-PDF_BASE_URL = os.getenv("PDF_BASE_URL", "https://cdn.mihmandar.org/file/yediulya-pdf-arsivi")
-AUDIO_BASE_URL = os.getenv("AUDIO_BASE_URL", "https://cdn.mihmandar.org/file/yediulya-ses-arsivi")
+# Trailing slash'leri kaldır (çift slash sorununu önlemek için)
+PDF_BASE_URL = os.getenv("PDF_BASE_URL", "https://cdn.mihmandar.org/file/yediulya-pdf-arsivi").rstrip('/')
+AUDIO_BASE_URL = os.getenv("AUDIO_BASE_URL", "https://cdn.mihmandar.org/file/yediulya-ses-arsivi").rstrip('/')
 
 # Backblaze B2 API anahtarları (PDF erişimi için)
 B2_APPLICATION_KEY_ID = os.getenv("B2_APPLICATION_KEY_ID")
