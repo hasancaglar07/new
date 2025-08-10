@@ -51,11 +51,23 @@ try:
 except ImportError:
     pass
 
+def _sanitize_proxy_env():
+    """Disable placeholder or invalid proxy vars to avoid DNS errors."""
+    invalid_values = {"http://proxy.example.com:8080", "https://proxy.example.com:8080", "proxy.example.com", ""}
+    for key in ["HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"]:
+        val = os.environ.get(key)
+        if val and any(x in val for x in invalid_values):
+            os.environ.pop(key, None)
+            logger.info(f"Proxy env temizlendi: {key}")
+
+_sanitize_proxy_env()
+
 # --- Lifespan Manager ---
 from contextlib import asynccontextmanager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.httpx_client = httpx.AsyncClient()
+    # trust_env=False => sistem proxy env değişkenlerini dikkate alma
+    app.state.httpx_client = httpx.AsyncClient(trust_env=False)
     logger.info("httpx client başlatıldı.")
     yield
     await app.state.httpx_client.aclose()
@@ -152,12 +164,13 @@ def download_audio_sync(url: str, task_id: str) -> bytes:
     # Cookie dosyası (403 azaltmak için)
     cookies_path = Path(__file__).parent / "data" / "youtube-cookies.txt"
     
-    # Proxy ayarları (opsiyonel)
+    # Proxy ayarları: placeholder olmayan değerleri kullan
     proxy_settings = {}
-    if os.getenv('HTTP_PROXY'):
-        proxy_settings['proxy'] = os.getenv('HTTP_PROXY')
-    elif os.getenv('HTTPS_PROXY'):
-        proxy_settings['proxy'] = os.getenv('HTTPS_PROXY')
+    for k in ('HTTP_PROXY','HTTPS_PROXY','http_proxy','https_proxy'):
+        v = os.getenv(k)
+        if v and 'proxy.example.com' not in v:
+            proxy_settings['proxy'] = v
+            break
     
     ydl_opts = {
         'format': 'bestaudio/best',
@@ -281,12 +294,13 @@ async def run_video_analysis(task_id: str, url: str):
         # Gelişmiş yt-dlp konfigürasyonu - bot korumasını aşmak için
         cookies_path = Path(__file__).parent / "data" / "youtube-cookies.txt"
         
-        # Proxy ayarları (opsiyonel)
+        # Proxy ayarları: placeholder olmayan değerleri kullan
         proxy_settings = {}
-        if os.getenv('HTTP_PROXY'):
-            proxy_settings['proxy'] = os.getenv('HTTP_PROXY')
-        elif os.getenv('HTTPS_PROXY'):
-            proxy_settings['proxy'] = os.getenv('HTTPS_PROXY')
+        for k in ('HTTP_PROXY','HTTPS_PROXY','http_proxy','https_proxy'):
+            v = os.getenv(k)
+            if v and 'proxy.example.com' not in v:
+                proxy_settings['proxy'] = v
+                break
         
         ydl_opts = {
             'quiet': True,
