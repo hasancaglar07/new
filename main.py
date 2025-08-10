@@ -72,7 +72,16 @@ origins = [
     "https://new.vercel.app",
     "*"  # Geçici olarak tüm domainlere izin ver
 ]
-app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# CORS middleware'i ekle
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+    expose_headers=["*"]
+)
 # Cache ve diğer ayarlar
 ARTICLES_CACHE = {"data": None, "timestamp": 0}
 BOOKS_CACHE = {"data": None, "timestamp": 0}
@@ -287,8 +296,15 @@ async def get_books_by_author():
         logger.error(f"Kitap listesi işlenirken hata: {e}")
         raise HTTPException(status_code=500, detail="Kitap listesi işlenemedi.")
 @app.get("/search/analyses")
-async def search_analyses(q: str):
+async def search_analyses(q: str, response: Response):
     if not q.strip(): return {"sonuclar": []}
+    
+    # CORS header'ları ekle
+    response.headers["Access-Control-Allow-Origin"] = "https://mihmandar.org"
+    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    
     history = get_all_completed_analyses()
     q_lower = q.lower()
     matching_analyses = []
@@ -480,6 +496,12 @@ async def get_analysis_history(response: Response):
     """
     Tüm tamamlanmış analizleri getirir ve sunucu tarafı önbelleklemesini engeller.
     """
+    # CORS header'ları ekle
+    response.headers["Access-Control-Allow-Origin"] = "https://mihmandar.org"
+    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    
     # Bu başlıklar, Vercel/Railway gibi platformlara bu cevabı asla önbelleğe almamasını söyler.
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
