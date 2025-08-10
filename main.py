@@ -73,7 +73,16 @@ origins = [
     "*"  # Geçici olarak tüm domainlere izin ver
 ]
 
-# CORS middleware tamamen kaldırıldı
+# Basit CORS middleware - sadece gerekli header'lar
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 # Cache ve diğer ayarlar
 ARTICLES_CACHE = {"data": None, "timestamp": 0}
 BOOKS_CACHE = {"data": None, "timestamp": 0}
