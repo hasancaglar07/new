@@ -33,6 +33,20 @@ B2_BUCKET_NAME = os.getenv("B2_BUCKET_NAME", "yediulya-pdf-arsivi")
 B2_JSON_BUCKET_NAME = os.getenv("B2_JSON_BUCKET_NAME", B2_BUCKET_NAME)
 B2_JSON_PREFIX = os.getenv("B2_JSON_PREFIX", "video-analyses/")
 
+# Supabase bağlantı ayarları (REST client)
+# Not: Artık Postgres DSN yerine Supabase URL + Secret Key kullanıyoruz
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY")
+SUPABASE_PUBLISHABLE_KEY = os.getenv("SUPABASE_PUBLISHABLE_KEY")
+
+# Eski Postgres parçaları geriye dönük uyumluluk için bırakıldı (kullanılmıyor)
+SUPABASE_DB_URL = None
+SUPABASE_HOST = os.getenv("SUPABASE_HOST")
+SUPABASE_PORT = os.getenv("SUPABASE_PORT", "5432")
+SUPABASE_DBNAME = os.getenv("SUPABASE_DBNAME") or os.getenv("SUPABASE_DATABASE")
+SUPABASE_USER = os.getenv("SUPABASE_USER")
+SUPABASE_PASSWORD = os.getenv("SUPABASE_PASSWORD")
+
 # Turso kaldırıldı – yine de referanslar için güvenli default ekleyelim
 TURSO_ANALYSIS_URL = os.getenv("TURSO_ANALYSIS_URL")
 TURSO_ANALYSIS_TOKEN = os.getenv("TURSO_ANALYSIS_TOKEN")
@@ -55,6 +69,8 @@ def print_config():
     print("🔍 DEBUG - B2_BUCKET_NAME:", B2_BUCKET_NAME)
     print("🔍 DEBUG - B2_JSON_BUCKET_NAME:", B2_JSON_BUCKET_NAME)
     print("🔍 DEBUG - B2_JSON_PREFIX:", B2_JSON_PREFIX)
+    print("🔍 DEBUG - SUPABASE_URL:", SUPABASE_URL or "None")
+    print("🔍 DEBUG - SUPABASE_SECRET_KEY:", "***" if SUPABASE_SECRET_KEY else "None")
     print("🔍 DEBUG - TURSO_ANALYSIS_URL:", TURSO_ANALYSIS_URL)
     print("🔍 DEBUG - TURSO_ANALYSIS_TOKEN:", "***" if TURSO_ANALYSIS_TOKEN else "None")
     print("🔍 DEBUG - DEEPGRAM_API_KEY:", "***" if DEEPGRAM_API_KEY else "None")

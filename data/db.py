@@ -7,14 +7,16 @@ import json
 import logging
 from pathlib import Path
 from typing import Optional, Dict, Any
-from urllib.parse import quote
+from urllib.parse import quote, quote_plus
 
-# Opsiyonel: Supabase Postgres (psycopg2)
-try:
-    import psycopg2  # psycopg2-binary
-    from psycopg2.extras import Json
-except Exception:  # psycopg2 yoksa sorun değil
-    psycopg2 = None  # type: ignore
+"""Supabase veri erişim katmanı
+
+Artık doğrudan Postgres (psycopg2) yerine Supabase REST API kullanıyoruz.
+Harici paket kurulumu gerektirmeden `httpx` ile istek atıyoruz.
+"""
+
+import httpx
+from config import SUPABASE_URL, SUPABASE_SECRET_KEY
 
 # Turso kaldırıldı
 
@@ -37,17 +39,19 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 REGULAR_DB_PATH = os.path.join(os.path.dirname(__file__), "qa_database.db")
 VIDEO_SQLITE_PATH = os.path.join(os.path.dirname(__file__), "video_analyses.db")
 
-# --- ENV ---
-SUPABASE_DB_URL = os.getenv("SUPABASE_DB_URL") or os.getenv("DATABASE_URL")
-SUPABASE_HOST = os.getenv("SUPABASE_HOST")
-SUPABASE_PORT = os.getenv("SUPABASE_PORT", "5432")
-SUPABASE_DBNAME = os.getenv("SUPABASE_DBNAME") or os.getenv("SUPABASE_DATABASE")
-SUPABASE_USER = os.getenv("SUPABASE_USER")
-SUPABASE_PASSWORD = os.getenv("SUPABASE_PASSWORD")
-
-# Supabase bağlantısını sürekli denemeyelim: hata alırsak devre dışı bırakırız
 _SUPABASE_DISABLED: bool = False
 _SUPABASE_DISABLED_REASON: str | None = None
+
+
+def _get_supabase_http_client() -> Optional[httpx.Client]:
+    if not SUPABASE_URL or not SUPABASE_SECRET_KEY:
+        return None
+    headers = {
+        "apikey": SUPABASE_SECRET_KEY,
+        "Authorization": f"Bearer {SUPABASE_SECRET_KEY}",
+        "Content-Type": "application/json",
+    }
+    return httpx.Client(base_url=SUPABASE_URL.rstrip("/") + "/rest/v1", headers=headers, timeout=20.0)
 
 # --- Connections ---
 
@@ -55,58 +59,36 @@ def get_regular_connection():
     return sqlite3.connect(REGULAR_DB_PATH)
 
 
-def get_supabase_connection():
-    """Supabase Postgres bağlantısı (psycopg2). İlk hatada devre dışı bırakır.
-    Öncelik: parçalı env ile güvenli DSN > SUPABASE_DB_URL."""
+def get_supabase_connection() -> Optional[httpx.Client]:
+    """Supabase REST HTTP client. İlk hatada devre dışı bırakır."""
     global _SUPABASE_DISABLED, _SUPABASE_DISABLED_REASON
 
     if _SUPABASE_DISABLED:
         return None
-    if not psycopg2:
+    if not SUPABASE_URL or not SUPABASE_SECRET_KEY:
         _SUPABASE_DISABLED = True
-        _SUPABASE_DISABLED_REASON = "psycopg2 yok"
-        return None
-
-    def _build_dsn_from_parts() -> Optional[str]:
-        host = (SUPABASE_HOST or "").strip()
-        db = (SUPABASE_DBNAME or "").strip()
-        user = (SUPABASE_USER or "").strip()
-        pwd = (SUPABASE_PASSWORD or "").strip()
-        port = (SUPABASE_PORT or "5432").strip() or "5432"
-        if not (host and db and user and pwd):
-            return None
-        safe_user = quote(user, safe="")
-        safe_pass = quote(pwd, safe="")
-        return f"postgresql://{safe_user}:{safe_pass}@{host}:{port}/{db}"
-
-    candidate_dsn: Optional[str] = None
-    # Öncelik: parçalı env ile kurulan DSN
-    candidate_dsn = _build_dsn_from_parts()
-    if not candidate_dsn:
-        # Parçalı yoksa URL'i dene
-        url = (SUPABASE_DB_URL or "").strip()
-        if url:
-            try:
-                url.encode("ascii")
-                candidate_dsn = url
-            except UnicodeEncodeError:
-                candidate_dsn = None
-
-    if not candidate_dsn:
-        _SUPABASE_DISABLED = True
-        _SUPABASE_DISABLED_REASON = "DSN oluşturulamadı (URL yok/ASCII dışı ve parçalı env eksik)"
-        logging.warning("Supabase devre dışı: DSN oluşturulamadı. SQLite kullanılacak.")
+        _SUPABASE_DISABLED_REASON = "SUPABASE_URL veya SECRET_KEY eksik"
+        logging.warning("Supabase devre dışı: URL veya Secret Key yok. SQLite kullanılacak.")
         return None
 
     try:
-        conn = psycopg2.connect(candidate_dsn)
-        conn.autocommit = True
-        logging.info("Supabase Postgres bağlantısı başarılı.")
-        return conn
+        client = _get_supabase_http_client()
+        if client is None:
+            raise RuntimeError("HTTP client oluşturulamadı")
+        # Basit bir ping: health için küçük bir select dene
+        resp = client.get("/video_analysis_tasks", params={"select": "task_id", "limit": 1})
+        if resp.status_code in (200, 206):
+            logging.info("Supabase REST client hazır.")
+            return client
+        # 404 tablo yok olabilir; client yine de döndür.
+        if resp.status_code == 404:
+            logging.info("Supabase REST canlı, tablo bulunamadı (migration bekleniyor).")
+            return client
+        raise RuntimeError(f"REST ping hatası: {resp.status_code} {resp.text}")
     except Exception as e:
         _SUPABASE_DISABLED = True
         _SUPABASE_DISABLED_REASON = str(e)
-        logging.warning(f"Supabase bağlantısı devre dışı bırakıldı: {e}. SQLite kullanılacak.")
+        logging.warning(f"Supabase client oluşturulamadı: {e}. SQLite kullanılacak.")
         return None
 
 
@@ -168,22 +150,14 @@ def init_db():
         if client is None:
             logging.warning("Kalıcı veritabanı bağlantısı kurulamadı. Video analizi geçici olabilir.")
             return
-        # Supabase (psycopg2)
-        if psycopg2 and isinstance(client, psycopg2.extensions.connection):  # type: ignore
-            with client.cursor() as cur:
-                cur.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS public.video_analysis_tasks (
-                        task_id TEXT PRIMARY KEY,
-                        status TEXT NOT NULL,
-                        message TEXT,
-                        result JSONB,
-                        created_at TIMESTAMPTZ DEFAULT NOW(),
-                        updated_at TIMESTAMPTZ DEFAULT NOW()
-                    )
-                    """
-                )
-            logging.info("Supabase: video_analysis_tasks tablosu hazır.")
+        # Supabase REST
+        if isinstance(client, httpx.Client):
+            try:
+                resp = client.get("/video_analysis_tasks", params={"select": "task_id", "limit": 1})
+                if resp.status_code in (200, 206, 404):
+                    logging.info("Supabase REST: tablo erişim denemesi tamamlandı.")
+            except Exception:
+                logging.info("Supabase: 'video_analysis_tasks' tablo kontrolü atlandı.")
         # SQLite
         if isinstance(client, sqlite3.Connection):
             client.execute(
@@ -252,31 +226,29 @@ def get_article_by_id(article_id: int):
 # --- Video Task CRUD (Supabase > SQLite) ---
 
 def _upsert_supabase(task_id: str, status: str, message: Optional[str], result: Optional[Dict[str, Any]]):
-    if not psycopg2:
-        return False
-    conn = get_supabase_connection()
-    if not conn:
+    client = get_supabase_connection()
+    if not isinstance(client, httpx.Client):
         return False
     try:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO public.video_analysis_tasks (task_id, status, message, result, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, NOW(), NOW())
-                ON CONFLICT (task_id) DO UPDATE SET
-                    status = EXCLUDED.status,
-                    message = EXCLUDED.message,
-                    result = EXCLUDED.result,
-                    updated_at = NOW()
-                """,
-                (task_id, status, message, Json(result) if result is not None else None),
+        payload = {"task_id": task_id, "status": status, "message": message, "result": result}
+        headers = {"Prefer": "resolution=merge-duplicates,return=representation"}
+        try:
+            resp = client.post(
+                "/video_analysis_tasks",
+                params={"on_conflict": "task_id"},
+                json=payload,
+                headers=headers,
             )
-        return True
-    except Exception as e:
-        logging.error(f"Supabase UPSERT hatası: {e}")
+        except Exception as e:
+            logging.error(f"Supabase UPSERT isteği gönderilemedi: {e}")
+            return False
+        if resp.status_code in (200, 201, 204):
+            return True
+        logging.error(f"Supabase UPSERT hatası: {resp.status_code} {resp.text}")
         return False
-    finally:
-        conn.close()
+    except Exception as e:
+        logging.error(f"Supabase UPSERT genel hata: {e}")
+        return False
 
 
 def _upsert_sqlite(task_id: str, status: str, message: str | None, result_json: str | None):
@@ -342,29 +314,22 @@ def update_task(task_id: str, status: str, message: str = None, result: dict = N
 
 def get_task(task_id: str):
     # 1) Supabase
-    if psycopg2:
-        conn = get_supabase_connection()
-        if conn:
-            try:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        "SELECT task_id, status, message, result, updated_at FROM public.video_analysis_tasks WHERE task_id = %s",
-                        (task_id,),
-                    )
-                    row = cur.fetchone()
-                    if not row:
-                        return None
-                    return {
-                        "task_id": row[0],
-                        "status": row[1],
-                        "message": row[2],
-                        "result": row[3],
-                        "updated_at": row[4],
-                    }
-            except Exception as e:
-                logging.error(f"Supabase get_task hatası: {e}")
-            finally:
-                conn.close()
+    client = get_supabase_connection()
+    if isinstance(client, httpx.Client):
+        try:
+            params = {
+                "select": "task_id,status,message,result,updated_at",
+                "task_id": f"eq.{task_id}",
+            }
+            resp = client.get("/video_analysis_tasks", params=params)
+            if resp.status_code not in (200, 206):
+                return None
+            rows = resp.json() if resp.text else []
+            if not rows:
+                return None
+            return rows[0]
+        except Exception as e:
+            logging.error(f"Supabase get_task hatası: {e}")
     # 2) Turso kaldırıldı
     # 3) SQLite
     conn = get_sqlite_connection()
@@ -391,30 +356,32 @@ def get_task(task_id: str):
 
 def get_all_completed_analyses():
     # 1) Supabase
-    if psycopg2:
-        conn = get_supabase_connection()
-        if conn:
-            try:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        "SELECT task_id, result FROM public.video_analysis_tasks WHERE status = 'completed' AND result IS NOT NULL ORDER BY updated_at DESC"
-                    )
-                    history = {}
-                    for row in cur.fetchall():
-                        task_id = row[0]
-                        result_data = row[1]
-                        if isinstance(result_data, str):
-                            try:
-                                result_data = json.loads(result_data)
-                            except Exception:
-                                pass
-                        if result_data:
-                            history[task_id] = result_data
-                    return history
-            except Exception as e:
-                logging.error(f"Supabase get_all_completed_analyses hatası: {e}")
-            finally:
-                conn.close()
+    client = get_supabase_connection()
+    if isinstance(client, httpx.Client):
+        try:
+            params = {
+                "select": "task_id,result,updated_at",
+                "status": "eq.completed",
+                "order": "updated_at.desc",
+            }
+            resp = client.get("/video_analysis_tasks", params=params)
+            if resp.status_code not in (200, 206):
+                return {}
+            rows = resp.json() if resp.text else []
+            history: Dict[str, Any] = {}
+            for row in rows:
+                video_id = row.get("task_id")
+                result_data = row.get("result")
+                if isinstance(result_data, str):
+                    try:
+                        result_data = json.loads(result_data)
+                    except Exception:
+                        pass
+                if video_id and result_data:
+                    history[video_id] = result_data
+            return history
+        except Exception as e:
+            logging.error(f"Supabase get_all_completed_analyses hatası: {e}")
     # 2) Turso kaldırıldı
     # 3) SQLite
     conn = get_sqlite_connection()
