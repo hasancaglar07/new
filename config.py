@@ -20,6 +20,10 @@ B2_APPLICATION_KEY_ID = os.getenv("B2_APPLICATION_KEY_ID")
 B2_APPLICATION_KEY = os.getenv("B2_APPLICATION_KEY")
 B2_BUCKET_NAME = os.getenv("B2_BUCKET_NAME", "yediulya-pdf-arsivi")
 
+# B2 JSON arşivi için ek ayarlar (analiz sonuçları)
+B2_JSON_BUCKET_NAME = os.getenv("B2_JSON_BUCKET_NAME", B2_BUCKET_NAME)
+B2_JSON_PREFIX = os.getenv("B2_JSON_PREFIX", "video-analyses/")
+
 # Turso veritabanı ayarları
 TURSO_ANALYSIS_URL = os.getenv("TURSO_ANALYSIS_URL")
 TURSO_ANALYSIS_TOKEN = os.getenv("TURSO_ANALYSIS_TOKEN")
@@ -40,6 +44,8 @@ def print_config():
     print("🔍 DEBUG - B2_APPLICATION_KEY_ID:", "***" if B2_APPLICATION_KEY_ID else "None")
     print("🔍 DEBUG - B2_APPLICATION_KEY:", "***" if B2_APPLICATION_KEY else "None")
     print("🔍 DEBUG - B2_BUCKET_NAME:", B2_BUCKET_NAME)
+    print("🔍 DEBUG - B2_JSON_BUCKET_NAME:", B2_JSON_BUCKET_NAME)
+    print("🔍 DEBUG - B2_JSON_PREFIX:", B2_JSON_PREFIX)
     print("🔍 DEBUG - TURSO_ANALYSIS_URL:", TURSO_ANALYSIS_URL)
     print("🔍 DEBUG - TURSO_ANALYSIS_TOKEN:", "***" if TURSO_ANALYSIS_TOKEN else "None")
     print("🔍 DEBUG - DEEPGRAM_API_KEY:", "***" if DEEPGRAM_API_KEY else "None")

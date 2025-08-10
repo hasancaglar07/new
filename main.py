@@ -1,5 +1,5 @@
 # main.py
-# Versiyon 3.4 - Stabil Stream ve Lifespan Manager ile audio streaming güncellemesi. Sunucu önbelleklemesini önlemek için /analysis_history endpoint'ine Cache-Control başlığı eklendi.
+# Versiyon 3.5 - Video analizi: Deepgram birincil, YouTube transkript yedek; kalıcı kayıt (Turso/SQLite)
 import logging
 import os
 import io
@@ -26,10 +26,13 @@ from fastapi.responses import JSONResponse
 from whoosh.index import open_dir, Index
 from whoosh.qparser import MultifieldParser, AndGroup, QueryParser
 from whoosh.searching import Searcher
-# from deepgram import DeepgramClient, PrerecordedOptions  # Şimdilik kaldırıldı
 from data.db import init_db, update_task, get_task, get_all_completed_analyses
 from data.articles_db import get_all_articles_by_category, get_article_by_id
 from contextlib import asynccontextmanager
+from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound, CouldNotRetrieveTranscript
+# Deepgram SDK (birincil transkripsiyon)
+from deepgram import DeepgramClient, PrerecordedOptions
+
 # --- Kurulum ve Global Yapılandırma ---
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -40,26 +43,22 @@ try:
     from config import *
     print_config()  # Debug bilgilerini yazdır
 except ImportError:
-    # Eski yöntem - environment variable'lardan oku
     pass
 
-# --- Lifespan Manager: Uygulama ömrü boyunca yaşayacak nesneler ---
+# --- Lifespan Manager ---
+from contextlib import asynccontextmanager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Uygulama başladığında:
-    # Tek bir httpx.AsyncClient oluştur ve app state'ine ata.
     app.state.httpx_client = httpx.AsyncClient()
     logger.info("httpx client başlatıldı.")
     yield
-    # Uygulama kapandığında:
-    # Oluşturulan client'ı düzgünce kapat.
     await app.state.httpx_client.aclose()
     logger.info("httpx client kapatıldı.")
 
 app = FastAPI(
     title="Mihmandar İlim Havuzu API",
-    version="3.4",
-    description="Tasavvufi eserlerde, makalelerde ve YouTube videolarında arama yapma API'si. Analiz geçmişi Turso'da saklanır.",
+    version="3.5",
+    description="Tasavvufi eserlerde, makalelerde ve YouTube videolarında arama yapma API'si. Analiz geçmişi kalıcı veritabanında saklanır.",
     lifespan=lifespan
 )
 # Remove CORSMiddleware usage entirely
@@ -67,7 +66,7 @@ app = FastAPI(
 ARTICLES_CACHE = {"data": None, "timestamp": 0}
 BOOKS_CACHE = {"data": None, "timestamp": 0}
 
-# Single global CORS middleware that force-adds permissive headers for all responses
+# Tekil global CORS middleware (herkese açık)
 @app.middleware("http")
 async def force_cors_headers(request, call_next):
     if request.method == "OPTIONS":
@@ -104,78 +103,203 @@ async def force_cors_headers(request, call_next):
     response.headers["Access-Control-Expose-Headers"] = "*"
     response.headers["Vary"] = "Origin"
     return response
-# DeepSeek client'ı oluştur
+
+# DeepSeek client'ı oluştur (opsiyonel)
 deepseek_client = AsyncOpenAI(base_url="https://api.deepseek.com", api_key=DEEPSEEK_API_KEY) if DEEPSEEK_API_KEY else None
+# Deepgram client'ı oluştur (birincil)
+deepgram_client = DeepgramClient(DEEPGRAM_API_KEY) if DEEPGRAM_API_KEY else None
 
 # Database'i başlat
 init_db()
+
 # --- Yardımcı Fonksiyonlar ---
 def get_whoosh_index():
-    try: return open_dir(str(INDEX_DIR))
+    try:
+        return open_dir(str(INDEX_DIR))
     except Exception as e:
         logger.error(f"Kritik Hata: Whoosh indeksi '{INDEX_DIR}' adresinde bulunamadı: {e}")
         raise HTTPException(status_code=503, detail="Arama servisi şu anda kullanılamıyor.")
+
 def get_searcher(ix: Index = Depends(get_whoosh_index)) -> Searcher:
     return ix.searcher()
-  
+
 def format_time(seconds: float) -> str:
     minutes, seconds = divmod(int(seconds), 60)
     hours, minutes = divmod(minutes, 60)
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
 def extract_video_id(url: str) -> Optional[str]:
     match = re.search(r"(?:v=|\/|embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})", url)
     return match.group(1) if match else None
+
 def download_audio_sync(url: str, task_id: str) -> bytes:
     temp_dir = tempfile.gettempdir()
     temp_filepath = os.path.join(temp_dir, f"{task_id}_audio.m4a")
-    ydl_opts = {'format': 'bestaudio/best', 'outtmpl': temp_filepath, 'quiet': True, 'no_warnings': True, 'noprogress': True}
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'outtmpl': temp_filepath,
+        'quiet': True,
+        'no_warnings': True,
+        'noprogress': True
+    }
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl: ydl.download([url])
-        with open(temp_filepath, 'rb') as f: return f.read()
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        with open(temp_filepath, 'rb') as f:
+            return f.read()
     finally:
-        if os.path.exists(temp_filepath): os.remove(temp_filepath)
+        if os.path.exists(temp_filepath):
+            os.remove(temp_filepath)
+
+# Transkript alma yardımcı fonksiyonu (YouTube ücretsiz)
+def fetch_youtube_transcript(video_id: str) -> list[dict]:
+    preferred_langs = ["tr", "tr-TR", "tr_tr", "tr-TR", "tr"]
+    try:
+        transcripts = YouTubeTranscriptApi.list_transcripts(video_id)
+        for lang in preferred_langs:
+            try:
+                t = transcripts.find_transcript([lang])
+                return t.fetch()
+            except (NoTranscriptFound, TranscriptsDisabled, CouldNotRetrieveTranscript):
+                continue
+        try:
+            t = transcripts.find_manually_created_transcript(["en", "de", "ar"])
+            return t.translate("tr").fetch()
+        except Exception:
+            pass
+        try:
+            t = transcripts.find_generated_transcript(["en", "de", "ar"])
+            return t.translate("tr").fetch()
+        except Exception:
+            pass
+    except (NoTranscriptFound, TranscriptsDisabled, CouldNotRetrieveTranscript):
+        return []
+    except Exception:
+        return []
+    return []
+
 # --- ANA İŞLEV ---
 async def run_video_analysis(task_id: str, url: str):
     try:
         update_task(task_id, "processing", message="Video Bilgileri Alınıyor...")
         with yt_dlp.YoutubeDL({'quiet': True, 'skip_download': True, 'no_warnings': True}) as ydl:
             metadata = await asyncio.to_thread(ydl.extract_info, url, download=False)
-          
-        update_task(task_id, "processing", message="Video Sesi İndiriliyor...")
-        audio_content = await asyncio.to_thread(download_audio_sync, url, task_id)
-      
-        update_task(task_id, "processing", message="Ses Metne Dönüştürülüyor...")
-      
-        # deepgram_client = DeepgramClient(DEEPGRAM_API_KEY)  # Şimdilik kaldırıldı
-        # source = {'buffer': audio_content}
-        # options = PrerecordedOptions(model="nova-2", language="tr", smart_format=True, utterances=True)
-      
-        # response = await deepgram_client.listen.asyncrest.v("1").transcribe_file(source, options)
-      
-        # if not response.results or not response.results.utterances: raise ValueError("Videodan metin çıkarılamadı.")
-      
-        update_task(task_id, "processing", message="Konu Başlıkları Oluşturuluyor...")
-        # chapters, chunk_text, start_time = [], "", 0
-        # utterances = response.results.utterances
-        # for i, utt in enumerate(utterances):
-        #     if not chunk_text: start_time = utt.start
-        #     chunk_text += utt.transcript + " "
-        #     if (utt.end - start_time) >= 120 or (i == len(utterances) - 1 and chunk_text.strip()):
-        #         comp_res = await deepseek_client.chat.completions.create(model="deepseek-chat", messages=[{"role": "system", "content": "Verilen metnin ana konusunu özetleyen 4-6 kelimelik kısa bir başlık oluştur."}, {"role": "user", "content": chunk_text}], max_tokens=20)
-        #         title = comp_res.choices[0].message.content.strip().replace('"', '')
-        #         chapters.append(f"**{format_time(start_time)}** - {title}")
-        #         chunk_text = ""
-              
-        result = {"title": metadata.get("title"), "thumbnail": metadata.get("thumbnail"), "chapters": ["Deepgram şimdilik devre dışı - ses analizi yapılamıyor."]}
+        video_title = metadata.get("title")
+        thumbnail = metadata.get("thumbnail")
+
+        chapters: list[str] = []
+        transcript: list[dict] = []
+
+        # 1) Deepgram (birincil)
+        if deepgram_client and DEEPGRAM_API_KEY:
+            update_task(task_id, "processing", message="Ses indiriliyor...")
+            audio_content = await asyncio.to_thread(download_audio_sync, url, task_id)
+            update_task(task_id, "processing", message="Deepgram ile transkripsiyon...")
+            try:
+                options = PrerecordedOptions(model="nova-2", language="tr", smart_format=True, utterances=True)
+                # Deepgram SDK senkron çalışıyor; bloklamamak için thread'e al
+                def _dg_transcribe():
+                    return deepgram_client.listen.prerecorded.v("1").transcribe_file({"buffer": audio_content}, options)
+                dg_response = await asyncio.to_thread(_dg_transcribe)
+                utterances = (dg_response.results.utterances or []) if getattr(dg_response, 'results', None) else []
+                # Utterances varsa doğrudan başlıklar oluştur
+                chunk_text = ""
+                start_time = 0.0
+                for i, utt in enumerate(utterances):
+                    if not chunk_text:
+                        start_time = getattr(utt, 'start', 0.0) or 0.0
+                    chunk_text += " " + (getattr(utt, 'transcript', '') or '')
+                    end_time = getattr(utt, 'end', start_time) or start_time
+                    if (end_time - start_time) >= 120 or (i == len(utterances) - 1 and chunk_text.strip()):
+                        if deepseek_client:
+                            comp_res = await deepseek_client.chat.completions.create(
+                                model="deepseek-chat",
+                                messages=[
+                                    {"role": "system", "content": "Verilen metnin ana konusunu özetleyen 4-6 kelimelik kısa bir başlık oluştur."},
+                                    {"role": "user", "content": chunk_text.strip()}
+                                ],
+                                max_tokens=20
+                            )
+                            title = comp_res.choices[0].message.content.strip().replace('"', '')
+                        else:
+                            words = chunk_text.strip().split()
+                            title = " ".join(words[:6]) if words else "Başlık"
+                        # Zaman formatı
+                        m, s = divmod(int(start_time), 60)
+                        h, m = divmod(m, 60)
+                        chapters.append(f"**{h:02d}:{m:02d}:{s:02d}** - {title}")
+                        chunk_text = ""
+                # Deepgram başarılı ise transcript oluşturmayı atlayabiliriz
+            except Exception as e:
+                logger.warning(f"Deepgram transkripsiyon hatası, YouTube transkriptine düşülecek: {e}")
+                chapters = []  # sıfırla ve fallback'e izin ver
+        else:
+            logger.info("Deepgram yapılandırılmamış; YouTube transkript fallback kullanılacak.")
+
+        # 2) Fallback: YouTube Transcript
+        if not chapters:
+            update_task(task_id, "processing", message="Transkript Alınıyor (YouTube)...")
+            transcript = fetch_youtube_transcript(task_id) or fetch_youtube_transcript(extract_video_id(url) or "")
+            if not transcript:
+                raise RuntimeError("Bu video için transkript bulunamadı.")
+            update_task(task_id, "processing", message="Başlıklar Oluşturuluyor...")
+            chunk_text = ""
+            start_time = 0.0
+            last_start = 0.0
+            for item in transcript:
+                if not chunk_text:
+                    start_time = item.get("start", 0.0)
+                chunk_text += " " + item.get("text", "")
+                last_start = item.get("start", start_time)
+                duration = item.get("duration", 0.0)
+                if (last_start - start_time) + duration >= 120:
+                    if deepseek_client:
+                        comp_res = await deepseek_client.chat.completions.create(
+                            model="deepseek-chat",
+                            messages=[
+                                {"role": "system", "content": "Verilen metnin ana konusunu özetleyen 4-6 kelimelik kısa bir başlık oluştur."},
+                                {"role": "user", "content": chunk_text.strip()}
+                            ],
+                            max_tokens=20
+                        )
+                        title = comp_res.choices[0].message.content.strip().replace('"', '')
+                    else:
+                        words = chunk_text.strip().split()
+                        title = " ".join(words[:6]) if words else "Başlık"
+                    m, s = divmod(int(start_time), 60)
+                    h, m = divmod(m, 60)
+                    chapters.append(f"**{h:02d}:{m:02d}:{s:02d}** - {title}")
+                    chunk_text = ""
+            if chunk_text.strip():
+                if deepseek_client:
+                    comp_res = await deepseek_client.chat.completions.create(
+                        model="deepseek-chat",
+                        messages=[
+                            {"role": "system", "content": "Verilen metnin ana konusunu özetleyen 4-6 kelimelik kısa bir başlık oluştur."},
+                            {"role": "user", "content": chunk_text.strip()}
+                        ],
+                        max_tokens=20
+                    )
+                    title = comp_res.choices[0].message.content.strip().replace('"', '')
+                else:
+                    words = chunk_text.strip().split()
+                    title = " ".join(words[:6]) if words else "Başlık"
+                m, s = divmod(int(start_time), 60)
+                h, m = divmod(m, 60)
+                chapters.append(f"**{h:02d}:{m:02d}:{s:02d}** - {title}")
+
+        result = {"title": video_title, "thumbnail": thumbnail, "chapters": chapters}
         update_task(task_id, "completed", result=result)
-        logger.info(f"[{task_id}] Analiz başarıyla tamamlandı ve Turso veritabanına kaydedildi.")
-      
+        logger.info(f"[{task_id}] Analiz başarıyla tamamlandı ve kalıcı veritabanına kaydedildi.")
+
     except Exception as e:
         logger.error(f"[{task_id}] Görev sırasında HATA oluştu: {e}", exc_info=True)
         update_task(task_id, "error", message=f"Analiz sırasında bir hata oluştu: {str(e)}")
+
 # --- API Endpoints ---
 @app.get("/")
-async def read_root(): return {"message": "Mihmandar API v3.4 Aktif"}
+async def read_root():
+    return {"message": "Mihmandar API v3.5 Aktif"}
 
 # OPTIONS handler kaldırıldı
 @app.post("/analyze/start")
@@ -319,12 +443,7 @@ async def get_books_by_author():
 async def search_analyses(q: str, response: Response):
     if not q.strip(): return {"sonuclar": []}
     
-    # CORS header'ları ekle
-    response.headers["Access-Control-Allow-Origin"] = "https://mihmandar.org"
-    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "*"
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    
+    # CORS header'ları kaldırıldı; global middleware zaten ekliyor
     history = get_all_completed_analyses()
     q_lower = q.lower()
     matching_analyses = []
@@ -516,11 +635,7 @@ async def get_analysis_history(response: Response):
     """
     Tüm tamamlanmış analizleri getirir ve sunucu tarafı önbelleklemesini engeller.
     """
-    # CORS header'ları ekle
-    response.headers["Access-Control-Allow-Origin"] = "https://mihmandar.org"
-    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "*"
-    response.headers["Access-Control-Allow-Credentials"] = "true"
+    # CORS header'ları kaldırıldı; global middleware zaten ekliyor
     
     # Bu başlıklar, Vercel/Railway gibi platformlara bu cevabı asla önbelleğe almamasını söyler.
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
