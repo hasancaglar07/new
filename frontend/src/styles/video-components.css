@@ -1,0 +1,243 @@
+/* Video Components Mobile Optimization */
+
+/* Enhanced Video Cards */
+.video-card-container {
+  @apply transition-all duration-300 ease-out;
+}
+
+.video-card-container:hover {
+  @apply transform -translate-y-1 shadow-2xl;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+  .video-card-container {
+    @apply hover:transform-none hover:translate-y-0;
+  }
+  
+  /* Touch-friendly video controls */
+  .video-controls-overlay {
+    @apply opacity-100 bg-black/20;
+  }
+  
+  .video-control-button {
+    @apply min-h-[44px] min-w-[44px] text-base;
+  }
+  
+  /* Chapter navigation for mobile */
+  .chapter-list-mobile {
+    @apply max-h-64 overflow-y-auto;
+  }
+  
+  .chapter-item-mobile {
+    @apply p-4 min-h-[44px] text-base;
+  }
+  
+  /* Search filter mobile optimization */
+  .search-filter-mobile {
+    @apply px-4 py-3;
+  }
+  
+  .search-input-mobile {
+    @apply h-12 text-base;
+  }
+  
+  /* Modal adjustments for mobile */
+  .video-modal-mobile {
+    @apply max-h-[90vh] p-4;
+  }
+  
+  .video-modal-content {
+    @apply flex-col gap-4;
+  }
+  
+  .video-player-mobile {
+    @apply w-full aspect-video;
+  }
+  
+  .chapter-sidebar-mobile {
+    @apply w-full max-h-48 overflow-y-auto;
+  }
+}
+
+/* Tablet-specific styles */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .video-grid-tablet {
+    @apply grid-cols-2 gap-6;
+  }
+  
+  .video-modal-tablet {
+    @apply max-w-4xl;
+  }
+  
+  .video-modal-content-tablet {
+    @apply grid-cols-2 gap-6;
+  }
+}
+
+/* Desktop enhancements */
+@media (min-width: 1024px) {
+  .video-grid-desktop {
+    @apply grid-cols-3 gap-8;
+  }
+  
+  .video-card-hover-effects {
+    @apply group-hover:scale-105 transition-transform duration-500;
+  }
+  
+  .chapter-hover-effects {
+    @apply hover:bg-emerald-100/60 hover:border-emerald-200;
+  }
+}
+
+/* Accessibility improvements */
+.video-component-focus {
+  @apply focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2;
+}
+
+.video-component-focus-visible {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .video-card-high-contrast {
+    @apply border-2 border-slate-800;
+  }
+  
+  .chapter-item-high-contrast {
+    @apply border border-slate-600;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .video-card-container,
+  .video-control-button,
+  .chapter-item-mobile {
+    @apply transition-none;
+  }
+  
+  .video-card-hover-effects {
+    @apply group-hover:scale-100;
+  }
+}
+
+/* Loading states */
+.video-loading-skeleton {
+  @apply animate-pulse bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200;
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Video player enhancements */
+.video-player-container {
+  @apply relative overflow-hidden rounded-lg;
+}
+
+.video-player-overlay {
+  @apply absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300;
+}
+
+.video-chapter-timeline {
+  @apply absolute bottom-0 left-0 right-0 h-1 bg-white/30;
+}
+
+.video-chapter-progress {
+  @apply h-full bg-emerald-500 transition-all duration-300;
+}
+
+/* Search filter enhancements */
+.search-filter-container {
+  @apply sticky top-4 z-10 mb-6;
+}
+
+.search-results-summary {
+  @apply text-sm text-slate-600 mb-4 px-1;
+}
+
+.filter-badge {
+  @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800;
+}
+
+/* Chapter modal enhancements */
+.chapter-modal-backdrop {
+  @apply backdrop-blur-sm bg-black/50;
+}
+
+.chapter-modal-content {
+  @apply bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden;
+}
+
+.chapter-list-container {
+  @apply max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100;
+}
+
+/* Custom scrollbar for webkit browsers */
+.chapter-list-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chapter-list-container::-webkit-scrollbar-track {
+  @apply bg-slate-100 rounded-full;
+}
+
+.chapter-list-container::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 rounded-full hover:bg-slate-400;
+}
+
+/* Error states */
+.video-error-state {
+  @apply flex flex-col items-center justify-center p-8 text-center bg-red-50 border border-red-200 rounded-lg;
+}
+
+.video-error-icon {
+  @apply h-12 w-12 text-red-500 mb-4;
+}
+
+.video-error-message {
+  @apply text-red-700 font-medium mb-2;
+}
+
+.video-error-description {
+  @apply text-red-600 text-sm mb-4;
+}
+
+/* Success states */
+.video-success-state {
+  @apply flex flex-col items-center justify-center p-8 text-center bg-emerald-50 border border-emerald-200 rounded-lg;
+}
+
+.video-success-icon {
+  @apply h-12 w-12 text-emerald-500 mb-4;
+}
+
+/* Utility classes for video components */
+.video-aspect-ratio {
+  @apply aspect-video;
+}
+
+.video-thumbnail-overlay {
+  @apply absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-all duration-300;
+}
+
+.video-play-button {
+  @apply absolute inset-0 flex items-center justify-center;
+}
+
+.video-badge {
+  @apply absolute top-3 left-3 bg-emerald-500/90 text-white px-2 py-1 rounded-full text-xs font-semibold shadow-md;
+}
+
+.video-external-link {
+  @apply absolute top-3 right-3 bg-black/50 text-white p-2 rounded-full hover:bg-black/80 transition-colors shadow-md;
+}

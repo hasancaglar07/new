@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, History, Loader2, ServerCrash, FileQuestion, Repeat, ExternalLink, AlertTriangle, CheckCircle2, Circle, Lightbulb } from "lucide-react";
@@ -11,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Progress } from "@/components/ui/progress";
+import VideoSearchFilter from "@/components/VideoSearchFilter";
+import EnhancedVideoCard from "@/components/EnhancedVideoCard";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -98,22 +100,76 @@ function EnhancedAnalysisStatusCard({ statusMessage }) {
 
 function AnalysisResultCard({ result, url }) {
     const videoId = extractVideoId(url);
+    const chaptersRef = useRef(null);
+    const playerRef = useRef(null);
+    const playerElRef = useRef(null);
+
+    useEffect(() => {
+        const init = () => {
+            if (playerRef.current || !playerElRef.current) return;
+            // eslint-disable-next-line no-undef
+            playerRef.current = new YT.Player(playerElRef.current, {
+                videoId,
+                playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
+            });
+        };
+        if (typeof window !== 'undefined') {
+            if (window.YT && window.YT.Player) init();
+            else {
+                const tag = document.createElement('script');
+                tag.src = 'https://www.youtube.com/iframe_api';
+                document.body.appendChild(tag);
+                window.onYouTubeIframeAPIReady = init;
+            }
+        }
+    }, [videoId]);
+
+    const handleScrollChapters = () => {
+        try { chaptersRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch {}
+    };
+
+    const parsedChapters = useMemo(() => {
+        const re = /^\*\*(\d{2}:\d{2}:\d{2})\*\*\s*-\s*(.*)$/;
+        return (result?.chapters || []).map(raw => {
+            const m = raw.match(re);
+            const time = m ? m[1] : '00:00:00';
+            const title = m ? m[2] : raw.replace(/\*\*/g, '');
+            const [hh, mm, ss] = time.split(':').map(Number);
+            const seconds = hh * 3600 + mm * 60 + ss;
+            return { time, title, seconds };
+        });
+    }, [result]);
+
+    const jumpTo = (seconds) => {
+        const p = playerRef.current;
+        if (p && p.seekTo) {
+            try { p.seekTo(seconds, true); p.playVideo && p.playVideo(); } catch {}
+        }
+    };
+
     return (
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}>
-            <Card className="overflow-hidden">
-                <CardHeader>
-                    <CardTitle>Analiz Tamamlandı</CardTitle>
-                    <CardDescription>{result.title}</CardDescription>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+            <Card className="overflow-hidden border-t-4 border-emerald-500 rounded-2xl shadow-lg">
+                <CardHeader className="gap-2">
+                    <CardTitle className="text-xl md:text-2xl text-slate-800">Analiz Tamamlandı</CardTitle>
+                    <CardDescription className="text-slate-600">{result.title}</CardDescription>
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                        <a href={`https://www.youtube.com/watch?v=${videoId}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors">Videoya Git</a>
+                        <Button onClick={handleScrollChapters} className="bg-white text-emerald-700 border border-emerald-600 hover:bg-emerald-50">Bölümleri Göster</Button>
+                    </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div className="aspect-video bg-slate-200 rounded-lg overflow-hidden">
-                        <iframe src={`https://www.youtube.com/embed/${videoId}`} title="YouTube video player" frameBorder="0" allowFullScreen className="w-full h-full"></iframe>
-                    </div>
-                    <div>
+                    <div className="aspect-video bg-slate-200 rounded-lg overflow-hidden"><div ref={playerElRef} className="w-full h-full" /></div>
+                    <div ref={chaptersRef}>
                         <h3 className="font-semibold mb-3 text-slate-800">Konu Başlıkları</h3>
                         <ul className="space-y-2 text-sm max-h-60 overflow-y-auto border rounded-lg p-3 bg-slate-50/80">
-                            {result.chapters.map((chapter, index) => (
-                                <li key={index} className="p-2 rounded-md text-slate-700" dangerouslySetInnerHTML={{ __html: chapter.replace(/\*\*(.*?)\*\*/g, '<strong class="text-emerald-700 font-bold">$1</strong>') }} />
+                            {parsedChapters.map((c, index) => (
+                                <li key={index}>
+                                    <button onClick={() => jumpTo(c.seconds)} className="w-full text-left p-2 rounded-md hover:bg-emerald-50 border border-transparent hover:border-emerald-200 transition-all">
+                                        <span className="font-semibold text-emerald-700 mr-2">{c.time}</span>
+                                        <span className="text-slate-700" dangerouslySetInnerHTML={{ __html: c.title }} />
+                                    </button>
+                                </li>
                             ))}
                         </ul>
                     </div>
@@ -184,6 +240,7 @@ export default function VideoAnalysisPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [history, setHistory] = useState([]); // ★★★ DÜZELTME: Boş dizi ile başlatıldı
+    const [filteredHistory, setFilteredHistory] = useState([]); // Filtered history for search
     const [historyLoading, setHistoryLoading] = useState(true);
     const [taskId, setTaskId] = useState(null);
     const [statusMessage, setStatusMessage] = useState("");
@@ -341,16 +398,49 @@ export default function VideoAnalysisPage() {
                         <h2 className="text-3xl md:text-4xl font-bold text-slate-700 mb-8 pb-3 border-b-4 border-emerald-500 inline-block">
                             <History className="inline-block h-8 w-8 mr-3 -mt-1 text-emerald-600" /> Analiz Geçmişi
                         </h2>
+                        
+                        {/* Search and Filter Component */}
+                        {!historyLoading && history.length > 0 && (
+                            <div className="mb-8">
+                                <VideoSearchFilter
+                                    history={history}
+                                    onFilteredResults={setFilteredHistory}
+                                />
+                            </div>
+                        )}
+                        
                         {historyLoading && <HistorySkeleton />}
                         {!historyLoading && history.length === 0 && <InfoState title="Geçmişiniz Boş" message="Henüz bir video analizi yapmadınız." icon={FileQuestion} />}
-                        {!historyLoading && history.length > 0 && 
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                                {/* ★★★ DÜZELTME: history.map() doğru şekilde kullanılıyor ★★★ */}
-                                {history.map(({ id, data }) => (
-                                    <HistoryCard key={id} videoId={id} data={data} onAnalyzeAgain={handleAnalyzeAgain} />
-                                ))}
-                            </div>
-                        }
+                        {!historyLoading && history.length > 0 && (
+                            <motion.div
+                                initial="hidden"
+                                animate="visible"
+                                variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
+                            >
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                                    {/* ★★★ ENHANCED: Using new EnhancedVideoCard component ★★★ */}
+                                    {filteredHistory.map(({ id, data }, index) => (
+                                        <EnhancedVideoCard
+                                            key={id}
+                                            videoId={id}
+                                            data={data}
+                                            onAnalyzeAgain={handleAnalyzeAgain}
+                                            index={index}
+                                            showEmbeddedPlayer={true}
+                                        />
+                                    ))}
+                                </div>
+                                
+                                {/* No results message for filtered search */}
+                                {filteredHistory.length === 0 && history.length > 0 && (
+                                    <InfoState
+                                        title="Sonuç Bulunamadı"
+                                        message="Arama kriterlerinize uygun analiz bulunamadı. Filtreleri temizleyerek tekrar deneyin."
+                                        icon={FileQuestion}
+                                    />
+                                )}
+                            </motion.div>
+                        )}
                     </motion.div>
                 </section>
             </div>
