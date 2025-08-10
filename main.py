@@ -186,6 +186,11 @@ def download_audio_sync(url: str, task_id: str) -> bytes:
         'extractor_retries': 3,
         'fragment_retries': 3,
         'retries': 3,
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web', 'ios', 'tv']
+            }
+        },
         **proxy_settings,  # Proxy varsa ekle
         **({'cookiefile': str(cookies_path)} if cookies_path.exists() else {}),
         'http_headers': {
@@ -196,6 +201,10 @@ def download_audio_sync(url: str, task_id: str) -> bytes:
             'DNT': '1',
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
+            'Referer': 'https://www.youtube.com/',
+            'Origin': 'https://www.youtube.com',
+            'X-YouTube-Client-Name': '3',
+            'X-YouTube-Client-Version': '17.31.35'
         },
     }
     
@@ -312,6 +321,11 @@ async def run_video_analysis(task_id: str, url: str):
             'extractor_retries': 3,
             'fragment_retries': 3,
             'retries': 3,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web', 'ios', 'tv']
+                }
+            },
             **proxy_settings,  # Proxy varsa ekle
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -321,6 +335,10 @@ async def run_video_analysis(task_id: str, url: str):
                 'DNT': '1',
                 'Connection': 'keep-alive',
                 'Upgrade-Insecure-Requests': '1',
+                'Referer': 'https://www.youtube.com/',
+                'Origin': 'https://www.youtube.com',
+                'X-YouTube-Client-Name': '3',
+                'X-YouTube-Client-Version': '17.31.35'
             },
             **({'cookiefile': str(cookies_path)} if cookies_path.exists() else {}),
         }
@@ -328,7 +346,7 @@ async def run_video_analysis(task_id: str, url: str):
         # Retry mekanizması ile metadata alma
         metadata = None
         max_retries = 3
-        for attempt in range(max_retries):
+        for attempt in range(max_retries + 1):
             try:
                 # Rate limiting - her istek arasında kısa bekleme
                 if attempt > 0:
@@ -346,8 +364,9 @@ async def run_video_analysis(task_id: str, url: str):
                     "bot",
                     "captcha",
                     "rate limit",
-                    "too many requests"
-                ]) and attempt < max_retries - 1:
+                    "too many requests",
+                    "failed to extract any player response"
+                ]) and attempt < max_retries:
                     logger.warning(f"Bot koruması/rate limit tespit edildi, {attempt + 1}/{max_retries} deneme. Bekleniyor...")
                     continue
                 else:
