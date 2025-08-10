@@ -32,6 +32,13 @@ def init_db():
     conn.close()
     logging.info(f"Makale veritabanı hazır: {DB_FILE}")
 
+def ensure_db():
+    """Dışarıdan hızlı init için hafif sarmalayıcı."""
+    try:
+        init_db()
+    except Exception as e:
+        logging.error(f"Makale DB init hatası: {e}")
+
 def save_article(title, content, category, url, author):
     """Çekilen bir makaleyi makale veritabanına kaydeder."""
     conn = get_connection()

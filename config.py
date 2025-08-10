@@ -3,6 +3,10 @@
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# .env dosyasını proje kökünden yükle (prod ortam değişkenlerini ezmeden)
+load_dotenv(dotenv_path=Path(__file__).parent / ".env", override=False)
 
 # Temel dizinler
 BASE_DIR = Path(__file__).parent
@@ -24,7 +28,7 @@ B2_BUCKET_NAME = os.getenv("B2_BUCKET_NAME", "yediulya-pdf-arsivi")
 B2_JSON_BUCKET_NAME = os.getenv("B2_JSON_BUCKET_NAME", B2_BUCKET_NAME)
 B2_JSON_PREFIX = os.getenv("B2_JSON_PREFIX", "video-analyses/")
 
-# Turso veritabanı ayarları
+# Turso kaldırıldı – yine de referanslar için güvenli default ekleyelim
 TURSO_ANALYSIS_URL = os.getenv("TURSO_ANALYSIS_URL")
 TURSO_ANALYSIS_TOKEN = os.getenv("TURSO_ANALYSIS_TOKEN")
 

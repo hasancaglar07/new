@@ -308,9 +308,9 @@ export default function VideoAnalysisPage() {
     return (
         <div className="bg-slate-50 min-h-screen">
             <div className="container mx-auto px-4 py-12 md:py-20">
-                <motion.header initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-center mb-10">
-                    <h1 className="text-4xl md:text-5xl font-bold text-[#177267]">Video İçerik Analizi</h1>
-                    <p className="mt-3 text-base md:text-lg text-slate-600">Bir YouTube videosunu analiz ederek önemli konu başlıklarını çıkarın.</p>
+                <motion.header initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-center mb-12">
+                    <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter text-slate-800">Video İçerik Analizi</h1>
+                    <p className="mt-4 text-lg md:text-xl text-slate-600">Bir YouTube videosunu analiz ederek önemli konu başlıklarını çıkarın.</p>
                 </motion.header>
 
                 <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
@@ -318,9 +318,9 @@ export default function VideoAnalysisPage() {
                         <form onSubmit={handleAnalyze} id="analysis-form" className="space-y-4">
                             <div>
                                 <label htmlFor="youtube_url" className="block mb-2 text-sm font-medium text-slate-700">YouTube Video Linki</label>
-                                <Input id="youtube_url" type="text" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="w-full h-11 text-base border-slate-300 focus:border-[#177267] focus:ring-0" />
+                                <Input id="youtube_url" type="text" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="w-full h-12 text-base rounded-lg" />
                             </div>
-                            <Button type="submit" disabled={isLoading} className="w-full h-11 text-base bg-[#177267] hover:bg-[#116358] text-white">
+                            <Button type="submit" disabled={isLoading} className="w-full h-12 text-base bg-emerald-600 hover:bg-emerald-700 text-white transition-all transform hover:scale-[1.02]">
                                 {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
                                 {isLoading ? 'Analiz Ediliyor...' : 'Analizi Başlat'}
                             </Button>

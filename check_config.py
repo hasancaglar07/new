@@ -22,10 +22,9 @@ def main():
     print(f"   B2_APPLICATION_KEY: {'✅ Ayarlandı' if B2_APPLICATION_KEY else '❌ Eksik'}")
     print(f"   B2_BUCKET_NAME: {B2_BUCKET_NAME}")
     
-    # Turso veritabanı
-    print("\n🗄️ TURSO VERİTABANI:")
-    print(f"   TURSO_ANALYSIS_URL: {'✅ Ayarlandı' if TURSO_ANALYSIS_URL else '❌ Eksik'}")
-    print(f"   TURSO_ANALYSIS_TOKEN: {'✅ Ayarlandı' if TURSO_ANALYSIS_TOKEN else '❌ Eksik'}")
+    # Supabase
+    print("\n🗄️ SUPABASE VERİTABANI:")
+    print(f"   SUPABASE_DB_URL: {'✅ Ayarlandı' if os.getenv('SUPABASE_DB_URL') or os.getenv('DATABASE_URL') else '❌ Eksik'}")
     
     # API anahtarları
     print("\n🔑 API ANAHTARLARI:")
@@ -43,8 +42,7 @@ def main():
         "B2_APPLICATION_KEY_ID",
         "B2_APPLICATION_KEY",
         "B2_BUCKET_NAME",
-        "TURSO_ANALYSIS_URL",
-        "TURSO_ANALYSIS_TOKEN",
+        "SUPABASE_DB_URL",
         "DEEPGRAM_API_KEY",
         "DEEPSEEK_API_KEY"
     ]

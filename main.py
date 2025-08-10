@@ -1,5 +1,5 @@
 # main.py
-# Versiyon 3.5 - Video analizi: Deepgram birincil, YouTube transkript yedek; kalıcı kayıt (Turso/SQLite)
+# Versiyon 3.5 - Video analizi: Deepgram birincil, YouTube transkript yedek; kalıcı kayıt (Supabase/SQLite)
 import logging
 import os
 import io
@@ -20,6 +20,7 @@ import httpx
 from fastapi.responses import StreamingResponse
 from data.audio_db import get_all_audio_by_source, search_audio_chapters
 from data.audio_db import get_audio_path_by_id
+from data.audio_db import init_db as init_audio_db
 from fastapi import FastAPI, HTTPException, Query, Depends, BackgroundTasks, Response
 # CORS middleware import removed
 from fastapi.responses import JSONResponse
@@ -28,6 +29,7 @@ from whoosh.qparser import MultifieldParser, AndGroup, QueryParser
 from whoosh.searching import Searcher
 from data.db import init_db, update_task, get_task, get_all_completed_analyses
 from data.articles_db import get_all_articles_by_category, get_article_by_id
+from data.articles_db import init_db as init_articles_db
 from contextlib import asynccontextmanager
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound, CouldNotRetrieveTranscript
 # Deepgram SDK (birincil transkripsiyon)
@@ -113,8 +115,16 @@ deepseek_client = AsyncOpenAI(base_url="https://api.deepseek.com", api_key=DEEPS
 # Deepgram client'ı oluştur (birincil)
 deepgram_client = DeepgramClient(DEEPGRAM_API_KEY) if DEEPGRAM_API_KEY else None
 
-# Database'i başlat
-init_db()
+# Database'leri başlat
+init_db()  # qa_database.db + video_analyses (Supabase/SQLite)
+try:
+    init_articles_db()  # articles_database.db
+except Exception:
+    logger.exception("Makale veritabanı init başarısız oldu")
+try:
+    init_audio_db()  # audio_database.db
+except Exception:
+    logger.exception("Audio veritabanı init başarısız oldu")
 
 # --- Yardımcı Fonksiyonlar ---
 def get_whoosh_index():

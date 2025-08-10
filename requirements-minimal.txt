@@ -24,7 +24,7 @@ numpy==1.26.4
 beautifulsoup4==4.13.4
 requests==2.32.4
 lxml==6.0.0
-youtube-transcript-api==0.6.2
+youtube-transcript-api==1.2.2
 
 # AI/ML (essential only)
 openai==1.35.0

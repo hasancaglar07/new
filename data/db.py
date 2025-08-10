@@ -1,5 +1,5 @@
 # data/db.py
-# Versiyon 3.2 - Video analizleri için Supabase (Postgres) > Turso (libsql) > SQLite sırası
+# Versiyon 3.2 - Video analizleri için Supabase (Postgres) > SQLite sırası
 
 import sqlite3
 import os
@@ -7,6 +7,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Optional, Dict, Any
+from urllib.parse import quote
 
 # Opsiyonel: Supabase Postgres (psycopg2)
 try:
@@ -15,8 +16,7 @@ try:
 except Exception:  # psycopg2 yoksa sorun değil
     psycopg2 = None  # type: ignore
 
-# Turso (libsql)
-import libsql_client
+# Turso kaldırıldı
 
 # B2 JSON mirror
 from config import (
@@ -39,8 +39,15 @@ VIDEO_SQLITE_PATH = os.path.join(os.path.dirname(__file__), "video_analyses.db")
 
 # --- ENV ---
 SUPABASE_DB_URL = os.getenv("SUPABASE_DB_URL") or os.getenv("DATABASE_URL")
-TURSO_ANALYSIS_URL = os.getenv("TURSO_ANALYSIS_URL")
-TURSO_ANALYSIS_TOKEN = os.getenv("TURSO_ANALYSIS_TOKEN")
+SUPABASE_HOST = os.getenv("SUPABASE_HOST")
+SUPABASE_PORT = os.getenv("SUPABASE_PORT", "5432")
+SUPABASE_DBNAME = os.getenv("SUPABASE_DBNAME") or os.getenv("SUPABASE_DATABASE")
+SUPABASE_USER = os.getenv("SUPABASE_USER")
+SUPABASE_PASSWORD = os.getenv("SUPABASE_PASSWORD")
+
+# Supabase bağlantısını sürekli denemeyelim: hata alırsak devre dışı bırakırız
+_SUPABASE_DISABLED: bool = False
+_SUPABASE_DISABLED_REASON: str | None = None
 
 # --- Connections ---
 
@@ -49,27 +56,50 @@ def get_regular_connection():
 
 
 def get_supabase_connection():
-    """Supabase Postgres bağlantısı (psycopg2)."""
-    if not SUPABASE_DB_URL or not psycopg2:
+    """Supabase Postgres bağlantısı (psycopg2). İlk hatada devre dışı bırakır."""
+    global _SUPABASE_DISABLED, _SUPABASE_DISABLED_REASON
+
+    if _SUPABASE_DISABLED:
         return None
+    if not SUPABASE_DB_URL or not psycopg2:
+        _SUPABASE_DISABLED = True
+        _SUPABASE_DISABLED_REASON = "URL yok veya psycopg2 yok"
+        return None
+    # DSN içinde Türkçe/özel karakter varsa psycopg2 hata verebilir: parçalı env'den yeniden kurmayı dene
+    def _build_dsn_from_parts() -> Optional[str]:
+        if not (SUPABASE_HOST and SUPABASE_DBNAME and SUPABASE_USER and SUPABASE_PASSWORD):
+            return None
+        safe_user = quote(SUPABASE_USER, safe="")
+        safe_pass = quote(SUPABASE_PASSWORD, safe="")
+        host = SUPABASE_HOST
+        port = SUPABASE_PORT or "5432"
+        db = SUPABASE_DBNAME
+        return f"postgresql://{safe_user}:{safe_pass}@{host}:{port}/{db}"
+
+    # Önce mevcut URL'i deneyelim; ASCII değilse parçalı kurulum deneriz
     try:
-        conn = psycopg2.connect(SUPABASE_DB_URL)
+        SUPABASE_DB_URL.encode("ascii")
+        candidate_dsn = SUPABASE_DB_URL
+    except UnicodeEncodeError:
+        candidate_dsn = _build_dsn_from_parts()
+        if not candidate_dsn:
+            _SUPABASE_DISABLED = True
+            _SUPABASE_DISABLED_REASON = "SUPABASE_DB_URL ASCII dışı; parçalı env eksik"
+            logging.warning("Supabase devre dışı: URL ASCII dışı ve parçalı env yok. SQLite kullanılacak.")
+            return None
+    try:
+        conn = psycopg2.connect(candidate_dsn)
         conn.autocommit = True
         logging.info("Supabase Postgres bağlantısı başarılı.")
         return conn
     except Exception as e:
-        logging.error(f"Supabase Postgres bağlantı hatası: {e}")
+        _SUPABASE_DISABLED = True
+        _SUPABASE_DISABLED_REASON = str(e)
+        logging.warning(f"Supabase bağlantısı devre dışı bırakıldı: {e}. SQLite kullanılacak.")
         return None
 
 
 def get_turso_connection():
-    try:
-        if TURSO_ANALYSIS_URL and TURSO_ANALYSIS_TOKEN:
-            client = libsql_client.create_client(url=TURSO_ANALYSIS_URL, auth_token=TURSO_ANALYSIS_TOKEN)
-            logging.info("Kalıcı Turso veritabanı bağlantısı başarılı ve tablo hazır.")
-            return client
-    except Exception as e:
-        logging.error(f"Turso veritabanına bağlanırken hata: {e}")
     return None
 
 
@@ -84,7 +114,7 @@ def get_sqlite_connection():
 
 
 def get_persistent_connection():
-    """Öncelik: Supabase > Turso > SQLite"""
+    """Öncelik: Supabase > SQLite"""
     supa = get_supabase_connection()
     if supa:
         return supa
@@ -143,19 +173,8 @@ def init_db():
                     """
                 )
             logging.info("Supabase: video_analysis_tasks tablosu hazır.")
-        # Turso (libsql)
-        elif hasattr(client, "execute"):
-            client.execute(
-                """
-                CREATE TABLE IF NOT EXISTS video_analysis_tasks (
-                    task_id TEXT PRIMARY KEY, status TEXT NOT NULL, message TEXT, result TEXT,
-                    created_at DEFAULT CURRENT_TIMESTAMP, updated_at DEFAULT CURRENT_TIMESTAMP
-                )
-                """
-            )
-            logging.info("Turso video_analyses tablosu hazır.")
         # SQLite
-        elif isinstance(client, sqlite3.Connection):
+        if isinstance(client, sqlite3.Connection):
             client.execute(
                 """
                 CREATE TABLE IF NOT EXISTS video_analysis_tasks (
@@ -219,7 +238,7 @@ def get_article_by_id(article_id: int):
         row = conn.execute("SELECT * FROM articles WHERE id = ?", (article_id,)).fetchone()
         return dict(row) if row else None
 
-# --- Video Task CRUD (Supabase > Turso > SQLite) ---
+# --- Video Task CRUD (Supabase > SQLite) ---
 
 def _upsert_supabase(task_id: str, status: str, message: Optional[str], result: Optional[Dict[str, Any]]):
     if not psycopg2:
@@ -274,7 +293,7 @@ def update_task(task_id: str, status: str, message: str = None, result: dict = N
     # 1) Supabase
     supa_ok = _upsert_supabase(task_id, status, message, result)
     if not supa_ok:
-        # 2) Turso
+    # 2) Turso kaldırıldı
         result_json = json.dumps(result, ensure_ascii=False) if result else None
         client = get_turso_connection()
         if client:
@@ -291,9 +310,9 @@ def update_task(task_id: str, status: str, message: str = None, result: dict = N
                     """,
                     {"task_id": task_id, "status": status, "message": message, "result": result_json},
                 )
-                logging.info(f"Görev güncellendi (Turso): {task_id} - {status}")
+                pass
             except Exception as e:
-                logging.error(f"Turso UPSERT sırasında hata: {e}. SQLite'a düşülüyor.")
+                logging.error(f"SQLite UPSERT fallback: {e}")
                 _upsert_sqlite(task_id, status, message, result_json)
         else:
             _upsert_sqlite(task_id, status, message, result_json)
@@ -335,22 +354,7 @@ def get_task(task_id: str):
                 logging.error(f"Supabase get_task hatası: {e}")
             finally:
                 conn.close()
-    # 2) Turso
-    client = get_turso_connection()
-    if client:
-        try:
-            cursor = client.execute(
-                "SELECT task_id, status, message, result, updated_at FROM video_analysis_tasks WHERE task_id = :tid",
-                {"tid": task_id},
-            )
-            rows = getattr(cursor, "rows", [])
-            row = rows[0] if rows else None
-            if not row:
-                return None
-            result_dict = json.loads(row[3]) if row[3] else None
-            return {"task_id": row[0], "status": row[1], "message": row[2], "result": result_dict, "updated_at": row[4]}
-        except Exception as e:
-            logging.error(f"Turso'dan görev alınırken hata: {e}")
+    # 2) Turso kaldırıldı
     # 3) SQLite
     conn = get_sqlite_connection()
     if not conn:
@@ -400,30 +404,7 @@ def get_all_completed_analyses():
                 logging.error(f"Supabase get_all_completed_analyses hatası: {e}")
             finally:
                 conn.close()
-    # 2) Turso
-    client = get_turso_connection()
-    if client:
-        try:
-            rs = client.execute(
-                """
-                SELECT task_id, result FROM video_analysis_tasks 
-                WHERE status = 'completed' AND result IS NOT NULL 
-                ORDER BY updated_at DESC
-                """
-            )
-            history = {}
-            for row in rs.rows:
-                video_id = row[0]
-                try:
-                    result_data = json.loads(row[1]) if row[1] else None
-                    if result_data:
-                        history[video_id] = result_data
-                except (json.JSONDecodeError, KeyError) as e:
-                    logging.warning(f"Geçmiş analiz verisi okunurken hata oluştu (ID: {video_id}): {e}")
-                    continue
-            return history
-        except Exception as e:
-            logging.error(f"Turso'dan geçmiş alınırken hata: {e}. SQLite'a düşülüyor.")
+    # 2) Turso kaldırıldı
     # 3) SQLite
     conn = get_sqlite_connection()
     if not conn:

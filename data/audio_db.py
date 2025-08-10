@@ -43,6 +43,32 @@ def get_all_audio_by_source():
             })
     return results
 
+def init_db():
+    """audio_database.db içindeki tabloyu garanti eder."""
+    try:
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                '''
+                CREATE TABLE IF NOT EXISTS audio_analyses (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_name TEXT NOT NULL,
+                    original_path TEXT NOT NULL,
+                    mp3_path TEXT UNIQUE,
+                    title TEXT,
+                    cleaned_filename TEXT,
+                    chapters_json TEXT,
+                    status TEXT NOT NULL CHECK(status IN ('pending', 'converted', 'analyzed', 'failed')),
+                    UNIQUE(source_name, original_path)
+                )
+                '''
+            )
+            conn.commit()
+        logging.info(f"Audio veritabanı hazır: {DB_PATH}")
+    except Exception as e:
+        logging.error(f"Audio DB init hatası: {e}")
+
 def search_audio_chapters(query: str):
     """Konu başlıkları içinde metinsel arama yapar."""
     if not DB_PATH.exists() or not query.strip():
