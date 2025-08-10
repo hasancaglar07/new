@@ -73,18 +73,37 @@ origins = [
     "*"  # Geçici olarak tüm domainlere izin ver
 ]
 
-# CORS middleware'i ekle
+# CORS middleware'i ekle - Cloudflare uyumlu
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-    expose_headers=["*"]
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
+    allow_headers=["*", "Origin", "Accept", "Content-Type", "Authorization", "X-Requested-With"],
+    expose_headers=["*", "Access-Control-Allow-Origin", "Access-Control-Allow-Methods", "Access-Control-Allow-Headers"],
+    max_age=86400  # 24 saat cache
 )
 # Cache ve diğer ayarlar
 ARTICLES_CACHE = {"data": None, "timestamp": 0}
 BOOKS_CACHE = {"data": None, "timestamp": 0}
+
+# Global CORS header'ları için middleware
+@app.middleware("http")
+async def add_cors_headers(request, call_next):
+    """Tüm response'lara CORS header'ları ekler"""
+    response = await call_next(request)
+    
+    # CORS header'ları ekle
+    response.headers["Access-Control-Allow-Origin"] = "https://mihmandar.org"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, HEAD"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Max-Age"] = "86400"
+    
+    # Cloudflare için ek header'lar
+    response.headers["Vary"] = "Origin"
+    
+    return response
 
 # DeepSeek client'ı oluştur
 deepseek_client = AsyncOpenAI(base_url="https://api.deepseek.com", api_key=DEEPSEEK_API_KEY) if DEEPSEEK_API_KEY else None
@@ -158,6 +177,21 @@ async def run_video_analysis(task_id: str, url: str):
 # --- API Endpoints ---
 @app.get("/")
 async def read_root(): return {"message": "Mihmandar API v3.4 Aktif"}
+
+@app.options("/{full_path:path}")
+async def options_handler(full_path: str):
+    """Tüm OPTIONS request'leri için CORS preflight response'u"""
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "https://mihmandar.org",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Max-Age": "86400",
+            "Vary": "Origin"
+        }
+    )
 @app.post("/analyze/start")
 async def start_analysis(background_tasks: BackgroundTasks, url: str = Query(..., description="Analiz edilecek YouTube video URL'si")):
     if not DEEPGRAM_API_KEY or not DEEPSEEK_API_KEY:
