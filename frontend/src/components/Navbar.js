@@ -80,9 +80,14 @@ export default function Navbar() {
             {/* Sıradaki namaz (küçük) */}
             <div className="block">
               {coords && (
-                <div className="text-xs sm:text-sm font-semibold text-emerald-700 truncate max-w-[200px] sm:max-w-none">
+                <motion.div
+                  initial={{ opacity: 0, y: -2 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="text-xs sm:text-sm font-semibold text-emerald-700 truncate max-w-[220px] sm:max-w-none"
+                >
                   <HeaderNextPrayer coords={coords} />
-                </div>
+                </motion.div>
               )}
             </div>
           </div>
@@ -173,6 +178,7 @@ export default function Navbar() {
 function HeaderNextPrayer({ coords }) {
   // Küçük kullanım: sadece başlık satırı için NamazWidget'ın hesaplamasını reuse edemiyoruz; hızlı fetch yapıyoruz.
   const [text, setText] = useState(null);
+  const [pulse, setPulse] = useState(false);
   useEffect(() => {
     const run = async () => {
       try {
@@ -212,10 +218,31 @@ function HeaderNextPrayer({ coords }) {
           const cand = new Date(Date.now()+86400000); cand.setHours(hh, mm, 0, 0);
           picked = { name: 'İmsak', time: mapped.imsak, remaining: Math.floor((cand - new Date())/60000) };
         }
-        if (picked) setText(`${picked.name} — ${picked.time} (≈ ${picked.remaining} dk)`);
+        if (picked) {
+          const rem = picked.remaining;
+          const hours = Math.floor(rem / 60);
+          const mins = rem % 60;
+          const remText = hours >= 1 ? `${hours} sa. ${mins} dk.` : `${mins} dk`;
+          setText(`${picked.name} — ${picked.time} (≈ ${remText})`);
+        }
       } catch {}
     };
     run();
   }, [coords]);
-  return text ? <span>{text}</span> : <span>Konum bekleniyor…</span>;
+  // Arada sırada nazikçe dikkat çekme animasyonu
+  useEffect(() => {
+    const id = setInterval(() => {
+      setPulse(true);
+      setTimeout(() => setPulse(false), 800);
+    }, 12000);
+    return () => clearInterval(id);
+  }, []);
+  return text ? (
+    <motion.span
+      animate={pulse ? { scale: 1.04, color: '#065f46' } : { scale: 1, color: '#047857' }}
+      transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+    >
+      {text}
+    </motion.span>
+  ) : <span>Konum bekleniyor…</span>;
 }
