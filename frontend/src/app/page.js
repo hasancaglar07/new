@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import NamazWidget from "@/components/NamazWidget";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -893,60 +894,23 @@ export default function HomePage() {
  
     return (
       <div className="bg-slate-50 min-h-screen w-full font-sans">
-        <main className="container mx-auto px-4 py-6 md:py-12">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1.5, delay: 0.2 }} className="text-center mb-3"><p className="text-lg md:text-2xl text-slate-600" style={{ fontFamily: "'Noto Naskh Arabic', serif" }}>بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ</p></motion.div>
+        <main className="container mx-auto px-4 py-6 md:py-8">
+          {/* Bismillah üstte */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1.5, delay: 0.1 }} className="text-center mb-3"><p className="text-lg md:text-2xl text-slate-600" style={{ fontFamily: "'Noto Naskh Arabic', serif" }}>بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ</p></motion.div>
+          {/* Namaz widget: bismillah altında (kaldırıldı) */}
          
           <motion.header initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: "easeOut" }} className="text-center">
-            <motion.div 
-                className="flex justify-center mb-3"
-                initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ 
-                    duration: 1.2, 
-                    ease: [0.23, 1, 0.32, 1],
-                    delay: 0.3
-                }}
-                whileHover={{ 
-                    scale: 1.05,
-                    transition: { duration: 0.3, ease: "easeOut" }
-                }}
-            >
-                <div className="logo-container relative flex flex-col items-center">
-                    {/* Dönen üst geometrik kısım */}
-                    <motion.div
-                        animate={{ 
-                            rotate: 360
-                        }}
-                        transition={{
-                            duration: 20,
-                            ease: "linear",
-                            repeat: Infinity,
-                        }}
-                        className="relative z-10"
-                    >
-                        <Image 
-                            src="/logo-top.svg" 
-                            alt="" 
-                            width={375} 
-                            height={225} 
-                            className="w-auto h-36 sm:h-40 md:h-44 lg:h-48 xl:h-52 object-contain max-w-full"
-                            priority
-                        />
-                    </motion.div>
-                    
-                    {/* Sabit alt metin kısmı */}
-                    <div className="relative mt-0 sm:-mt-0.5 md:-mt-1">
-                        <Image 
-                            src="/logo-bottom.svg" 
-                            alt="Mihmandar - Gönül Rehberiniz" 
-                            width={375} 
-                            height={112} 
-                            className="w-auto h-16 sm:h-18 md:h-20 lg:h-22 xl:h-24 object-contain max-w-full cursor-pointer"
-                            priority
-                        />
-                    </div>
-                </div>
-            </motion.div>
+            {/* Sabit alt metin kısmı geri getirildi */}
+            <div className="relative mt-0 sm:-mt-0.5 md:-mt-1 mb-4 flex justify-center">
+              <Image 
+                src="/logo-bottom.svg" 
+                alt="Mihmandar - Gönül Rehberiniz" 
+                width={375} 
+                height={112} 
+                className="w-auto h-16 sm:h-18 md:h-20 lg:h-22 xl:h-24 object-contain max-w-full"
+                priority
+              />
+            </div>
             <p className="mt-3 text-responsive text-slate-600 max-w-3xl mx-auto">Üstadlarımızın eserlerinde, sohbetlerinde derinlemesine arama yapın.</p>
             <LogoCarousel />
           </motion.header>
@@ -1375,4 +1339,22 @@ export default function HomePage() {
         <AudioPlayerDialog isOpen={isAudioModalOpen} onClose={() => setIsAudioModalOpen(false)} audio={selectedAudio} />
       </div>
     );
+}
+
+// Konum izni isteyen ve alınca widget'ı gösteren hero bileşeni
+function GeolocatedHero() {
+  const [coords, setCoords] = useState(null);
+  const [asked, setAsked] = useState(false);
+  useEffect(() => {
+    if (asked || coords) return;
+    if (!navigator.geolocation) return;
+    setAsked(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {},
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }, [asked, coords]);
+  if (!coords) return null;
+  return <NamazWidget coords={coords} variant="hero" />;
 }

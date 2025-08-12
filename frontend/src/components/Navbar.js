@@ -5,10 +5,12 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 // ★★★ Newspaper ve diğer ikonlar yerinde duruyor ★★★
-import { Menu, X, LayoutGrid, Library, Youtube, Clapperboard, Newspaper, Mic } from 'lucide-react';
+import { Menu, X, LayoutGrid, Library, Youtube, Clapperboard, Newspaper, Mic, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // ★★★ Next.js'in Image bileşenini import ediyoruz ★★★
 import Image from 'next/image';
+import { useEffect } from 'react';
+import NamazWidget from '@/components/NamazWidget';
 
 const navLinks = [
   { name: 'Ana Sayfa', href: '/', icon: <LayoutGrid className="h-5 w-5" /> },
@@ -16,6 +18,7 @@ const navLinks = [
   { name: 'Makaleler', href: '/makaleler', icon: <Newspaper className="h-5 w-5" /> },
   { name: 'Ses Kayıtları', href: '/ses-kayitlari', icon: <Mic className="h-5 w-5" /> },
   { name: 'YouTube Arama', href: '/youtube-arama', icon: <Youtube className="h-5 w-5" /> },
+  { name: 'Namaz Vakitleri', href: '/namaz-vakitleri', icon: <Clock className="h-5 w-5" /> },
   { name: 'Video Analizi', href: '/video-analizi', icon: <Clapperboard className="h-5 w-5" /> }, 
 ];
 
@@ -27,6 +30,36 @@ const mobileMenuVariants = {
 export default function Navbar() {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [coords, setCoords] = useState(null);
+
+  useEffect(() => {
+    const loadFromStorage = () => {
+      try {
+        const saved = window.localStorage.getItem('prayer_location');
+        if (saved) {
+          const obj = JSON.parse(saved);
+          if (obj?.lat && obj?.lng) setCoords({ lat: obj.lat, lng: obj.lng });
+        }
+      } catch {}
+    };
+    loadFromStorage();
+    // İlk anda cihaz konumunu da deneyelim (storage yoksa)
+    if (!coords && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => {},
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    }
+    // Aynı sekmede güncellemeyi yakalamak için özel event ve farklı sekmeler için storage event
+    const onChanged = () => loadFromStorage();
+    window.addEventListener('prayerLocationChanged', onChanged);
+    window.addEventListener('storage', onChanged);
+    return () => {
+      window.removeEventListener('prayerLocationChanged', onChanged);
+      window.removeEventListener('storage', onChanged);
+    };
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 py-3">
@@ -34,21 +67,24 @@ export default function Navbar() {
         <nav className="relative flex justify-between items-center h-16 bg-white/80 backdrop-blur-xl rounded-full border border-slate-200/80 shadow-lg shadow-slate-300/10 px-6">
           
           {/* ★★★ LOGO ALANI DEĞİŞTİRİLDİ ★★★ */}
-          <div className="flex-shrink-0">
-            <Link 
-              href="/" 
-              onClick={() => setIsMenuOpen(false)}
+          <div className="flex-shrink-0 flex items-center gap-3">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 20, ease: 'linear' }}
+              className="relative"
             >
-              {/* public klasörüne eklediğiniz logo dosyasını kullanıyoruz */}
-              <Image
-                src="/logo-seffaf.svg" // Dosya adını kendi dosyanızla değiştirin
-                alt="Mihmandar Logo"
-                width={200} // Logonuzun orijinal genişliği
-                height={48}  // Logonuzun orijinal yüksekliği
-                className="h-10 w-auto" // Yüksekliği 40px (h-10) olarak ayarladık, genişlik otomatik ayarlanacak
-                priority // Logonun öncelikli yüklenmesini sağlar
-              />
-            </Link>
+              <Link href="/" onClick={() => setIsMenuOpen(false)}>
+                <Image src="/logo-top.svg" alt="Mihmandar" width={48} height={48} className="h-10 w-10" priority />
+              </Link>
+            </motion.div>
+            {/* Sıradaki namaz (küçük) */}
+            <div className="block">
+              {coords && (
+                <div className="text-xs sm:text-sm font-semibold text-emerald-700 truncate max-w-[200px] sm:max-w-none">
+                  <HeaderNextPrayer coords={coords} />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Menü linkleri ve diğer kısımlar aynı kalıyor */}
@@ -132,4 +168,54 @@ export default function Navbar() {
       </div>
     </header>
   );
+}
+
+function HeaderNextPrayer({ coords }) {
+  // Küçük kullanım: sadece başlık satırı için NamazWidget'ın hesaplamasını reuse edemiyoruz; hızlı fetch yapıyoruz.
+  const [text, setText] = useState(null);
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const url = new URL('https://vakit.vercel.app/api/timesForGPS');
+        url.searchParams.set('lat', String(coords.lat));
+        url.searchParams.set('lng', String(coords.lng));
+        url.searchParams.set('date', new Date().toISOString().slice(0,10));
+        url.searchParams.set('days', '1');
+        url.searchParams.set('timezoneOffset', String(-new Date().getTimezoneOffset()));
+        url.searchParams.set('calculationMethod', 'Turkey');
+        url.searchParams.set('lang', 'tr');
+        const res = await fetch(url.toString());
+        const payload = await res.json();
+        let mapped;
+        if (payload?.times && !Array.isArray(payload.times) && typeof payload.times === 'object') {
+          const dk = Object.keys(payload.times)[0];
+          const arr = payload.times[dk] || [];
+          const clean = (t) => (t ? String(t).split(' ')[0] : null);
+          mapped = { imsak: clean(arr[0]), gunes: clean(arr[1]), ogle: clean(arr[2]), ikindi: clean(arr[3]), aksam: clean(arr[4]), yatsi: clean(arr[5]) };
+        } else {
+          const first = Array.isArray(payload?.times) ? (payload.times[0] || {}) : (payload?.data || {});
+          const clean = (t) => (t ? String(t).split(' ')[0] : null);
+          mapped = { imsak: clean(first.fajr), gunes: clean(first.sunrise), ogle: clean(first.dhuhr), ikindi: clean(first.asr), aksam: clean(first.maghrib), yatsi: clean(first.isha) };
+        }
+        const order = [["Akşam", mapped.aksam],["Yatsı", mapped.yatsi],["İmsak", mapped.imsak],["Güneş", mapped.gunes],["Öğle", mapped.ogle],["İkindi", mapped.ikindi]]; // görünüm için akış önemsiz; aşağıda hesap
+        const names = [["İmsak", mapped.imsak],["Güneş", mapped.gunes],["Öğle", mapped.ogle],["İkindi", mapped.ikindi],["Akşam", mapped.aksam],["Yatsı", mapped.yatsi]];
+        const now = new Date();
+        let picked = null;
+        for (const [name, v] of names) {
+          if (!v) continue;
+          const [hh, mm] = v.split(":").map(Number);
+          const cand = new Date(); cand.setHours(hh, mm, 0, 0);
+          if (cand >= now) { picked = { name, time: v, remaining: Math.floor((cand - now)/60000) }; break; }
+        }
+        if (!picked && mapped.imsak) {
+          const [hh, mm] = mapped.imsak.split(":").map(Number);
+          const cand = new Date(Date.now()+86400000); cand.setHours(hh, mm, 0, 0);
+          picked = { name: 'İmsak', time: mapped.imsak, remaining: Math.floor((cand - new Date())/60000) };
+        }
+        if (picked) setText(`${picked.name} — ${picked.time} (≈ ${picked.remaining} dk)`);
+      } catch {}
+    };
+    run();
+  }, [coords]);
+  return text ? <span>{text}</span> : <span>Konum bekleniyor…</span>;
 }

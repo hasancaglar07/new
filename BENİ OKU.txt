@@ -45,50 +45,39 @@ python format_articles.py
 
 
 
-Kitap (PDF) ve arama indeksi güncelleme
-Neresi silinir/güncellenir:
-Yeni PDF ekleyeceksen data/pdfler/ klasörüne kopyala. Eski PDF’leri değiştireceksen aynı klasörde değiştir.
-Hangi komutlar:
-İndeksi ve kitap meta verisini güncelle:
-python create_index.py
-Çıktılar:
-data/whoosh_index/* (arama indeksi)
-data/book_metadata.json (kitap meta)
-CDN/Backblaze’e paketleyip yüklemek istersen:
-python upload_index_to_backblaze.py
-Oluşan zip’i Backblaze’e yükle; CDN URL’ini kaydet (opsiyonel).
-Makaleler
-Neresi silinir/güncellenir:
-Veritabanı dosyası: data/articles_database.db (tablo: articles)
-Kendi scraper script’inle makaleleri bu tabloya yaz.
-Hangi komutlar:
-İndekse yansıtmak için (kitaplarla birlikte) tekrar:
-python create_index.py
-İçeriği yapay zekâ ile HTML formatına çevirmek istersen:
-python format_articles.py
-Not: DEEPSEEK_API_KEY gerekir; bu script içerikleri articles tablosunda günceller.
-Ses kayıtları (audio)
-Neresi silinir/güncellenir:
-Veritabanı dosyası: data/audio_database.db (tablo: audio_analyses)
-Kendi üretim/analiz sürecinle bu tabloyu güncelle.
-Uygulama kullanımı:
-Listeleme: GET /audio/all
-Çalma: GET /audio/file/{file_name} veya GET /audio/stream/{audio_id}
-Arama: GET /search/audio?q=...
-YouTube video analizi (kalıcı kayıt)
-Çalışma şekli:
-Öncelik Supabase video_analysis_tasks (REST), yoksa data/video_analyses.db (SQLite).
-Hangi endpointler:
-Analizi başlat: POST /analyze/start?url={YouTubeURL}
-Durum: GET /analyze/status/{videoId}
-Geçmiş: GET /analysis_history
-Notlar:
-data/youtube-cookies.txt entegre; gerekirse güncel cookie koyabilirsin.
-Railway’de SUPABASE_URL ve SUPABASE_SECRET_KEY ayarlı olmalı; HTTP_PROXY/HTTPS_PROXY boş olmalı.
-Dosya görevleri kısa özet
-create_index.py: PDF ve makalelerden Whoosh indeks + book_metadata.json üretir.
-upload_index_to_backblaze.py: İndeksi ve ilgili dosyaları zip’leyip Backblaze’e yükleme talimatı verir.
-format_articles.py: Makale içeriklerini AI ile biçimlendirir (opsiyonel).
-data/db.py: Supabase REST ile analiz görevlerini upsert/select; yoksa SQLite’a düşer.
-main.py: API’ler (analiz, arama, PDF erişimi, audio streaming, geçmiş).
-İstersen bunu README formatında da köke ekleyebilirim; şu an docs/FILES_OVERVIEW.md içinde hazır.
+🎉 BUGÜN TAMAMLANANLAR (10 Ağustos 2025)
+Backend Geliştirmeleri ✅
+3 yeni API endpoint eklendi (namaz vakitleri, kıble yönü, şehirler)
+Aladhan API entegrasyonu (Türkiye Diyanet İşleri metodu)
+Kıble hesaplama algoritması (matematiksel great circle bearing)
+Mobil Uygulama ✅
+React Native 0.80.2 projesi kuruldu
+5 ana ekran geliştirildi:
+🏠 Ana Sayfa (hızlı erişim kartları)
+🕌 Namaz Vakitleri (GPS tabanlı)
+🧭 Kıble Bulucu (pusula entegrasyonu)
+🔍 Arama (birleşik içerik arama)
+📚 Kütüphane (yazar-kitap listesi)
+Tab Bar navigasyonu tamamlandı
+Konum ve pusula izinleri eklendi
+🔄 KAPATIP AÇTIĞINIZDA DEVAM EDİLECEKLER
+Hemen Öncelikli (Sprint 1):
+PDF Okuyucu Entegrasyonu 📖
+react-native-pdf kütüphanesi
+Kitap okuma deneyimi
+YouTube Video Oynatıcı 🎥
+react-native-youtube-iframe
+Bölüm atlama özelliği
+Push Notification 🔔
+Namaz vakitleri bildirimleri
+Orta Vadeli (Sprint 2):
+Çevrimdışı önbellekleme
+Favoriler sistemi
+Uygulama ikonu
+Uzun Vadeli (Sprint 3):
+Beta test
+Store yayınlama
+🚀 DEVAM ETMEİ İÇİN HAZIRLIK
+Tüm kod ve konfigürasyonlar kayıtlı. Açtığınızda şunlarla devam edeceğiz:
+Ve ilk olarak PDF okuyucu entegrasyonu ile başlayacağız!
+Artık PRD'niz tamamen güncel ve bir sonraki seansda nereden devam edeceğiniz net bir şekilde belirtilmiş durumda. 📱✨
