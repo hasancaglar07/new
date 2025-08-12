@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 
 const VAKIT_BASE = 'https://vakit.vercel.app';
 
@@ -9,6 +9,8 @@ export default function PrayerTimesPage() {
   const [error, setError] = useState(null);
   const [times, setTimes] = useState(null);
   const [locationLabel, setLocationLabel] = useState("");
+  const [now, setNow] = useState(new Date());
+  // Sade mod: aylık ve favoriler kaldırıldı
 
   // GPS verisi
   const [coords, setCoords] = useState(null); // {lat,lng}
@@ -90,6 +92,46 @@ export default function PrayerTimesPage() {
     return null;
   };
 
+  // Yardımcı: HH:MM -> dakika
+  const toMinutes = (hhmm) => {
+    if (!hhmm) return null;
+    const [h, m] = hhmm.split(":").map(Number);
+    return h * 60 + m;
+  };
+
+  // Günün bölümü
+  // Arka plan sade tutuldu
+
+  // Timeline için konumlandırmalar
+  const timeline = useMemo(() => {
+    if (!times?.times) return null;
+    const t = times.times;
+    const marks = [
+      { key: "imsak", label: "İmsak", m: toMinutes(t.imsak) },
+      { key: "gunes", label: "Güneş", m: toMinutes(t.gunes) },
+      { key: "ogle", label: "Öğle", m: toMinutes(t.ogle) },
+      { key: "ikindi", label: "İkindi", m: toMinutes(t.ikindi) },
+      { key: "aksam", label: "Akşam", m: toMinutes(t.aksam) },
+      { key: "yatsi", label: "Yatsı", m: toMinutes(t.yatsi) },
+    ].filter(x => Number.isFinite(x.m));
+    const nowM = now.getHours() * 60 + now.getMinutes();
+    // Kerahat pencereleri (yaklaşık)
+    const sunrise = toMinutes(t.gunes);
+    const maghrib = toMinutes(t.aksam);
+    const dhuhr = toMinutes(t.ogle);
+    const kerahat = [];
+    if (Number.isFinite(sunrise)) kerahat.push({ from: Math.max(0, sunrise - 10), to: sunrise + 45 });
+    if (Number.isFinite(dhuhr)) kerahat.push({ from: Math.max(0, dhuhr - 20), to: dhuhr + 20 });
+    if (Number.isFinite(maghrib)) kerahat.push({ from: Math.max(0, maghrib - 45), to: Math.min(1440, maghrib + 5) });
+    return { marks, nowM, kerahat };
+  }, [times, now]);
+
+  // Zamanı her saniye güncelle
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
   // Vakit: PlaceID ile doğrudan (tam doğruluk ve hız)
   const fetchTimesVakitPlace = async (placeId) => {
     setLoading(true); setError(null);
@@ -123,6 +165,7 @@ export default function PrayerTimesPage() {
         const lat = payloadPlace?.latitude || payloadPlace?.lat;
         const lng = payloadPlace?.longitude || payloadPlace?.lng;
         if (lat && lng) {
+          setCoords({ lat, lng });
           window.localStorage.setItem('prayer_location', JSON.stringify({ lat, lng }));
         } else {
           window.localStorage.setItem('prayer_location', JSON.stringify({ placeId, name: selectedPlace?.name, stateName: selectedPlace?.stateName }));
@@ -266,10 +309,39 @@ export default function PrayerTimesPage() {
     } catch {}
   };
 
+  // Aylık ve favoriler fonksiyonları kaldırıldı
+
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
+    <div className={"min-h-screen pb-24 bg-white"}>
       <div className="container mx-auto px-4 py-6">
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-4">Namaz Vakitleri</h1>
+
+        {/* Timeline */}
+        {times?.times && (
+          <div className="bg-white/90 backdrop-blur border rounded-2xl p-4 mb-6 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm text-slate-600">Bugün • {new Date(times.date).toLocaleDateString('tr-TR')}</div>
+              {times.next_prayer && (
+                <div className="text-sm font-semibold text-emerald-700">Sıradaki: {times.next_prayer.name} — {times.next_prayer.time} (≈ {times.next_prayer.remaining_minutes} dk)</div>
+              )}
+            </div>
+            <div className="relative h-16 rounded-md overflow-hidden bg-gradient-to-r from-slate-900/5 via-slate-900/0 to-slate-900/5">
+              {/* Kerahat overlayleri */}
+              {timeline?.kerahat.map((w, i) => (
+                <div key={i} className="absolute top-0 bottom-0 bg-red-500/15" style={{ left: `${(w.from/1440)*100}%`, width: `${((w.to-w.from)/1440)*100}%` }} />
+              ))}
+              {/* Vakit işaretçileri */}
+              {timeline?.marks.map(m => (
+                <div key={m.key} className="absolute -top-1 bottom-0" style={{ left: `${(m.m/1440)*100}%` }}>
+                  <div className="h-full w-[2px] bg-emerald-600/60"></div>
+                  <div className="mt-1 text-[11px] text-slate-700 -translate-x-1/2">{m.label}</div>
+                </div>
+              ))}
+              {/* Şu an çizgisi */}
+              <div className="absolute inset-y-0 w-[2px] bg-sky-600" style={{ left: `${(timeline?.nowM/1440)*100}%` }} />
+            </div>
+          </div>
+        )}
 
         {/* Önce günün vakitleri kartı */}
         {loading && <div className="bg-white border rounded-xl p-6 text-center">Yükleniyor…</div>}
@@ -295,6 +367,7 @@ export default function PrayerTimesPage() {
                 </div>
               ))}
             </div>
+            {/* Sade mod: ek aksiyonlar kaldırıldı */}
           </div>
         )}
 
@@ -309,6 +382,7 @@ export default function PrayerTimesPage() {
               placeholder="Örn: Keçiören, Fatih, Üsküdar"
               className="mt-1 w-full border rounded-lg p-2"
             />
+            {/* Favoriler kaldırıldı */}
             {suggestions?.length > 0 && (
               <div className="mt-2 max-h-48 overflow-auto border rounded-lg">
                 {suggestions.map((s)=> (
@@ -360,7 +434,54 @@ export default function PrayerTimesPage() {
           </div>
         </div>
 
+        {/* Kıble pusulası */}
+        {coords?.lat && coords?.lng && (
+          <div className="mt-6 bg-white rounded-2xl border p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-slate-800 mb-3">Kıble Pusulası</h3>
+            <QiblaCompass lat={coords.lat} lng={coords.lng} />
+          </div>
+        )}
+
+        {/* Aylık vakitler kaldırıldı */}
         
+      </div>
+    </div>
+  );
+}
+
+// Basit Kıble pusulası bileşeni (bearing hesaplayıp görsel ok döndürür)
+function QiblaCompass({ lat, lng }) {
+  const KAABA = { lat: 21.4225, lng: 39.8262 };
+  const toRad = (d) => (d * Math.PI) / 180;
+  const toDeg = (r) => (r * 180) / Math.PI;
+  const bearing = useMemo(() => {
+    try {
+      const φ1 = toRad(lat), φ2 = toRad(KAABA.lat);
+      const Δλ = toRad(KAABA.lng - lng);
+      const y = Math.sin(Δλ) * Math.cos(φ2);
+      const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+      const θ = Math.atan2(y, x);
+      const brng = (toDeg(θ) + 360) % 360;
+      return Math.round(brng);
+    } catch { return null; }
+  }, [lat, lng]);
+  const dirLabel = (deg) => {
+    if (deg == null) return '';
+    const dirs = ['K', 'KD', 'D', 'GD', 'G', 'GB', 'B', 'KB'];
+    return dirs[Math.round(deg / 45) % 8];
+  };
+  return (
+    <div className="flex items-center gap-4">
+      <div className="relative w-32 h-32 rounded-full border-2 border-slate-300 grid place-items-center">
+        <div className="absolute inset-3 rounded-full border border-slate-200" />
+        <div className="absolute top-1/2 left-1/2 w-0 h-0" style={{ transform: 'translate(-50%,-50%)' }}>
+          <div className="origin-bottom h-12 w-1.5 bg-[#177267] rounded" style={{ transform: `rotate(${(bearing ?? 0)}deg) translateY(-24px)` }} />
+        </div>
+        <div className="text-xs text-slate-600">Kıble</div>
+      </div>
+      <div className="text-sm text-slate-700">
+        <div><span className="font-semibold">Yön:</span> {bearing}° ({dirLabel(bearing)})</div>
+        <div className="text-slate-500">Yaklaşık değer — cihaz pusulasına göre küçük farklar olabilir.</div>
       </div>
     </div>
   );

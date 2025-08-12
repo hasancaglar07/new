@@ -810,6 +810,44 @@ def get_page_image(pdf_file: str, page_num: int = Query(..., gt=0)):
     except Exception as e:
         logger.error(f"PDF sayfa resmi işlenirken hata: {e}")
         raise HTTPException(status_code=500, detail="Sayfa resmi işlenirken hata oluştu.")
+
+@app.get("/pdf/page_text")
+def get_page_text(pdf_file: str, page_num: int = Query(..., gt=0)):
+    """Belirtilen PDF sayfasının düz metnini döndürür."""
+    try:
+        import tempfile, requests
+        # Önce yerel PDF
+        pdf_path = PDF_DIR / urllib.parse.unquote(pdf_file)
+        if pdf_path.is_file():
+            with fitz.open(pdf_path) as doc:
+                if not (0 < page_num <= len(doc)):
+                    raise HTTPException(status_code=400, detail="Geçersiz sayfa.")
+                page = doc.load_page(page_num - 1)
+                return {"text": page.get_text("text") or ""}
+        # Backblaze
+        if not PDF_BASE_URL:
+            raise HTTPException(status_code=404, detail="PDF bulunamadı.")
+        pdf_url = f"{PDF_BASE_URL}/{urllib.parse.unquote(pdf_file)}"
+        resp = requests.get(pdf_url, timeout=30)
+        resp.raise_for_status()
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+        tmp.write(resp.content); tmp.close()
+        try:
+            with fitz.open(tmp.name) as doc:
+                if not (0 < page_num <= len(doc)):
+                    raise HTTPException(status_code=400, detail="Geçersiz sayfa.")
+                page = doc.load_page(page_num - 1)
+                return {"text": page.get_text("text") or ""}
+        finally:
+            try:
+                os.unlink(tmp.name)
+            except Exception:
+                pass
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"PDF sayfa metni alınamadı {pdf_file}: {e}")
+        raise HTTPException(status_code=500, detail="PDF sayfa metni alınamadı.")
 @app.get("/search/videos")
 async def search_videos(q: str):
     if not YOUTUBE_API_KEYS:

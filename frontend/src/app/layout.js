@@ -1,13 +1,16 @@
 // frontend/src/app/layout.js
 
-import { Inter } from 'next/font/google'; // Google fontunu import et
+import { Inter, Amiri } from 'next/font/google'; // Google fontlarını import et
 import Navbar from '@/components/Navbar';
 import BottomNav from '@/components/BottomNav';
 import MobileLayout from '@/components/MobileLayout';
+import { AudioProvider } from '@/components/audio/AudioProvider';
+import MiniPlayer from '@/components/audio/MiniPlayer';
 import './globals.css';
 
-// Fontu yapılandır
-const inter = Inter({ subsets: ['latin'] });
+// Fontları yapılandır ve CSS değişkenlerine bağla
+const inter = Inter({ subsets: ['latin'], display: 'swap', variable: '--font-body' });
+const amiri = Amiri({ subsets: ['latin'], weight: ['400','700'], display: 'swap', variable: '--font-heading' });
 
 export const metadata = {
   title: 'Mihmandar E-Kütüphanesi',
@@ -24,21 +27,24 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="tr">
+    <html lang="tr" className={`${inter.variable} ${amiri.variable}`}>
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="format-detection" content="telephone=no" />
       </head>
-      {/* Fontu tüm body'e uygula */}
-      <body className={inter.className}> 
-        <MobileLayout>
-          <Navbar />
-          {/* Ana içerikte altta sabit nav için boşluk */}
-          <main className="pb-24 md:pb-0">{children}</main>
-          <BottomNav />
-        </MobileLayout>
+      {/* Fontları base katmanında değişkenler ile kullanıyoruz */}
+      <body>
+        <AudioProvider>
+          <MobileLayout>
+            <Navbar />
+            {/* Ana içerikte altta sabit nav + mini player için boşluk */}
+            <main className="pb-32 md:pb-16">{children}</main>
+            <MiniPlayer />
+            <BottomNav />
+          </MobileLayout>
+        </AudioProvider>
       </body>
     </html>
   );

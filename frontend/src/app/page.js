@@ -14,8 +14,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 // --- YARDIMCI FONKSİYONLAR VE BİLEŞENLER ---
+function TapButton({ children, className, ...props }) {
+  return (
+    <Button className={className} {...props} asChild>
+      <motion.button whileTap={{ scale: 0.95 }}>{children}</motion.button>
+    </Button>
+  );
+}
 const formatDate = (dateString) => new Date(dateString).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
 function Highlight({ text, query }) {
     if (!text) return null;
@@ -55,7 +63,75 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     if (!book) return null;
     return (<Dialog open={isOpen} onOpenChange={onClose}><DialogContent className="max-w-none w-screen h-screen p-0 gap-0 flex flex-col bg-slate-800"><DialogHeader className="p-3 border-b border-slate-700 flex-shrink-0 flex-row items-center justify-between text-white bg-slate-900/50"><DialogTitle className="text-lg md:text-xl text-slate-100 line-clamp-1">{book.kitap}</DialogTitle><Button aria-label="Kapat" variant="ghost" size="icon" onClick={onClose} className="text-slate-300 hover:text-white hover:bg-slate-700"><X className="h-6 w-6"/></Button></DialogHeader><div className="flex-grow w-full h-full flex justify-center items-center overflow-hidden relative">{isLoading && <Loader2 className="h-10 w-10 animate-spin text-slate-400 absolute z-10" />}{error && <div className="text-center text-red-500 p-4"><ServerCrash className="mx-auto h-8 w-8 mb-2" />{error}</div>}{imageUrl && !error && (<TransformWrapper limitToBounds={true} doubleClick={{ mode: 'reset' }} pinch={{ step: 1 }} wheel={{ step: 0.2 }}>{({ zoomIn, zoomOut, resetTransform }) => (<><div className="absolute top-4 right-4 z-20 flex flex-col gap-2"><Button aria-label="Yakınlaştır" onClick={() => zoomIn()} className="bg-slate-900/70 hover:bg-slate-800/90 text-white backdrop-blur-sm"><ZoomIn /></Button><Button aria-label="Uzaklaştır" onClick={() => zoomOut()} className="bg-slate-900/70 hover:bg-slate-800/90 text-white backdrop-blur-sm"><ZoomOut /></Button><Button aria-label="Görünümü sıfırla" onClick={() => resetTransform()} className="bg-slate-900/70 hover:bg-slate-800/90 text-white backdrop-blur-sm"><RotateCcw /></Button></div><TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full"><Image key={imageUrl} src={imageUrl} alt={`Sayfa ${currentPage}`} onLoad={() => setIsLoading(false)} onError={() => { setError("Bu sayfa yüklenemedi."); setIsLoading(false); }} fill style={{ objectFit: 'contain' }} className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`} sizes="100vw"/></TransformComponent></>)}</TransformWrapper>)}</div><DialogFooter className="flex-row justify-between items-center p-3 bg-slate-900/50 border-t border-slate-700 flex-shrink-0 text-white backdrop-blur-sm"><Button aria-label="Sayfayı indir" onClick={handleDownload} disabled={isDownloading} className="bg-slate-700 hover:bg-slate-600">{isDownloading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}</Button><div className="flex items-center gap-2"><Button aria-label="Önceki sayfa" onClick={() => setCurrentPage(p => p > 1 ? p - 1 : p)} disabled={currentPage <= 1 || isLoading} className="bg-slate-700 hover:bg-slate-600"><ArrowLeft className="h-5 w-5" /></Button><div className="text-lg font-semibold tabular-nums"><span>{currentPage}</span><span className="text-slate-400 mx-1.5">/</span><span className="text-slate-300">{totalPages || '...'}</span></div><Button aria-label="Sonraki sayfa" onClick={() => setCurrentPage(p => totalPages && p < totalPages ? p + 1 : p)} disabled={!totalPages || currentPage >= totalPages || isLoading} className="bg-slate-700 hover:bg-slate-600"><ArrowRight className="h-5 w-5" /></Button></div><div className="w-12"></div></DialogFooter></DialogContent></Dialog>);
 }
-function ArticleViewerDialog({ articleId, onClose, isOpen }) { const [article, setArticle] = useState(null); const [isLoading, setIsLoading] = useState(true); useEffect(() => { if (isOpen && articleId) { setIsLoading(true); fetch(`${API_BASE_URL}/article/${articleId}`).then(res => res.json()).then(data => { setArticle(data); setIsLoading(false); }).catch(() => setIsLoading(false)); } }, [isOpen, articleId]); const articleDate = article ? new Date(article.scraped_at).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }) : ''; return ( <Dialog open={isOpen} onOpenChange={onClose}> <DialogContent className="max-w-3xl h-[90vh] flex flex-col p-0"> {isLoading ? ( <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div> ) : !article ? ( <div className="flex items-center justify-center h-full text-red-500">Makale yüklenemedi.</div> ) : ( <> <DialogHeader className="p-6 pb-4"> <DialogTitle className="text-3xl font-bold leading-tight">{article.title}</DialogTitle> <DialogDescription className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2 text-sm"> <span className="flex items-center gap-1.5"><User className="h-4 w-4" />{article.author}</span> <span className="flex items-center gap-1.5"><Library className="h-4 w-4" />{article.category}</span> <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" />{articleDate}</span> </DialogDescription> </DialogHeader> <Separator /> <div className="px-6 py-4 flex-grow overflow-y-auto"> <div className="prose prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: article.content }} /> </div> </> )} </DialogContent> </Dialog> );}
+function ArticleViewerDialog({ articleId, onClose, isOpen }) {
+  const [article, setArticle] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    if (isOpen && articleId) {
+      setIsLoading(true);
+      fetch(`${API_BASE_URL}/article/${articleId}`)
+        .then(res => res.json())
+        .then(data => { setArticle(data); setIsLoading(false); })
+        .catch(() => setIsLoading(false));
+    }
+  }, [isOpen, articleId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = () => {
+      const el = document.getElementById('article-scroll-container');
+      if (!el) return;
+      const scrolled = el.scrollTop;
+      const height = el.scrollHeight - el.clientHeight;
+      const pct = Math.max(0, Math.min(100, (scrolled / Math.max(1, height)) * 100));
+      setProgress(pct);
+    };
+    document.addEventListener('scroll', handler, true);
+    return () => document.removeEventListener('scroll', handler, true);
+  }, [isOpen]);
+
+  const calcReadingMinutes = (html) => {
+    if (!html) return 0;
+    const text = html.replace(/<[^>]*>/g, ' ');
+    const words = text.trim().split(/\s+/).length;
+    return Math.max(1, Math.round(words / 200));
+  };
+
+  const articleDate = article ? new Date(article.scraped_at).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+  const readMins = article ? calcReadingMinutes(article.content) : 0;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl h-[90vh] flex flex-col p-0">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>
+        ) : !article ? (
+          <div className="flex items-center justify-center h-full text-red-500">Makale yüklenemedi.</div>
+        ) : (
+          <>
+            <DialogHeader className="p-6 pb-3">
+              <DialogTitle className="text-3xl font-bold leading-tight">{article.title}</DialogTitle>
+              <DialogDescription className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2 text-sm">
+                <span className="flex items-center gap-1.5"><User className="h-4 w-4" />{article.author}</span>
+                <span className="flex items-center gap-1.5"><Library className="h-4 w-4" />{article.category}</span>
+                <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" />{articleDate} • {readMins} dk okuma</span>
+              </DialogDescription>
+              <div className="mt-3"><Progress value={progress} /></div>
+            </DialogHeader>
+            <Separator />
+            <div id="article-scroll-container" className="px-6 py-6 flex-grow overflow-y-auto">
+              <article className="prose prose-lg prose-emerald max-w-none">
+                <div dangerouslySetInnerHTML={{ __html: article.content }} />
+              </article>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
 // *** Mobile-optimized Audio Player Dialog ***
 function AudioPlayerDialog({ audio, onClose, isOpen }) {
     const audioRef = useRef(null);
@@ -178,7 +254,7 @@ function ArticleResultCard({ result, onReadClick, query, index }) {
                 {/* Clean Header */}
                 <div className="p-8 pb-6">
                     <div className="flex items-start justify-between mb-4">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                             <Newspaper className="w-3 h-3 mr-1.5" />
                             {result.kategori}
                         </span>
@@ -209,13 +285,13 @@ function ArticleResultCard({ result, onReadClick, query, index }) {
                 
                 {/* Action Footer */}
                 <CardFooter className="p-8 pt-0 mt-auto">
-                    <Button
+                    <TapButton
                         onClick={() => onReadClick(result.id)}
-                        className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl transition-all duration-200 hover:shadow-lg"
+                        className="w-full bg-[#177267] hover:bg-[#116358] text-white font-medium py-3 rounded-xl transition-all duration-200 hover:shadow-lg"
                     >
                         Makaleyi Oku
                         <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
+                    </TapButton>
                 </CardFooter>
             </Card>
         </motion.div>
@@ -242,7 +318,7 @@ function BookResultCard({ result, onReadClick, query, index }) {
                 {/* Clean Header */}
                 <div className="p-8 pb-6">
                     <div className="flex items-start justify-between mb-4">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                             <BookOpen className="w-3 h-3 mr-1.5" />
                             Sayfa {result.sayfa}
                         </span>
@@ -264,7 +340,7 @@ function BookResultCard({ result, onReadClick, query, index }) {
                 {/* Content Preview */}
                 <CardContent className="flex-grow px-8 pb-6">
                     <div className="relative">
-                        <div className="absolute left-0 top-0 w-1 h-full bg-blue-200 rounded-full"></div>
+                        <div className="absolute left-0 top-0 w-1 h-full bg-emerald-200 rounded-full"></div>
                         <blockquote className="pl-6 text-slate-600 leading-relaxed line-clamp-3 italic">
                             &quot;<Highlight text={result.alinti} query={query} />&quot;
                         </blockquote>
@@ -292,13 +368,13 @@ function BookResultCard({ result, onReadClick, query, index }) {
                 
                 {/* Action Footer */}
                 <CardFooter className="p-8 pt-0 mt-auto">
-                    <Button
+                    <TapButton
                         onClick={() => onReadClick(result)}
-                        className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl transition-all duration-200 hover:shadow-lg"
+                        className="w-full bg-[#177267] hover:bg-[#116358] text-white font-medium py-3 rounded-xl transition-all duration-200 hover:shadow-lg"
                     >
                         Bu Sayfayı Oku
                         <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
+                    </TapButton>
                 </CardFooter>
             </Card>
         </motion.div>
@@ -328,7 +404,7 @@ function AudioResultCard({ result, query, index, onPlayClick }) {
                 {/* Clean Header */}
                 <div className="p-8 pb-6">
                     <div className="flex items-start justify-between mb-4">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                             <Music className="w-3 h-3 mr-1.5" />
                             {result.source}
                         </span>
@@ -368,14 +444,14 @@ function AudioResultCard({ result, query, index, onPlayClick }) {
                 
                 {/* Action Footer */}
                 <CardFooter className="p-8 pt-0 mt-auto">
-                   <Button
+                   <TapButton
                         onClick={() => onPlayClick(result)}
-                        className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl transition-all duration-200 hover:shadow-lg"
+                        className="w-full bg-[#177267] hover:bg-[#116358] text-white font-medium py-3 rounded-xl transition-all duration-200 hover:shadow-lg"
                    >
                         <Play className="h-4 w-4 mr-2" />
                         Kaydı Dinle
                         <ArrowRight className="w-4 h-4 ml-2" />
-                   </Button>
+                   </TapButton>
                 </CardFooter>
             </Card>
         </motion.div>
@@ -410,9 +486,9 @@ function VideoCard({ video, index }) {
                         className="w-full h-full transition-transform duration-300 group-hover:scale-105"
                     />
                     <div className="absolute top-4 left-4">
-                        <span className="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg flex items-center gap-1.5">
+                        <span className="bg-[#177267] text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg flex items-center gap-1.5">
                             <Video className="h-3 w-3" />
-                            YouTube
+                            Video
                         </span>
                     </div>
                 </div>
@@ -420,7 +496,7 @@ function VideoCard({ video, index }) {
                 {/* Content */}
                 <div className="flex flex-col flex-grow p-8">
                     <div className="flex items-start justify-between mb-4">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                             <Video className="w-3 h-3 mr-1.5" />
                             Video
                         </span>
@@ -445,12 +521,12 @@ function VideoCard({ video, index }) {
                     
                     {/* Action Footer */}
                     <div className="mt-auto">
-                        <a href={`https://www.youtube.com/watch?v=${video.id}`} target="_blank" rel="noopener noreferrer" className="block">
-                            <Button className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl transition-all duration-200 hover:shadow-lg">
-                                YouTube&apos;da İzle
-                                <ArrowRight className="w-4 h-4 ml-2" />
-                            </Button>
-                        </a>
+                        <Button asChild className="w-full bg-[#177267] hover:bg-[#116358] text-white font-medium py-3 rounded-xl transition-all duration-200 hover:shadow-lg">
+                          <motion.a whileTap={{ scale: 0.95 }} href={`https://www.youtube.com/watch?v=${video.id}`} target="_blank" rel="noopener noreferrer" className="block">
+                            YouTube&apos;da İzle
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                          </motion.a>
+                        </Button>
                     </div>
                 </div>
             </Card>
@@ -590,9 +666,9 @@ function AnalysisCard({ analysis, query, index }) {
                         <a href={`https://www.youtube.com/watch?v=${analysis.video_id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium transition-colors">
                             YouTube&apos;da İzle
                         </a>
-                        <Button onClick={handleScrollChapters} className="bg-white text-violet-700 border border-violet-600 hover:bg-violet-50">
+                        <TapButton onClick={handleScrollChapters} className="bg-white text-violet-700 border border-violet-600 hover:bg-violet-50">
                             Bölümleri Göster
-                        </Button>
+                        </TapButton>
                     </div>
                 </div>
                 
@@ -1069,36 +1145,36 @@ export default function HomePage() {
                   >
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                    
-                    <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 gap-2 h-auto md:h-auto rounded-2xl p-3 bg-white border border-slate-200/60 shadow-sm">
-                      <TabsTrigger value="kitaplar" disabled={allResults.books.length === 0} className="h-16 text-sm md:text-base data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg gap-2 rounded-xl font-medium flex items-center justify-center px-4 col-span-2 md:col-span-1 transition-all duration-200">
+                      <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 gap-2 h-auto md:h-auto rounded-2xl p-3 bg-white border border-slate-200/60 shadow-sm">
+                      <TabsTrigger value="kitaplar" disabled={allResults.books.length === 0} className="h-16 text-sm md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg gap-2 rounded-xl font-medium flex items-center justify-center px-4 col-span-2 md:col-span-1 transition-all duration-200">
                         <BookOpen className="h-5 w-5 shrink-0"/>
                         <span className="truncate">Kitaplar</span>
                         <span className="ml-2 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 data-[state=active]:bg-white/20 data-[state=active]:text-white">
                           {allResults.books.length}
                         </span>
                       </TabsTrigger>
-                      <TabsTrigger value="makaleler" disabled={allResults.articles.length === 0} className="h-16 text-sm md:text-base data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg gap-2 rounded-xl font-medium flex items-center justify-center px-4 transition-all duration-200">
+                      <TabsTrigger value="makaleler" disabled={allResults.articles.length === 0} className="h-16 text-sm md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg gap-2 rounded-xl font-medium flex items-center justify-center px-4 transition-all duration-200">
                         <Newspaper className="h-5 w-5 shrink-0"/>
                         <span className="truncate">Makaleler</span>
                         <span className="ml-2 px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 data-[state=active]:bg-white/20 data-[state=active]:text-white">
                           {allResults.articles.length}
                         </span>
                       </TabsTrigger>
-                      <TabsTrigger value="ses-kayitlari" disabled={allResults.audio.length === 0} className="h-16 text-sm md:text-base data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg gap-2 rounded-xl font-medium flex items-center justify-center px-4 transition-all duration-200">
+                      <TabsTrigger value="ses-kayitlari" disabled={allResults.audio.length === 0} className="h-16 text-sm md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg gap-2 rounded-xl font-medium flex items-center justify-center px-4 transition-all duration-200">
                           <Music className="h-5 w-5 shrink-0"/>
                           <span className="truncate">Ses Kayıtları</span>
                           <span className="ml-2 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 data-[state=active]:bg-white/20 data-[state=active]:text-white">
                             {allResults.audio.length}
                           </span>
                       </TabsTrigger>
-                      <TabsTrigger value="videolar" disabled={allResults.videos.length === 0} className="h-16 text-sm md:text-base data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg gap-2 rounded-xl font-medium flex items-center justify-center px-4 transition-all duration-200">
+                      <TabsTrigger value="videolar" disabled={allResults.videos.length === 0} className="h-16 text-sm md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg gap-2 rounded-xl font-medium flex items-center justify-center px-4 transition-all duration-200">
                         <Video className="h-5 w-5 shrink-0"/>
                         <span className="truncate">Videolar</span>
                         <span className="ml-2 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 data-[state=active]:bg-white/20 data-[state=active]:text-white">
                           {allResults.videos.length}
                         </span>
                       </TabsTrigger>
-                      <TabsTrigger value="analizler" disabled={allResults.analyses.length === 0} className="h-16 text-sm md:text-base data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg gap-2 rounded-xl font-medium flex items-center justify-center px-4 transition-all duration-200">
+                      <TabsTrigger value="analizler" disabled={allResults.analyses.length === 0} className="h-16 text-sm md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg gap-2 rounded-xl font-medium flex items-center justify-center px-4 transition-all duration-200">
                         <BotMessageSquare className="h-5 w-5 shrink-0"/>
                         <span className="truncate">Analizler</span>
                         <span className="ml-2 px-2 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700 data-[state=active]:bg-white/20 data-[state=active]:text-white">

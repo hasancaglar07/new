@@ -3,8 +3,9 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Volume2, Loader2, ServerCrash, Clock, PlayCircle, ListMusic,
-    Search, X, Play, Pause, Grid, List, Tag
+    Search, X, Play, Pause, Grid, List, Tag, Flame
 } from 'lucide-react';
+import { useAudio } from '@/components/audio/AudioProvider';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 function AudioPlayer({ source, title, chapters, mp3Filename, onReadyToPlay, onClose }) {
     const audioRef = useRef(null);
@@ -105,6 +106,7 @@ function AudioPlayer({ source, title, chapters, mp3Filename, onReadyToPlay, onCl
     );
 }
 function AudioCard({ audio, source, onPlay }) {
+    const [expanded, setExpanded] = useState(false);
     // Dosya adından temiz başlık çıkar
     const cleanTitle = audio.title.replace(/\.(mp3|wav|m4a)$/i, '').replace(/_/g, ' ');
     
@@ -114,57 +116,88 @@ function AudioCard({ audio, source, onPlay }) {
             animate={{ opacity: 1, y: 0 }}
             className="group relative bg-white rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-xl transition-all duration-300 overflow-hidden"
         >
-            {/* Header - corporate */}
+            {/* Header - corporate (başlık gizlendi, sadece meta) */}
             <div className="p-6 border-b border-slate-200 bg-white">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between">
                     <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-[#177267] text-white text-sm font-semibold">
                         <Tag className="h-4 w-4 mr-2" />
                         {source}
                     </span>
-                    <span className="text-sm text-[#177267] flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-full border border-slate-200">
-                        <ListMusic className="h-4 w-4" />
-                        {audio.chapters.length} konu
+                    <span className="text-sm text-[#177267] flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-full border border-slate-200">
+                          <ListMusic className="h-4 w-4" />
+                          {audio.chapters.length} konu
+                        </span>
+                        {audio.duration && (
+                          <span className="inline-flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-full border border-slate-200">
+                            <Clock className="h-4 w-4" />
+                            {audio.duration}
+                          </span>
+                        )}
                     </span>
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 group-hover:text-[#177267] transition-colors line-clamp-2 leading-tight">
-                    {cleanTitle}
-                </h3>
             </div>
             
             <div className="p-6">
                 {/* Section title */}
-                <div className="flex items-center gap-2 mb-4">
-                    <div className="w-1 h-6 bg-[#177267] rounded-full"></div>
-                    <h4 className="text-lg font-semibold text-slate-800">Konu Başlıkları</h4>
+                <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1 h-6 bg-[#177267] rounded-full"></div>
+                      <h4 className="text-lg font-semibold text-slate-800">Konu Başlıkları</h4>
+                    </div>
+                    <div className="text-xs text-slate-500">Sağa kaydır</div>
                 </div>
-                
+
                 {/* Chapters Preview */}
-                <div className="space-y-3 mb-6">
-                    {audio.chapters.slice(0, 3).map((chapter, idx) => (
-                        <div
-                            key={idx}
-                            className="flex items-start gap-3 p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-all duration-200 cursor-pointer border border-slate-200"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onPlay(audio, source, chapter.time);
-                            }}
+                {!expanded ? (
+                  <div className="mb-4 -mx-2 px-2">
+                    <div className="flex gap-2 overflow-x-auto hide-scrollbar snap-x">
+                      {(audio.chapters || []).slice(0, 6).map((chapter, idx) => (
+                        <button
+                          key={idx}
+                          aria-label={`Konu: ${chapter.title} - ${chapter.time}`}
+                          onClick={(e) => { e.stopPropagation(); onPlay(audio, source, chapter.time); }}
+                          className="shrink-0 snap-start px-3 py-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-sm text-slate-700 transition-colors shadow-sm hover:shadow"
                         >
-                            <span className="font-mono text-sm font-bold text-[#177267] bg-white px-2 py-1 rounded-md shrink-0 border border-slate-200">
-                                {chapter.time}
-                            </span>
-                            <span className="text-base font-medium text-slate-800 line-clamp-2 leading-relaxed">
-                                {chapter.title}
-                            </span>
-                        </div>
-                    ))}
-                    {audio.chapters.length > 3 && (
-                        <div className="text-center py-2">
-                            <span className="text-sm text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-                                +{audio.chapters.length - 3} konu daha...
-                            </span>
-                        </div>
+                          <span className="inline-flex items-center gap-2">
+                            <span className="font-mono font-semibold text-[#177267]">{chapter.time}</span>
+                            <span className="max-w-[220px] truncate">{chapter.title}</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                    {(audio.chapters?.length || 0) > 6 && (
+                      <div className="mt-3">
+                        <button onClick={() => setExpanded(true)} className="text-xs text-[#177267] underline">
+                          Tümünü göster ({audio.chapters.length})
+                        </button>
+                      </div>
                     )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="mb-4 max-h-60 overflow-y-auto rounded-md border border-slate-200">
+                    <ul className="divide-y divide-slate-200">
+                      {(audio.chapters || []).map((chapter, idx) => (
+                        <li key={idx}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onPlay(audio, source, chapter.time); }}
+                            className="w-full flex items-start gap-3 p-3 text-left hover:bg-slate-50"
+                          >
+                            <span className="font-mono text-xs font-semibold text-[#177267] bg-white px-2 py-1 rounded border border-slate-200 shrink-0">
+                              {chapter.time}
+                            </span>
+                            <span className="text-sm text-slate-800 leading-relaxed">
+                              {chapter.title}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="p-2 text-right">
+                      <button onClick={() => setExpanded(false)} className="text-xs text-slate-600 hover:text-slate-800">Kapat</button>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Play Button */}
                 <button
@@ -184,8 +217,13 @@ export default function AudioLibraryPage() {
     const [error, setError] = useState(null);
     const [selectedAudio, setSelectedAudio] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [inputQuery, setInputQuery] = useState('');
     const [selectedSource, setSelectedSource] = useState('all');
     const [viewMode, setViewMode] = useState('grid');
+    const [sortBy, setSortBy] = useState('newest');
+    const [limit, setLimit] = useState(12);
+    const loaderRef = useRef(null);
+    const { play } = useAudio();
     // *** YENİ: URL'den gelen zaman parametresini saklamak için state ***
     const [initialSeconds, setInitialSeconds] = useState(null);
     useEffect(() => {
@@ -198,15 +236,22 @@ export default function AudioLibraryPage() {
             .catch(err => setError(err.message))
             .finally(() => setIsLoading(false));
     }, []);
+    // debounce search input
+    useEffect(() => {
+      const id = setTimeout(() => setSearchQuery(inputQuery), 300);
+      return () => clearTimeout(id);
+    }, [inputQuery]);
+
+    const allAudios = useMemo(() => {
+      const list = [];
+      Object.keys(audioData).forEach(source => {
+        audioData[source].forEach(audio => { list.push({ ...audio, source }); });
+      });
+      return list;
+    }, [audioData]);
+
     const filteredAudios = useMemo(() => {
-        const allAudios = [];
-     
-        Object.keys(audioData).forEach(source => {
-            audioData[source].forEach(audio => {
-                allAudios.push({ ...audio, source });
-            });
-        });
-        return allAudios.filter(audio => {
+        let items = allAudios.filter(audio => {
             const matchesSearch = searchQuery === '' ||
                 audio.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 audio.chapters.some(chapter =>
@@ -217,7 +262,39 @@ export default function AudioLibraryPage() {
          
             return matchesSearch && matchesSource;
         });
-    }, [audioData, searchQuery, selectedSource]);
+        // sort
+        items.sort((a,b)=>{
+          if (sortBy === 'newest') return (b.created_at||0) - (a.created_at||0);
+          if (sortBy === 'oldest') return (a.created_at||0) - (b.created_at||0);
+          if (sortBy === 'az') return a.title.localeCompare(b.title);
+          if (sortBy === 'za') return b.title.localeCompare(a.title);
+          if (sortBy === 'topics') return (b.chapters?.length||0) - (a.chapters?.length||0);
+          return 0;
+        });
+        return items;
+    }, [allAudios, searchQuery, selectedSource, sortBy]);
+
+    const featuredAudios = useMemo(() => {
+      const items = [...allAudios];
+      items.sort((a,b)=>{
+        const byNew = (b.created_at||0) - (a.created_at||0);
+        if (byNew !== 0) return byNew;
+        return (b.chapters?.length||0) - (a.chapters?.length||0);
+      });
+      return items.slice(0, 4);
+    }, [allAudios]);
+    // infinite scroll observer
+    useEffect(() => {
+      if (!loaderRef.current) return;
+      const observer = new IntersectionObserver((entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting) {
+          setLimit((l) => l + 12);
+        }
+      }, { rootMargin: '200px' });
+      observer.observe(loaderRef.current);
+      return () => observer.disconnect();
+    }, [loaderRef, filteredAudios.length]);
     const handlePlayAudio = (audio, source, startTimeString = null) => {
         console.log('=== HANDLE PLAY AUDIO ===');
         console.log('Audio:', audio.title);
@@ -227,8 +304,13 @@ export default function AudioLibraryPage() {
             const parts = startTimeString.split(':').map(Number);
             seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
         }
-        setInitialSeconds(seconds);
-        setSelectedAudio({ ...audio, source });
+        // Sadece global mini-player üzerinden çal (modalı açma)
+        play({ id: `${source}-${audio.id}`, title: audio.title.replace(/\.(mp3|wav|m4a)$/i, '').replace(/_/g, ' '), source, mp3Filename: audio.mp3_filename, startSeconds: seconds ?? undefined, chapters: audio.chapters });
+    };
+
+    const handleOpenDetails = (audio, source) => {
+      setInitialSeconds(null);
+      setSelectedAudio({ ...audio, source });
     };
     // *** YENİ: Ses dosyası oynatmaya hazır olduğunda bu fonksiyon çalışacak ***
     const handleReadyToPlay = useCallback((audioElement) => {
@@ -266,7 +348,7 @@ export default function AudioLibraryPage() {
                         </p>
                     </div>
 
-                    {/* Simple filter (non-sticky) */}
+                    {/* Filter toolbelt */}
                     <div className="w-full bg-white border border-slate-200 rounded-xl p-4">
                         <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
                             {/* Search */}
@@ -275,8 +357,9 @@ export default function AudioLibraryPage() {
                                 <input
                                     type="text"
                                     placeholder="Başlık veya konu ara..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    aria-label="Ses kaydı ara"
+                                    value={inputQuery}
+                                    onChange={(e) => setInputQuery(e.target.value)}
                                     className="w-full pl-9 pr-4 py-3 border border-slate-300 rounded-lg focus:border-[#177267] focus:ring-0 bg-white text-slate-700 placeholder-slate-400"
                                 />
                             </div>
@@ -295,6 +378,19 @@ export default function AudioLibraryPage() {
                                 <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                                     <div className="w-2 h-2 border-r-2 border-b-2 border-[#177267] rotate-45"></div>
                                 </div>
+                            </div>
+                            {/* Sort */}
+                            <div className="relative">
+                              <select value={sortBy} onChange={(e)=> setSortBy(e.target.value)} className="appearance-none px-5 py-3 pr-9 border border-slate-300 rounded-lg focus:border-[#177267] focus:ring-0 bg-white text-slate-700 min-w-48">
+                                <option value="newest">En Yeni</option>
+                                <option value="oldest">En Eski</option>
+                                <option value="az">A–Z</option>
+                                <option value="za">Z–A</option>
+                                <option value="topics">Konu Sayısı</option>
+                              </select>
+                              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                <div className="w-2 h-2 border-r-2 border-b-2 border-[#177267] rotate-45"></div>
+                              </div>
                             </div>
                             {/* View toggle */}
                             <div className="flex rounded-lg border border-slate-300 overflow-hidden bg-white">
@@ -323,6 +419,23 @@ export default function AudioLibraryPage() {
                     </div>
                 </div>
             </div>
+            {/* Featured Section */}
+            <div className="container mx-auto px-4 mt-8">
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <Flame className="h-5 w-5 text-[#177267]" />
+                  <h2 className="text-xl font-semibold text-slate-900">Öne Çıkan Sohbetler</h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {featuredAudios.map(item => (
+                    <button key={`${item.source}-${item.id}`} onClick={()=> handlePlayAudio(item, item.source)} className="text-left group bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg p-4 transition-all">
+                      <div className="text-sm text-[#177267] mb-1">{item.source}</div>
+                      <div className="font-semibold text-slate-900 line-clamp-2 group-hover:text-[#177267]">{item.title.replace(/\.(mp3|wav|m4a)$/i, '').replace(/_/g, ' ')}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
             {/* Main Content */}
             <div className="container mx-auto px-4 py-8">
                 {filteredAudios.length === 0 ? (
@@ -336,12 +449,13 @@ export default function AudioLibraryPage() {
                         </p>
                     </div>
                 ) : (
+                    <>
                     <div className={
                         viewMode === 'grid'
                             ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6"
                             : "space-y-4"
                     }>
-                        {filteredAudios.map(audio => (
+                        {filteredAudios.slice(0, limit).map(audio => (
                             <AudioCard
                                 key={`${audio.source}-${audio.id}`}
                                 audio={audio}
@@ -350,6 +464,9 @@ export default function AudioLibraryPage() {
                             />
                         ))}
                     </div>
+                    {/* Infinite loader */}
+                    <div ref={loaderRef} className="h-8"></div>
+                    </>
                 )}
             </div>
             {/* Audio Player Modal */}
