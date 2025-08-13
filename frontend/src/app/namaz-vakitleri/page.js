@@ -15,6 +15,26 @@ export default function PrayerTimesPage() {
   // GPS verisi
   const [coords, setCoords] = useState(null); // {lat,lng}
 
+  // Ayarlar (web+RN Bridge)
+  const [ezanEnabled, setEzanEnabled] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('ezan_settings')||'{}').enabled ?? true; } catch { return true; }
+  });
+  const [ezanType, setEzanType] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('ezan_settings')||'{}').ezanType || 'traditional'; } catch { return 'traditional'; }
+  });
+  const [ezanVolume, setEzanVolume] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('ezan_settings')||'{}').volume ?? 0.8; } catch { return 0.8; }
+  });
+  const [notifyEnabled, setNotifyEnabled] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('notification_settings')||'{}').enabled ?? true; } catch { return true; }
+  });
+  const [beforeMinutes, setBeforeMinutes] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('notification_settings')||'{}').beforeMinutes ?? 10; } catch { return 10; }
+  });
+  const [widgetTheme, setWidgetTheme] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('widget_theme')||'null') || { style:'modern', color:'emerald' }; } catch { return { style:'modern', color:'emerald' }; }
+  });
+
   // Vakit arama/suggestion
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
@@ -102,29 +122,7 @@ export default function PrayerTimesPage() {
   // Günün bölümü
   // Arka plan sade tutuldu
 
-  // Timeline için konumlandırmalar
-  const timeline = useMemo(() => {
-    if (!times?.times) return null;
-    const t = times.times;
-    const marks = [
-      { key: "imsak", label: "İmsak", m: toMinutes(t.imsak) },
-      { key: "gunes", label: "Güneş", m: toMinutes(t.gunes) },
-      { key: "ogle", label: "Öğle", m: toMinutes(t.ogle) },
-      { key: "ikindi", label: "İkindi", m: toMinutes(t.ikindi) },
-      { key: "aksam", label: "Akşam", m: toMinutes(t.aksam) },
-      { key: "yatsi", label: "Yatsı", m: toMinutes(t.yatsi) },
-    ].filter(x => Number.isFinite(x.m));
-    const nowM = now.getHours() * 60 + now.getMinutes();
-    // Kerahat pencereleri (yaklaşık)
-    const sunrise = toMinutes(t.gunes);
-    const maghrib = toMinutes(t.aksam);
-    const dhuhr = toMinutes(t.ogle);
-    const kerahat = [];
-    if (Number.isFinite(sunrise)) kerahat.push({ from: Math.max(0, sunrise - 10), to: sunrise + 45 });
-    if (Number.isFinite(dhuhr)) kerahat.push({ from: Math.max(0, dhuhr - 20), to: dhuhr + 20 });
-    if (Number.isFinite(maghrib)) kerahat.push({ from: Math.max(0, maghrib - 45), to: Math.min(1440, maghrib + 5) });
-    return { marks, nowM, kerahat };
-  }, [times, now]);
+  // Timeline kaldırıldı: daha sade kurumsal görünüm
 
   // Zamanı her saniye güncelle
   useEffect(() => {
@@ -167,6 +165,7 @@ export default function PrayerTimesPage() {
         if (lat && lng) {
           setCoords({ lat, lng });
           window.localStorage.setItem('prayer_location', JSON.stringify({ lat, lng }));
+          try { if (window.MihmandarBridge?.setLocation) window.MihmandarBridge.setLocation(lat, lng); } catch {}
         } else {
           window.localStorage.setItem('prayer_location', JSON.stringify({ placeId, name: selectedPlace?.name, stateName: selectedPlace?.stateName }));
         }
@@ -215,6 +214,7 @@ export default function PrayerTimesPage() {
         const pl = await pres.json();
         setLocationLabel(`${pl?.name || ''}${pl?.stateName ? ' / ' + pl.stateName : ''}`);
       }
+      try { if (window.MihmandarBridge?.setLocation) window.MihmandarBridge.setLocation(lat, lng); } catch {}
     } catch (e) {
       setError(e.message || 'İstek başarısız');
     } finally { setLoading(false); }
@@ -286,6 +286,7 @@ export default function PrayerTimesPage() {
         try { 
           window.localStorage.setItem('prayer_location', JSON.stringify({ lat: latitude, lng: longitude }));
           window.dispatchEvent(new Event('prayerLocationChanged'));
+          try { if (window.MihmandarBridge?.setLocation) window.MihmandarBridge.setLocation(latitude, longitude); } catch {}
         } catch {}
       },
       (err) => setError('Konum izni reddedildi veya alınamadı.'),
@@ -316,92 +317,125 @@ export default function PrayerTimesPage() {
       <div className="container mx-auto px-4 py-6">
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-4">Namaz Vakitleri</h1>
 
-        {/* Timeline */}
-        {times?.times && (
-          <div className="bg-white/90 backdrop-blur border rounded-2xl p-4 mb-6 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-sm text-slate-600">Bugün • {new Date(times.date).toLocaleDateString('tr-TR')}</div>
-              {times.next_prayer && (
-                <div className="text-sm font-semibold text-emerald-700">Sıradaki: {times.next_prayer.name} — {times.next_prayer.time} (≈ {times.next_prayer.remaining_minutes} dk)</div>
-              )}
-            </div>
-            <div className="relative h-16 rounded-md overflow-hidden bg-gradient-to-r from-slate-900/5 via-slate-900/0 to-slate-900/5">
-              {/* Kerahat overlayleri */}
-              {timeline?.kerahat.map((w, i) => (
-                <div key={i} className="absolute top-0 bottom-0 bg-red-500/15" style={{ left: `${(w.from/1440)*100}%`, width: `${((w.to-w.from)/1440)*100}%` }} />
-              ))}
-              {/* Vakit işaretçileri */}
-              {timeline?.marks.map(m => (
-                <div key={m.key} className="absolute -top-1 bottom-0" style={{ left: `${(m.m/1440)*100}%` }}>
-                  <div className="h-full w-[2px] bg-emerald-600/60"></div>
-                  <div className="mt-1 text-[11px] text-slate-700 -translate-x-1/2">{m.label}</div>
-                </div>
-              ))}
-              {/* Şu an çizgisi */}
-              <div className="absolute inset-y-0 w-[2px] bg-sky-600" style={{ left: `${(timeline?.nowM/1440)*100}%` }} />
-            </div>
-          </div>
-        )}
+        {/* Timeline kaldırıldı */}
 
         {/* Önce günün vakitleri kartı */}
         {loading && <div className="bg-white border rounded-xl p-6 text-center">Yükleniyor…</div>}
         {error && <div className="bg-white border rounded-xl p-6 text-center text-red-600">Hata: {error}</div>}
         {times && !loading && !error && (
-          <div className="bg-white rounded-2xl border p-6 shadow-sm mb-6">
-            <div className="flex flex-wrap items-center justify-between mb-4">
-              <div>
-                <p className="text-sm text-slate-500">{new Date(times.date).toLocaleDateString('tr-TR')} • <span className="text-slate-600">{new Intl.DateTimeFormat('tr-TR-u-ca-islamic', { day:'numeric', month:'long', year:'numeric' }).format(new Date(times.date))}</span></p>
-                <h2 className="text-xl font-bold text-slate-800">{locationLabel || `${times.city || ''}${times.district ? ' / ' + times.district : ''}`}</h2>
+          <div className="relative overflow-hidden rounded-3xl border p-8 shadow-xl mb-8 bg-white">
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-5">
+              <div className="absolute top-0 left-0 w-32 h-32 bg-emerald-500 rounded-full -translate-x-16 -translate-y-16"></div>
+              <div className="absolute bottom-0 right-0 w-24 h-24 bg-blue-500 rounded-full translate-x-12 translate-y-12"></div>
+            </div>
+            
+            <div className="relative">
+              {/* Enhanced Header */}
+              <div className="flex flex-wrap items-center justify-between mb-6">
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2L2 7v10c0 5.55 3.84 10 9 10s9-4.45 9-10V7l-10-5z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-600 flex items-center gap-2">
+                        📅 {new Date(times.date).toLocaleDateString('tr-TR')} • <span className="text-slate-700">{new Intl.DateTimeFormat('tr-TR-u-ca-islamic', { day:'numeric', month:'long', year:'numeric' }).format(new Date(times.date))}</span>
+                      </p>
+                      <h2 className="text-2xl font-bold text-slate-900">
+                        📍 {locationLabel || `${times.city || ''}${times.district ? ' / ' + times.district : ''}`}
+                      </h2>
+                      {/* Tek gösterim tercih edildi: sağdaki rozet kalacak */}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Header Next Prayer Badge with animation (single source) */}
+                {times.next_prayer?.name && (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm">
+                    <span className="relative inline-flex items-center justify-center w-5 h-5">
+                      <span className="absolute inline-flex h-4 w-4 rounded-full bg-emerald-400 opacity-40 animate-ping"></span>
+                      <svg className="relative w-5 h-5 text-emerald-600 animate-spin" style={{ animationDuration: '6s' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <circle cx="12" cy="12" r="9" className="opacity-20" />
+                        <path d="M12 3v3m0 12v3m9-9h-3M6 12H3m12.364-6.364l-2.121 2.121M8.757 15.243l-2.121 2.121m10.607 0l-2.121-2.121M8.757 8.757 6.636 6.636"/>
+                      </svg>
+                    </span>
+                    <span className="font-semibold">{times.next_prayer?.name}</span>
+                    <span>— {times.next_prayer?.time} (≈ {times.next_prayer?.remaining_minutes} dk)</span>
+                  </div>
+                )}
               </div>
-              {times.next_prayer?.name && (
-                <div className="text-right">
-                  <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-sm font-semibold">Sıradaki: {times.next_prayer?.name} — {times.next_prayer?.time} (≈ {times.next_prayer?.remaining_minutes} dk)</span>
-                </div>
-              )}
+
+              {/* Enhanced Prayer Times Grid (tek "Sıradaki" gösterimi için üstteki badge yeterli) */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+                {Object.entries(times.times).map(([k,v], index) => {
+                  const icons = {
+                    imsak: '🌙', gunes: '🌅', ogle: '☀️', 
+                    ikindi: '🌆', aksam: '🌇', yatsi: '🌃'
+                  };
+                  
+                  return (
+                    <div 
+                      key={k} 
+                      className={"relative overflow-hidden rounded-2xl p-4 text-center bg-slate-50 border shadow-sm"}
+                      style={{animationDelay: `${index * 100}ms`}}
+                    >
+                      <div className="text-2xl mb-2">{icons[k]}</div>
+                      <div className="text-xs uppercase tracking-wider text-slate-600 mb-1">{k}</div>
+                      <div className="text-xl font-bold text-slate-900">{v}</div>
+                      <div className="absolute top-0 right-0 w-8 h-8 bg-white bg-opacity-20 rounded-bl-2xl"></div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-              {Object.entries(times.times).map(([k,v]) => (
-                <div key={k} className="rounded-xl border p-4 text-center">
-                  <div className="text-xs uppercase text-slate-500">{k}</div>
-                  <div className="text-lg font-bold text-slate-800">{v}</div>
-                </div>
-              ))}
-            </div>
-            {/* Sade mod: ek aksiyonlar kaldırıldı */}
           </div>
         )}
 
-        {/* Aksiyonlar altta */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl border p-4 order-1 md:order-none">
-            <label className="text-sm text-slate-600">Arama (Vakit - şehir/ilçe adı)</label>
+        {/* Enhanced Action Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Search Card */}
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 p-6 order-1 md:order-none shadow-lg hover:shadow-xl transition-all duration-300">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+                <span className="text-white text-lg">🔍</span>
+              </div>
+              <label className="text-lg font-semibold text-slate-700">Şehir/İlçe Ara</label>
+            </div>
             <input
               value={query}
               onChange={(e)=> setQuery(e.target.value)}
               onKeyDown={handleManualEnter}
               placeholder="Örn: Keçiören, Fatih, Üsküdar"
-              className="mt-1 w-full border rounded-lg p-2"
+              className="w-full border-2 border-blue-200 rounded-xl p-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
             />
-            {/* Favoriler kaldırıldı */}
             {suggestions?.length > 0 && (
-              <div className="mt-2 max-h-48 overflow-auto border rounded-lg">
+              <div className="mt-3 max-h-48 overflow-auto border-2 border-blue-200 rounded-xl bg-white">
                 {suggestions.map((s)=> (
                   <button
                     key={s.id}
                     onClick={()=> { setSelectedPlace(s); setQuery(`${s.name} / ${s.stateName || s.country}`); setSuggestions([]); fetchTimesVakitPlace(s.id); }}
-                    className="block w-full text-left px-3 py-2 hover:bg-slate-50"
+                    className="block w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-blue-100 last:border-b-0"
                   >
-                    <span className="font-medium">{s.name}</span>
-                    <span className="text-slate-500">{s.stateName ? `, ${s.stateName}` : ''} {s.country ? ` (${s.country})` : ''}</span>
+                    <span className="font-medium text-slate-800">{s.name}</span>
+                    <span className="text-slate-500 block text-sm">{s.stateName ? `${s.stateName}` : ''} {s.country ? ` (${s.country})` : ''}</span>
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="bg-white rounded-xl border p-4 order-2 md:order-none">
-            <label className="text-sm text-slate-600">Yakınımdakiler (GPS)</label>
-            <p className="text-xs text-slate-500">Konum izni verdiğinizde çevrenizdeki yerleri listeler.</p>
+          {/* Nearby Places Card */}
+          <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-100 p-6 order-2 md:order-none shadow-lg hover:shadow-xl transition-all duration-300">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 bg-gradient-to-r from-amber-500 to-orange-500 rounded-lg flex items-center justify-center">
+                <span className="text-white text-lg">🗺️</span>
+              </div>
+              <label className="text-lg font-semibold text-slate-700">Yakınımdakiler</label>
+            </div>
+            <p className="text-sm text-slate-600 mb-4">Konum izni verdiğinizde çevrenizdeki yerleri listeler.</p>
             <button
               onClick={async ()=>{
                 if (!navigator.geolocation) { setError('Tarayıcınız konum erişimini desteklemiyor.'); return; }
@@ -421,16 +455,29 @@ export default function PrayerTimesPage() {
                   } catch {}
                 }, ()=>setError('Konum alınamadı'));
               }}
-              className="mt-2 w-full bg-primary text-white rounded-lg py-2 font-semibold"
-            >Yakınımdakileri Listele</button>
+              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl py-3 font-semibold hover:from-amber-600 hover:to-orange-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              🌍 Yakınımdakileri Listele
+            </button>
           </div>
 
-          <div className="bg-white rounded-xl border p-4 flex flex-col justify-between order-3 md:order-none">
+          {/* GPS Location Card */}
+          <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl border border-emerald-100 p-6 flex flex-col justify-between order-3 md:order-none shadow-lg hover:shadow-xl transition-all duration-300">
             <div>
-              <label className="text-sm text-slate-600">Konumumdan bul (GPS)</label>
-              <p className="text-xs text-slate-500">İzin verdiğinizde bulunduğunuz konuma göre vakitler hesaplanır.</p>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-green-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-lg">📍</span>
+                </div>
+                <label className="text-lg font-semibold text-slate-700">GPS Konumum</label>
+              </div>
+              <p className="text-sm text-slate-600 mb-4">İzin verdiğinizde bulunduğunuz konuma göre vakitler hesaplanır.</p>
             </div>
-            <button onClick={handleUseMyLocation} className="mt-2 w-full bg-emerald-600 text-white rounded-lg py-2 font-semibold">Konumumu Kullan</button>
+            <button 
+              onClick={handleUseMyLocation} 
+              className="w-full bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-xl py-3 font-semibold hover:from-emerald-600 hover:to-green-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              🎯 Konumumu Kullan
+            </button>
           </div>
         </div>
 
@@ -443,6 +490,72 @@ export default function PrayerTimesPage() {
         )}
 
         {/* Aylık vakitler kaldırıldı */}
+        
+        {/* Ayarlar Bölümü: Ezan, Bildirim, Widget Tema */}
+        <div className="mt-8 space-y-6">
+          <div className="bg-white rounded-2xl border p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">🔊 Ezan Ayarları</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <label className="flex items-center gap-3 p-3 rounded-xl border">
+                <input type="checkbox" checked={ezanEnabled} onChange={(e)=>{ setEzanEnabled(e.target.checked); const v={enabled:e.target.checked, ezanType, volume:ezanVolume}; localStorage.setItem('ezan_settings', JSON.stringify(v)); try{window.MihmandarBridge?.setEzanSettings?.(v)}catch{}}} />
+                <span>Ezan sesi açık</span>
+              </label>
+              <div className="p-3 rounded-xl border">
+                <div className="text-sm text-slate-600 mb-2">Ezan türü</div>
+                <select value={ezanType} onChange={(e)=>{ setEzanType(e.target.value); const v={enabled:ezanEnabled, ezanType:e.target.value, volume:ezanVolume}; localStorage.setItem('ezan_settings', JSON.stringify(v)); try{window.MihmandarBridge?.setEzanSettings?.(v)}catch{}}} className="w-full border rounded-lg p-2">
+                  <option value="traditional">Geleneksel</option>
+                  <option value="modern">Modern</option>
+                  <option value="builtin">Basit</option>
+                </select>
+              </div>
+              <div className="p-3 rounded-xl border">
+                <div className="text-sm text-slate-600 mb-2">Ses düzeyi: {(ezanVolume*100)|0}%</div>
+                <input type="range" min="0" max="1" step="0.01" value={ezanVolume} onChange={(e)=>{ const val=Number(e.target.value); setEzanVolume(val); const v={enabled:ezanEnabled, ezanType, volume:val}; localStorage.setItem('ezan_settings', JSON.stringify(v)); try{window.MihmandarBridge?.setEzanSettings?.(v)}catch{}}} className="w-full"/>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">🔔 Bildirim Ayarları</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <label className="flex items-center gap-3 p-3 rounded-xl border">
+                <input type="checkbox" checked={notifyEnabled} onChange={(e)=>{ setNotifyEnabled(e.target.checked); const v={enabled:e.target.checked, beforeMinutes}; localStorage.setItem('notification_settings', JSON.stringify(v)); try{window.MihmandarBridge?.setNotificationSettings?.(v)}catch{}}} />
+                <span>Bildirimler açık</span>
+              </label>
+              <div className="p-3 rounded-xl border">
+                <div className="text-sm text-slate-600 mb-2">Vakitten önce uyar</div>
+                <input type="number" min="0" max="60" value={beforeMinutes} onChange={(e)=>{ const vNum = Math.max(0, Math.min(60, Number(e.target.value)||0)); setBeforeMinutes(vNum); const v={enabled:notifyEnabled, beforeMinutes:vNum}; localStorage.setItem('notification_settings', JSON.stringify(v)); try{window.MihmandarBridge?.setNotificationSettings?.(v)}catch{}}} className="w-full border rounded-lg p-2"/>
+                <div className="text-xs text-slate-500 mt-1">Dakika</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">📱 Widget Tasarımı</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-3 rounded-xl border">
+                <div className="text-sm text-slate-600 mb-2">Stil</div>
+                <select value={widgetTheme.style} onChange={(e)=>{ const t={...widgetTheme, style:e.target.value}; setWidgetTheme(t); localStorage.setItem('widget_theme', JSON.stringify(t)); try{window.MihmandarBridge?.setWidgetTheme?.(t)}catch{}}} className="w-full border rounded-lg p-2">
+                  <option value="compact">Kompakt</option>
+                  <option value="modern">Modern</option>
+                  <option value="full">Tam</option>
+                </select>
+              </div>
+              <div className="p-3 rounded-xl border">
+                <div className="text-sm text-slate-600 mb-2">Renk</div>
+                <select value={widgetTheme.color} onChange={(e)=>{ const t={...widgetTheme, color:e.target.value}; setWidgetTheme(t); localStorage.setItem('widget_theme', JSON.stringify(t)); try{window.MihmandarBridge?.setWidgetTheme?.(t)}catch{}}} className="w-full border rounded-lg p-2">
+                  <option value="emerald">Yeşil</option>
+                  <option value="indigo">Mavi</option>
+                  <option value="rose">Kırmızı</option>
+                  <option value="amber">Turuncu</option>
+                </select>
+              </div>
+              <div className="p-3 rounded-xl border flex items-end">
+                <button onClick={()=>{ try{window.MihmandarBridge?.updateWidget?.({ theme: widgetTheme });}catch{} }} className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 text-white rounded-xl py-3 font-semibold hover:from-emerald-600 hover:to-blue-600 transition-all duration-300 shadow-lg hover:shadow-xl">Widget'ı Uygula</button>
+              </div>
+            </div>
+          </div>
+        </div>
         
       </div>
     </div>

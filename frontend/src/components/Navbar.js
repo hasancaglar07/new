@@ -179,6 +179,9 @@ function HeaderNextPrayer({ coords }) {
   // Küçük kullanım: sadece başlık satırı için NamazWidget'ın hesaplamasını reuse edemiyoruz; hızlı fetch yapıyoruz.
   const [text, setText] = useState(null);
   const [pulse, setPulse] = useState(false);
+  const [minuteKey, setMinuteKey] = useState(null); // dakika değişiminde animasyon tetiklemek için
+  const [targetDate, setTargetDate] = useState(null); // bir sonraki vaktin Date karşılığı
+  const [nameTime, setNameTime] = useState({ name: null, time: null });
   useEffect(() => {
     const run = async () => {
       try {
@@ -219,28 +222,51 @@ function HeaderNextPrayer({ coords }) {
           picked = { name: 'İmsak', time: mapped.imsak, remaining: Math.floor((cand - new Date())/60000) };
         }
         if (picked) {
+          // Hedef tarihi kur
+          const [hh, mm] = picked.time.split(":").map(Number);
+          const d = new Date(); d.setHours(hh, mm, 0, 0);
+          // ertesi güne taşma durumu
+          if (d.getTime() < Date.now()) d.setTime(d.getTime() + 86400000);
+          setTargetDate(d);
+          setNameTime({ name: picked.name, time: picked.time });
+          // İlk metni yaz
           const rem = picked.remaining;
           const hours = Math.floor(rem / 60);
           const mins = rem % 60;
           const remText = hours >= 1 ? `${hours} sa. ${mins} dk.` : `${mins} dk`;
+          setMinuteKey(`${hours}:${mins}`);
           setText(`${picked.name} — ${picked.time} (≈ ${remText})`);
         }
       } catch {}
     };
     run();
   }, [coords]);
-  // Arada sırada nazikçe dikkat çekme animasyonu
+
+  // Her saniye kalan süreyi güncelle; dakika değişince highlight uygula
   useEffect(() => {
-    const id = setInterval(() => {
-      setPulse(true);
-      setTimeout(() => setPulse(false), 800);
-    }, 12000);
+    if (!targetDate) return;
+    const tick = () => {
+      const diffMin = Math.max(0, Math.floor((targetDate.getTime() - Date.now()) / 60000));
+      const hours = Math.floor(diffMin / 60);
+      const mins = diffMin % 60;
+      const remText = hours >= 1 ? `${hours} sa. ${mins} dk.` : `${mins} dk`;
+      const keyNow = `${hours}:${mins}`;
+      // dakika değiştiyse nazik vurgu
+      if (minuteKey !== keyNow) {
+        setPulse(true);
+        setTimeout(() => setPulse(false), 650);
+        setMinuteKey(keyNow);
+      }
+      setText(`${nameTime.name ?? ''} — ${nameTime.time ?? ''} (≈ ${remText})`);
+    };
+    const id = setInterval(tick, 1000);
+    tick();
     return () => clearInterval(id);
-  }, []);
+  }, [targetDate, nameTime, minuteKey]);
   return text ? (
     <motion.span
-      animate={pulse ? { scale: 1.04, color: '#065f46' } : { scale: 1, color: '#047857' }}
-      transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+      animate={pulse ? { scale: 1.05, color: '#065f46', backgroundColor: 'rgba(16,185,129,0.08)', paddingInline: 8, borderRadius: 999 } : { scale: 1, color: '#047857', backgroundColor: 'rgba(0,0,0,0)', paddingInline: 0 }}
+      transition={{ type: 'spring', stiffness: 220, damping: 16 }}
     >
       {text}
     </motion.span>
