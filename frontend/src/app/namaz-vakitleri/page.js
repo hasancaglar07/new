@@ -10,6 +10,7 @@ export default function PrayerTimesPage() {
   const [times, setTimes] = useState(null);
   const [locationLabel, setLocationLabel] = useState("");
   const [now, setNow] = useState(new Date());
+  const [isHydrated, setIsHydrated] = useState(false);
   // Sade mod: aylık ve favoriler kaldırıldı
 
   // GPS verisi
@@ -129,6 +130,9 @@ export default function PrayerTimesPage() {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  // Hydration guard to avoid SSR/client mismatches for dynamic UI
+  useEffect(() => { setIsHydrated(true); }, []);
 
   // Vakit: PlaceID ile doğrudan (tam doğruluk ve hız)
   const fetchTimesVakitPlace = async (placeId) => {
@@ -322,7 +326,7 @@ export default function PrayerTimesPage() {
         {/* Önce günün vakitleri kartı */}
         {loading && <div className="bg-white border rounded-xl p-6 text-center">Yükleniyor…</div>}
         {error && <div className="bg-white border rounded-xl p-6 text-center text-red-600">Hata: {error}</div>}
-        {times && !loading && !error && (
+        {isHydrated && times && !loading && !error && (
           <div className="relative overflow-hidden rounded-3xl border p-8 shadow-xl mb-8 bg-white">
             {/* Background Pattern */}
             <div className="absolute inset-0 opacity-5">
@@ -341,8 +345,8 @@ export default function PrayerTimesPage() {
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm text-slate-600 flex items-center gap-2">
-                        📅 {new Date(times.date).toLocaleDateString('tr-TR')} • <span className="text-slate-700">{new Intl.DateTimeFormat('tr-TR-u-ca-islamic', { day:'numeric', month:'long', year:'numeric' }).format(new Date(times.date))}</span>
+                      <p className="text-sm text-slate-600 flex items-center gap-2" suppressHydrationWarning>
+                        📅 {isHydrated ? new Date(times.date).toLocaleDateString('tr-TR') : ''} • <span className="text-slate-700">{isHydrated ? new Intl.DateTimeFormat('tr-TR-u-ca-islamic', { day:'numeric', month:'long', year:'numeric' }).format(new Date(times.date)) : ''}</span>
                       </p>
                       <h2 className="text-2xl font-bold text-slate-900">
                         📍 {locationLabel || `${times.city || ''}${times.district ? ' / ' + times.district : ''}`}
@@ -491,7 +495,8 @@ export default function PrayerTimesPage() {
 
         {/* Aylık vakitler kaldırıldı */}
         
-        {/* Ayarlar Bölümü: Ezan, Bildirim, Widget Tema */}
+        {/* Ayarlar Bölümü: Ezan, Bildirim, Widget Tema (hydrate olduktan sonra göster) */}
+        {isHydrated && (
         <div className="mt-8 space-y-6">
           <div className="bg-white rounded-2xl border p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-800 mb-4">🔊 Ezan Ayarları</h3>
@@ -556,6 +561,7 @@ export default function PrayerTimesPage() {
             </div>
           </div>
         </div>
+        )}
         
       </div>
     </div>
