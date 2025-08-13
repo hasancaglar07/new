@@ -33,33 +33,30 @@ export default function Navbar() {
   const [coords, setCoords] = useState(null);
 
   useEffect(() => {
-    const loadFromStorage = () => {
-      try {
-        const saved = window.localStorage.getItem('prayer_location');
-        if (saved) {
-          const obj = JSON.parse(saved);
-          if (obj?.lat && obj?.lng) setCoords({ lat: obj.lat, lng: obj.lng });
+    // Tek sefer: localStorage'tan oku
+    try {
+      const saved = window.localStorage.getItem('prayer_location');
+      if (saved) {
+        const obj = JSON.parse(saved);
+        if (obj?.lat && obj?.lng) {
+          setCoords(prev => (prev?.lat === obj.lat && prev?.lng === obj.lng ? prev : { lat: obj.lat, lng: obj.lng }));
         }
-      } catch {}
-    };
-    loadFromStorage();
-    // İlk anda cihaz konumunu da deneyelim (storage yoksa)
+      }
+    } catch {}
+
+    // İsteğe bağlı: storage yoksa bir defa cihaz konumunu dene
     if (!coords && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (pos) => setCoords(prev => (
+          prev?.lat === pos.coords.latitude && prev?.lng === pos.coords.longitude
+            ? prev
+            : { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        )),
         () => {},
         { enableHighAccuracy: true, timeout: 8000 }
       );
     }
-    // Aynı sekmede güncellemeyi yakalamak için özel event ve farklı sekmeler için storage event
-    const onChanged = () => loadFromStorage();
-    window.addEventListener('prayerLocationChanged', onChanged);
-    window.addEventListener('storage', onChanged);
-    return () => {
-      window.removeEventListener('prayerLocationChanged', onChanged);
-      window.removeEventListener('storage', onChanged);
-    };
-  }, [coords]);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 py-3">
@@ -240,7 +237,7 @@ function HeaderNextPrayer({ coords }) {
       } catch {}
     };
     run();
-  }, [coords]);
+  }, [coords?.lat, coords?.lng]);
 
   // Her saniye kalan süreyi güncelle; dakika değişince highlight uygula
   useEffect(() => {
@@ -259,10 +256,10 @@ function HeaderNextPrayer({ coords }) {
       }
       setText(`${nameTime.name ?? ''} — ${nameTime.time ?? ''} (≈ ${remText})`);
     };
-    const id = setInterval(tick, 1000);
+    const id = window.setInterval(tick, 1000);
     tick();
-    return () => clearInterval(id);
-  }, [targetDate, nameTime, minuteKey]);
+    return () => window.clearInterval(id);
+  }, [targetDate, nameTime]);
   return text ? (
     <motion.span
       animate={pulse ? { scale: 1.05, color: '#065f46', backgroundColor: 'rgba(16,185,129,0.08)', paddingInline: 8, borderRadius: 999 } : { scale: 1, color: '#047857', backgroundColor: 'rgba(0,0,0,0)', paddingInline: 0 }}
