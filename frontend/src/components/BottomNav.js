@@ -7,8 +7,8 @@ const items = [
   { href: "/kitaplar", label: "Kitaplar", icon: "📚" },
   { href: "/makaleler", label: "Makaleler", icon: "📰" },
   { href: "/ses-kayitlari", label: "Ses", icon: "🎧" },
-  { href: "/youtube-arama", label: "YouTube", icon: "▶️" },
-  { href: "/namaz-vakitleri", label: "Namaz", icon: "🕌" },
+  { href: "/youtube-analiz", label: "YouTube Analiz", icon: "🧠" },
+  { href: "/namaz", label: "Namaz", icon: "🕌" },
 ];
 
 export default function BottomNav() {

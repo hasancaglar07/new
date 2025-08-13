@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <title>Namaz Vakitleri (Mobil)</title>
+    <meta name="theme-color" content="#177267" />
+    <style>
+      :root{--bg:#ffffff;--text:#212529;--muted:#6b7280;--primary:#177267;--accent:#ffc574}
+      *{box-sizing:border-box}
+      html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+      .container{padding:14px 14px 24px 14px;max-width:560px;margin:0 auto}
+      .header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+      .title{font-weight:800;color:var(--primary)}
+      .badge{margin-left:auto;font-size:12px;color:var(--muted)}
+      .card{border:1px solid #e5e7eb;border-radius:14px;padding:14px;margin-top:10px;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+      .row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed #eef2f7}
+      .row:last-child{border-bottom:none}
+      .k{font-weight:700;color:var(--primary)}
+      .v{font-family:monospace;font-weight:700}
+      .next{display:flex;align-items:center;gap:8px;padding:10px;border-radius:10px;background:linear-gradient(90deg,#6366f1,#8b5cf6,#a855f7);color:#fff;margin-top:8px}
+      .toolbar{display:flex;gap:10px;margin-top:12px}
+      .btn{flex:1;background:var(--primary);color:#fff;border:none;border-radius:10px;padding:12px;font-weight:700}
+      .btn.secondary{background:#0ea5e9}
+      .btn.warn{background:#f59e0b}
+      .muted{color:var(--muted);font-size:13px;margin-top:8px}
+      .error{background:#fee2e2;color:#b91c1c;border-radius:10px;padding:10px;margin-top:10px}
+      .ok{color:#10b981}
+      .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+      .cell{border:1px solid #e5e7eb;border-radius:10px;padding:10px;text-align:center}
+      .cell .n{font-size:12px;color:var(--muted);font-weight:700}
+      .cell .t{font-family:monospace;font-weight:800}
+      .footer{margin-top:16px;text-align:center;font-size:12px;color:var(--muted)}
+      .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:6px}
+      @media (prefers-color-scheme: dark){
+        :root{--bg:#0f172a;--text:#e5e7eb;--muted:#94a3b8;--primary:#10b981;--accent:#f59e0b}
+        .card,.cell{border-color:#1f2937}
+      }
+    </style>
+    <script>
+      // Config
+      const API_BASE = 'https://new-production-1016.up.railway.app';
+      const VAKIT_BASE = 'https://vakit.vercel.app';
+
+      // RN bridge helpers
+      function postToRN(type, payload){
+        try{window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({type,payload}));}catch(_){/* noop */}
+      }
+
+      // Compute next prayer
+      function computeNext(times){
+        const order = [["İmsak",times.imsak],["Güneş",times.gunes],["Öğle",times.ogle],["İkindi",times.ikindi],["Akşam",times.aksam],["Yatsı",times.yatsi]];
+        const now = new Date();
+        for(const [n,v] of order){
+          if(!v) continue; const [hh,mm] = String(v).split(":").map(Number); const d = new Date(); d.setHours(hh,mm,0,0); if(d>=now){
+            return {name:n,time:`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`,remaining_minutes:Math.floor((d-now)/60000)}
+          }
+        }
+        if(times.imsak){const [hh,mm]=String(times.imsak).split(":").map(Number); const d=new Date(Date.now()+86400000); d.setHours(hh,mm,0,0);return {name:"İmsak",time:`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`,remaining_minutes:Math.floor((d-new Date())/60000)}}
+        return null;
+      }
+
+      async function getCoords(){
+        // Prefer RN-provided location via injected bridge. If not, try Geolocation, lastly IP.
+        return new Promise((resolve)=>{
+          let resolved=false;
+          // Geolocation
+          if(navigator.geolocation){
+            navigator.geolocation.getCurrentPosition((pos)=>{ if(resolved) return; resolved=true; resolve({lat:pos.coords.latitude,lng:pos.coords.longitude,label:'GPS'}); },()=>{}, {enableHighAccuracy:true,timeout:7000,maximumAge:60000});
+          }
+          // Fallback: IP
+          setTimeout(async()=>{
+            if(resolved) return; try{ const r = await fetch(`${VAKIT_BASE}/api/ip`); if(r.ok){ const j=await r.json(); resolved=true; resolve({lat:j.lat,lng:j.lng,label:'IP'}) } }catch(_){}
+            if(!resolved){resolved=true; resolve(null)}
+          }, 2500);
+        });
+      }
+
+      async function loadTimes(lat,lng){
+        const tz = -new Date().getTimezoneOffset();
+        const d = new Date().toISOString().slice(0,10);
+        const u = new URL(`${VAKIT_BASE}/api/timesForGPS`);
+        u.searchParams.set('lat',String(lat)); u.searchParams.set('lng',String(lng));
+        u.searchParams.set('date',d); u.searchParams.set('days','1'); u.searchParams.set('timezoneOffset',String(tz)); u.searchParams.set('calculationMethod','Turkey'); u.searchParams.set('lang','tr');
+        const res = await fetch(u.toString()); if(!res.ok) throw new Error('Vakit servisi hatası'); const p = await res.json();
+        let mapped={};
+        if(p?.times && !Array.isArray(p.times)){
+          const dk = Object.keys(p.times)[0]; const arr = p.times[dk]||[]; const clean = (t)=> (t?String(t).split(' ')[0]:null);
+          mapped = {imsak:clean(arr[0]),gunes:clean(arr[1]),ogle:clean(arr[2]),ikindi:clean(arr[3]),aksam:clean(arr[4]),yatsi:clean(arr[5])};
+        }else{
+          const f = Array.isArray(p?.times) ? (p.times[0]||{}) : (p?.data||{}); const c=(t)=> (t?String(t).split(' ')[0]:null);
+          mapped = {imsak:c(f.fajr||f.imsak||f.Fajr), gunes:c(f.sunrise||f.gunes||f.Sunrise), ogle:c(f.dhuhr||f.ogle||f.Dhuhr), ikindi:c(f.asr||f.ikindi||f.Asr), aksam:c(f.maghrib||f.aksam||f.Maghrib), yatsi:c(f.isha||f.yatsi||f.Isha)};
+        }
+        return mapped;
+      }
+
+      async function main(){
+        const el = (id)=>document.getElementById(id);
+        const status = el('status'); const grid = el('grid'); const next = el('next'); const err = el('error');
+        status.innerHTML = '<span class="dot"></span>Hazır';
+        try{
+          const coords = await getCoords();
+          if(!coords) throw new Error('Konum alınamadı');
+          const times = await loadTimes(coords.lat, coords.lng);
+          const keys = [["İmsak","imsak"],["Güneş","gunes"],["Öğle","ogle"],["İkindi","ikindi"],["Akşam","aksam"],["Yatsı","yatsi"]];
+          grid.innerHTML = keys.map(([n,k])=>`<div class="cell"><div class="n">${n}</div><div class="t">${times[k]||'--:--'}</div></div>`).join('');
+          const nxt = computeNext(times);
+          if(nxt){ next.textContent = `Sıradaki: ${nxt.name} - ${nxt.time} (${nxt.remaining_minutes} dk)`; }
+          // Sync to RN widget immediately
+          postToRN('widget:update', { times, label: coords.label });
+        }catch(e){
+          err.textContent = 'Hata: ' + (e && e.message ? e.message : 'Bilinmeyen');
+          err.style.display='block';
+        }
+
+        // Buttons
+        document.getElementById('btn-theme').onclick = function(){
+          const theme = (matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'light' : 'dark';
+          postToRN('widget:theme', theme);
+        };
+        document.getElementById('btn-notify').onclick = function(){
+          const before = 10; const ez = true; postToRN('notify:set', { before_minutes: before, ezanEnabled: ez, theme: null });
+        };
+        document.getElementById('btn-settings').onclick = function(){ postToRN('device:openSettings', {}); };
+      }
+      window.addEventListener('load', main);
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <img src="/icons/icon-192.png" alt="" width="20" height="20"/>
+        <div class="title">Namaz Vakitleri</div>
+        <div class="badge" id="status">Yükleniyor…</div>
+      </div>
+      <div class="card">
+        <div class="next" id="next">Sıradaki: …</div>
+        <div class="grid" id="grid"></div>
+        <div class="toolbar">
+          <button class="btn" id="btn-theme">Tema</button>
+          <button class="btn secondary" id="btn-notify">Bildirim</button>
+          <button class="btn warn" id="btn-settings">Ayarlar</button>
+        </div>
+        <div class="error" id="error" style="display:none"></div>
+        <div class="muted">GPS/İP ile bulunduğunuz konuma göre hesaplanır. İnternet yoksa son veriler gösterilir.</div>
+      </div>
+      <div class="footer">Mihmandar • hızlı mobil sayfa</div>
+    </div>
+  </body>
+  </html>
+
+
