@@ -551,7 +551,7 @@ export default function PrayerTimesPage() {
                 </select>
               </div>
               <div className="p-3 rounded-xl border flex items-end">
-                <button onClick={()=>{ try{window.MihmandarBridge?.updateWidget?.({ theme: widgetTheme });}catch{} }} className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 text-white rounded-xl py-3 font-semibold hover:from-emerald-600 hover:to-blue-600 transition-all duration-300 shadow-lg hover:shadow-xl">Widget'ı Uygula</button>
+                <button onClick={()=>{ try{window.MihmandarBridge?.updateWidget?.({ theme: widgetTheme });}catch{} }} className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 text-white rounded-xl py-3 font-semibold hover:from-emerald-600 hover:to-blue-600 transition-all duration-300 shadow-lg hover:shadow-xl">Widget&#39;ı Uygula</button>
               </div>
             </div>
           </div>
@@ -577,7 +577,7 @@ function QiblaCompass({ lat, lng }) {
       const brng = (toDeg(θ) + 360) % 360;
       return Math.round(brng);
     } catch { return null; }
-  }, [lat, lng]);
+  }, [lat, lng, KAABA.lat, KAABA.lng]);
   const dirLabel = (deg) => {
     if (deg == null) return '';
     const dirs = ['K', 'KD', 'D', 'GD', 'G', 'GB', 'B', 'KB'];

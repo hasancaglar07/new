@@ -59,7 +59,7 @@ export default function Navbar() {
       window.removeEventListener('prayerLocationChanged', onChanged);
       window.removeEventListener('storage', onChanged);
     };
-  }, []);
+  }, [coords]);
 
   return (
     <header className="sticky top-0 z-50 py-3">
