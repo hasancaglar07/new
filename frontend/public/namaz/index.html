@@ -2,9 +2,15 @@
 <html lang="tr">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Namaz Vakitleri (Mobil)</title>
     <meta name="theme-color" content="#177267" />
+    <link rel="icon" href="/mihmandar-logo.svg" type="image/svg+xml" />
+    <!-- Performance hints -->
+    <link rel="preconnect" href="https://vakit.vercel.app" crossorigin>
+    <link rel="dns-prefetch" href="https://vakit.vercel.app">
+    <link rel="preconnect" href="https://new-production-1016.up.railway.app" crossorigin>
+    <link rel="dns-prefetch" href="https://new-production-1016.up.railway.app">
     <style>
       :root{--bg:#ffffff;--text:#212529;--muted:#6b7280;--primary:#177267;--accent:#ffc574}
       *{box-sizing:border-box}
@@ -13,6 +19,8 @@
       .header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
       .title{font-weight:800;color:var(--primary)}
       .badge{margin-left:auto;font-size:12px;color:var(--muted)}
+      .logo-spin{animation:spin 14s linear infinite}
+      @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
       .card{border:1px solid #e5e7eb;border-radius:14px;padding:14px;margin-top:10px;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
       .row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed #eef2f7}
       .row:last-child{border-bottom:none}
@@ -23,6 +31,7 @@
       .btn{flex:1;background:var(--primary);color:#fff;border:none;border-radius:10px;padding:12px;font-weight:700}
       .btn.secondary{background:#0ea5e9}
       .btn.warn{background:#f59e0b}
+      .btn.big{padding:16px;font-size:16px}
       .muted{color:var(--muted);font-size:13px;margin-top:8px}
       .error{background:#fee2e2;color:#b91c1c;border-radius:10px;padding:10px;margin-top:10px}
       .ok{color:#10b981}
@@ -94,10 +103,41 @@
         return mapped;
       }
 
+      function loadFromCache(){
+        try{
+          const raw = localStorage.getItem('namaz_cache_v1');
+          if(!raw) return null; const j = JSON.parse(raw);
+          if(!j || !j.times) return null; return j;
+        }catch(_){ return null }
+      }
+
+      function saveToCache(times, meta){
+        try{ localStorage.setItem('namaz_cache_v1', JSON.stringify({ times, meta, ts: Date.now() })); }catch(_){ }
+      }
+
+      function setOnlineBadge(ok){
+        const status = document.getElementById('status');
+        if(!status) return; if(ok){ status.innerHTML = '<span class="dot"></span>Hazır'; } else { status.innerHTML = 'Çevrimdışı'; status.style.color = '#b91c1c'; }
+      }
+
       async function main(){
         const el = (id)=>document.getElementById(id);
         const status = el('status'); const grid = el('grid'); const next = el('next'); const err = el('error');
-        status.innerHTML = '<span class="dot"></span>Hazır';
+        const addWidgetBtn = el('btn-add-widget');
+        const preMinutesInput = el('pre-min');
+        const ezanToggle = el('ezan-toggle');
+        const pImsak = el('p-imsak'); const pGunes = el('p-gunes'); const pOgle = el('p-ogle'); const pIkindi = el('p-ikindi'); const pAksam = el('p-aksam'); const pYatsi = el('p-yatsi');
+        const homeBtn = el('btn-home'); const homeCountdown = el('home-count');
+        // 1) Try cached instantly
+        const cached = loadFromCache();
+        if(cached && cached.times){
+          const keys = [["İmsak","imsak"],["Güneş","gunes"],["Öğle","ogle"],["İkindi","ikindi"],["Akşam","aksam"],["Yatsı","yatsi"]];
+          grid.innerHTML = keys.map(([n,k])=>`<div class="cell"><div class="n">${n}</div><div class="t">${cached.times[k]||'--:--'}</div></div>`).join('');
+          const nxt = computeNext(cached.times); if(nxt){ next.textContent = `Sıradaki: ${nxt.name} - ${nxt.time} (${nxt.remaining_minutes} dk)`; }
+          setOnlineBadge(navigator.onLine);
+        } else {
+          status.innerHTML = '<span class="dot"></span>Hazır';
+        }
         try{
           const coords = await getCoords();
           if(!coords) throw new Error('Konum alınamadı');
@@ -106,40 +146,122 @@
           grid.innerHTML = keys.map(([n,k])=>`<div class="cell"><div class="n">${n}</div><div class="t">${times[k]||'--:--'}</div></div>`).join('');
           const nxt = computeNext(times);
           if(nxt){ next.textContent = `Sıradaki: ${nxt.name} - ${nxt.time} (${nxt.remaining_minutes} dk)`; }
-          // Sync to RN widget immediately
+          // 2) Save cache and sync to RN widget immediately
+          saveToCache(times, { coords });
+          // Default snapshot: 15 dk önce + ezan açık + tüm vakitler açık
+          const snapshot = {
+            before_minutes: Number(preMinutesInput.value||15),
+            ezanEnabled: ezanToggle.checked,
+            prayers: {
+              imsak: pImsak.checked, gunes: pGunes.checked, ogle: pOgle.checked,
+              ikindi: pIkindi.checked, aksam: pAksam.checked, yatsi: pYatsi.checked
+            }
+          };
+          postToRN('notify:set', snapshot);
           postToRN('widget:update', { times, label: coords.label });
+          setOnlineBadge(true);
         }catch(e){
           err.textContent = 'Hata: ' + (e && e.message ? e.message : 'Bilinmeyen');
           err.style.display='block';
+          setOnlineBadge(false);
         }
 
         // Buttons
-        document.getElementById('btn-theme').onclick = function(){
+        document.getElementById('btn-theme').addEventListener('click', function(){
           const theme = (matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'light' : 'dark';
           postToRN('widget:theme', theme);
-        };
-        document.getElementById('btn-notify').onclick = function(){
-          const before = 10; const ez = true; postToRN('notify:set', { before_minutes: before, ezanEnabled: ez, theme: null });
-        };
-        document.getElementById('btn-settings').onclick = function(){ postToRN('device:openSettings', {}); };
+        }, { passive: true });
+        document.getElementById('btn-notify').addEventListener('click', function(){
+          const payload = {
+            before_minutes: Number(preMinutesInput.value||15),
+            ezanEnabled: ezanToggle.checked,
+            prayers: {
+              imsak: pImsak.checked, gunes: pGunes.checked, ogle: pOgle.checked,
+              ikindi: pIkindi.checked, aksam: pAksam.checked, yatsi: pYatsi.checked
+            }
+          };
+          postToRN('notify:set', payload);
+        }, { passive: true });
+        document.getElementById('btn-settings').addEventListener('click', function(){ postToRN('device:openSettings', {}); }, { passive: true });
+        addWidgetBtn.addEventListener('click', function(){ postToRN('widget:add', {}); }, { passive: true });
+
+        // Big Home CTA + auto-redirect after 15s if user does not act
+        let secs = 15; homeCountdown.textContent = secs;
+        const tick = ()=>{ secs-=1; if(secs<=0){ location.href = '/'; } else { homeCountdown.textContent = secs; setTimeout(tick,1000);} };
+        setTimeout(tick,1000);
+        homeBtn.addEventListener('click', function(){ location.href = '/'; });
       }
       window.addEventListener('load', main);
+      window.addEventListener('online', ()=> setOnlineBadge(true));
+      window.addEventListener('offline', ()=> setOnlineBadge(false));
     </script>
   </head>
   <body>
     <div class="container">
       <div class="header">
-        <img src="/icons/icon-192.png" alt="" width="20" height="20"/>
+        <img src="/logo-top.svg" alt="Mihmandar" width="24" height="24" class="logo-spin"/>
         <div class="title">Namaz Vakitleri</div>
         <div class="badge" id="status">Yükleniyor…</div>
       </div>
       <div class="card">
         <div class="next" id="next">Sıradaki: …</div>
         <div class="grid" id="grid"></div>
+        <div class="card" style="margin-top:10px; background:linear-gradient(90deg,#10b981,#3b82f6); color:#fff">
+          <div style="font-weight:800;margin-bottom:6px">📱 3x2 Namaz Widget  Ekleyin</div>
+          <div style="font-size:12px;opacity:0.9;margin-bottom:8px">Sıradaki vakit, kalan süre ve Hijri tarihi ana ekranda görün.</div>
+          <button class="btn" id="btn-add-widget" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3)">Widget'ı Ana Ekrana Ekle</button>
+          <div style="font-size:12px;opacity:0.9;margin-top:8px">Varsayılan: <b>15 dk önce bildirim</b> ve <b>ezan sesi açık</b>. İsterseniz aşağıdan değiştirin.</div>
+        </div>
+
+        <!-- Per-vakit bildirim tercihleri -->
+        <div class="card" aria-labelledby="notify-heading">
+          <div class="row"><div class="k" id="notify-heading">Bildirim Ayarları</div></div>
+          <div class="row">
+            <label for="pre-min">Önceden uyar (dk)</label>
+            <div>
+              <input id="pre-min" type="number" value="15" min="0" max="60" style="width:64px" title="Vakitten önce uyarı dakikası" aria-label="Vakitten önce uyarı dakikası" placeholder="15" />
+            </div>
+          </div>
+          <div class="row">
+            <label for="ezan-toggle">Ezan sesi</label>
+            <div>
+              <input id="ezan-toggle" type="checkbox" checked title="Ezan sesini aç" aria-label="Ezan sesini aç" />
+            </div>
+          </div>
+          <div class="row"><div class="k">Vakit Bazlı</div><div></div></div>
+          <div class="row">
+            <label for="p-imsak">İmsak</label>
+            <div><input id="p-imsak" type="checkbox" checked title="İmsak bildirimi" aria-label="İmsak bildirimi" /></div>
+          </div>
+          <div class="row">
+            <label for="p-gunes">Güneş</label>
+            <div><input id="p-gunes" type="checkbox" checked title="Güneş bildirimi" aria-label="Güneş bildirimi" /></div>
+          </div>
+          <div class="row">
+            <label for="p-ogle">Öğle</label>
+            <div><input id="p-ogle" type="checkbox" checked title="Öğle bildirimi" aria-label="Öğle bildirimi" /></div>
+          </div>
+          <div class="row">
+            <label for="p-ikindi">İkindi</label>
+            <div><input id="p-ikindi" type="checkbox" checked title="İkindi bildirimi" aria-label="İkindi bildirimi" /></div>
+          </div>
+          <div class="row">
+            <label for="p-aksam">Akşam</label>
+            <div><input id="p-aksam" type="checkbox" checked title="Akşam bildirimi" aria-label="Akşam bildirimi" /></div>
+          </div>
+          <div class="row">
+            <label for="p-yatsi">Yatsı</label>
+            <div><input id="p-yatsi" type="checkbox" checked title="Yatsı bildirimi" aria-label="Yatsı bildirimi" /></div>
+          </div>
+          <div class="muted">Not: Bu tercihler RN uygulamasına iletilir ve alarm planlama buna göre yapılır.</div>
+        </div>
         <div class="toolbar">
           <button class="btn" id="btn-theme">Tema</button>
           <button class="btn secondary" id="btn-notify">Bildirim</button>
           <button class="btn warn" id="btn-settings">Ayarlar</button>
+        </div>
+        <div class="toolbar" style="margin-top:8px">
+          <button class="btn big" id="btn-home">Ana Sayfaya Geç (<span id="home-count">15</span>)</button>
         </div>
         <div class="error" id="error" style="display:none"></div>
         <div class="muted">GPS/İP ile bulunduğunuz konuma göre hesaplanır. İnternet yoksa son veriler gösterilir.</div>

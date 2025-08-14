@@ -48,4 +48,8 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+// Handle incoming Push messages
+// push handlers removed (reverted)
+
+
 

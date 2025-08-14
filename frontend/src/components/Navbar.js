@@ -18,7 +18,7 @@ const navLinks = [
   { name: 'Makaleler', href: '/makaleler', icon: <Newspaper className="h-5 w-5" /> },
   { name: 'Ses Kayıtları', href: '/ses-kayitlari', icon: <Mic className="h-5 w-5" /> },
   { name: 'YouTube Arama', href: '/youtube-arama', icon: <Youtube className="h-5 w-5" /> },
-  { name: 'Namaz Vakitleri', href: '/namaz-vakitleri', icon: <Clock className="h-5 w-5" /> },
+  { name: 'Namaz', href: '/namaz', icon: <Clock className="h-5 w-5" /> },
   { name: 'Video Analizi', href: '/video-analizi', icon: <Clapperboard className="h-5 w-5" /> }, 
 ];
 

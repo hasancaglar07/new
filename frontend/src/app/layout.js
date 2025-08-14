@@ -37,7 +37,7 @@ export default function RootLayout({ children }) {
         <meta name="theme-color" content="#177267" />
         <link rel="icon" href="/logo-top.svg" type="image/svg+xml" />
         <link rel="prefetch" href="/namaz/index.html" as="document" />
-        <script dangerouslySetInnerHTML={{__html: "if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{})})}"}} />
+        <script dangerouslySetInnerHTML={{__html: "if('serviceWorker' in navigator){window.addEventListener('load',()=>{const isDev=(location.hostname==='localhost'||location.hostname==='127.0.0.1');if(isDev){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));if(window.caches&&caches.keys){caches.keys().then(keys=>keys.forEach(k=>caches.delete(k)));}}else{navigator.serviceWorker.register('/sw.js').catch(()=>{})}})}"}} />
       </head>
       {/* Fontları base katmanında değişkenler ile kullanıyoruz */}
       <body>

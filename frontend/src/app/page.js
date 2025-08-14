@@ -727,7 +727,7 @@ function LogoCarousel() {
                 <div className="flex animate-scroll">
                     {extendedLogos.map((logo, index) => (
                         <div key={index} className="flex-shrink-0 mx-4 md:mx-6 flex items-center justify-center" style={{ width: '100px' }}>
-                            <Image src={logo.src} alt={logo.alt} width={120} height={40} className="object-contain h-10 w-auto opacity-40 grayscale hover:grayscale-0 hover:opacity-80 transition-all duration-300" loading="lazy" />
+                            <Image src={logo.src} alt={logo.alt} width={120} height={40} style={{height:'auto', width:'auto'}} className="object-contain h-10 w-auto opacity-40 grayscale hover:grayscale-0 hover:opacity-80 transition-all duration-300" loading="lazy" />
                         </div>
                     ))}
                 </div>

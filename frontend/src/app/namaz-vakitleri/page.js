@@ -372,27 +372,29 @@ export default function PrayerTimesPage() {
                 )}
               </div>
 
-              {/* Enhanced Prayer Times Grid (tek "Sıradaki" gösterimi için üstteki badge yeterli) */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-                {Object.entries(times.times).map(([k,v], index) => {
-                  const icons = {
-                    imsak: '🌙', gunes: '🌅', ogle: '☀️', 
-                    ikindi: '🌆', aksam: '🌇', yatsi: '🌃'
-                  };
-                  
-                  return (
-                    <div 
-                      key={k} 
-                      className={"relative overflow-hidden rounded-2xl p-4 text-center bg-slate-50 border shadow-sm"}
-                      style={{animationDelay: `${index * 100}ms`}}
-                    >
-                      <div className="text-2xl mb-2">{icons[k]}</div>
-                      <div className="text-xs uppercase tracking-wider text-slate-600 mb-1">{k}</div>
-                      <div className="text-xl font-bold text-slate-900">{v}</div>
-                      <div className="absolute top-0 right-0 w-8 h-8 bg-white bg-opacity-20 rounded-bl-2xl"></div>
-                    </div>
-                  );
-                })}
+              {/* Grid + Widget CTA yan yana */}
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+                    {Object.entries(times.times).map(([k,v], index) => {
+                      const icons = { imsak: '🌙', gunes: '🌅', ogle: '☀️', ikindi: '🌆', aksam: '🌇', yatsi: '🌃' };
+                      return (
+                        <div key={k} className={"relative overflow-hidden rounded-2xl p-4 text-center bg-slate-50 border shadow-sm"} style={{animationDelay: `${index * 100}ms`}}>
+                          <div className="text-2xl mb-2">{icons[k]}</div>
+                          <div className="text-xs uppercase tracking-wider text-slate-600 mb-1">{k}</div>
+                          <div className="text-xl font-bold text-slate-900">{v}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-emerald-500 to-blue-500 rounded-2xl p-5 text-white shadow-lg">
+                  <div className="text-sm opacity-90 mb-2">Ana ekranınıza widget ekleyin</div>
+                  <div className="text-2xl font-bold mb-3">📱 Namaz Widget 3 EKLE</div>
+                  <div className="text-xs opacity-90 mb-4">3x2 boyut • Sıradaki vakit • Kalan süre • Hijri tarih</div>
+                  <button onClick={()=>{ try{ window.MihmandarBridge?.addWidget?.(); }catch{} }} className="w-full bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl py-3 font-semibold">Widget'ı Ana Ekrana Ekle</button>
+                  <div className="mt-3 text-[11px] opacity-90">İlk kurulumda: {beforeMinutes} dk önce bildirim ve vakitte ezan sesi açık olur. Sonradan kapatabilirsiniz.</div>
+                </div>
               </div>
             </div>
           </div>

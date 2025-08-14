@@ -8,6 +8,30 @@ export default function NamazWidget({ coords, variant = 'card', useIpFallback = 
   const [label, setLabel] = useState("");
   const [nextInfo, setNextInfo] = useState(null);
 
+  // Gelecek vakti hesaplayıcı (her yeniden çizimde güncel saat ile çalışır)
+  const computeNext = (tm) => {
+    try {
+      const order = [["İmsak", tm.imsak],["Güneş", tm.gunes],["Öğle", tm.ogle],["İkindi", tm.ikindi],["Akşam", tm.aksam],["Yatsı", tm.yatsi]];
+      const now = new Date();
+      for (const [name, v] of order) {
+        if (!v) continue;
+        const [hh, mm] = v.split(":").map(Number);
+        const cand = new Date(); cand.setHours(hh, mm, 0, 0);
+        if (cand >= now) {
+          const remaining = Math.floor((cand - now) / 60000);
+          return { name, time: `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`, remaining_minutes: remaining };
+        }
+      }
+      if (tm.imsak) {
+        const [hh, mm] = tm.imsak.split(":").map(Number);
+        const cand = new Date(Date.now() + 86400000); cand.setHours(hh, mm, 0, 0);
+        const remaining = Math.floor((cand - new Date()) / 60000);
+        return { name: "İmsak", time: `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`, remaining_minutes: remaining };
+      }
+    } catch {}
+    return null;
+  };
+
   useEffect(() => {
     const run = async () => {
       try {
@@ -22,6 +46,24 @@ export default function NamazWidget({ coords, variant = 'card', useIpFallback = 
           }
         }
         if (lat != null && lng != null) {
+          // Günlük önbellek anahtarı
+          const today = new Date().toISOString().slice(0,10);
+          const tz = String(-new Date().getTimezoneOffset());
+          const cacheKey = `vakit:${lat}:${lng}:${today}:${tz}`;
+
+          // Önbellekten hızlı okuma (varsa UI'yı anında doldur)
+          try {
+            const cachedRaw = localStorage.getItem(cacheKey);
+            if (cachedRaw) {
+              const cached = JSON.parse(cachedRaw);
+              if (cached?.times) {
+                setTimes({ times: cached.times });
+                if (cached.label) setLabel(cached.label);
+                // nextInfo her render'da hesaplanacağından burada set etmeye gerek yok
+              }
+            }
+          } catch {}
+
           const tUrl = new URL(`${VAKIT_BASE}/api/timesForGPS`);
           tUrl.searchParams.set('lat', String(lat));
           tUrl.searchParams.set('lng', String(lng));
@@ -54,28 +96,6 @@ export default function NamazWidget({ coords, variant = 'card', useIpFallback = 
             };
           }
           setTimes({ times: mapped });
-          const computeNext = (tm) => {
-            try {
-              const order = [["İmsak", tm.imsak],["Güneş", tm.gunes],["Öğle", tm.ogle],["İkindi", tm.ikindi],["Akşam", tm.aksam],["Yatsı", tm.yatsi]];
-              const now = new Date();
-              for (const [name, v] of order) {
-                if (!v) continue;
-                const [hh, mm] = v.split(":").map(Number);
-                const cand = new Date(); cand.setHours(hh, mm, 0, 0);
-                if (cand >= now) {
-                  const remaining = Math.floor((cand - now) / 60000);
-                  return { name, time: `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`, remaining_minutes: remaining };
-                }
-              }
-              if (tm.imsak) {
-                const [hh, mm] = tm.imsak.split(":").map(Number);
-                const cand = new Date(Date.now() + 86400000); cand.setHours(hh, mm, 0, 0);
-                const remaining = Math.floor((cand - new Date()) / 60000);
-                return { name: "İmsak", time: `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`, remaining_minutes: remaining };
-              }
-            } catch {}
-            return null;
-          };
           setNextInfo(computeNext(mapped));
           const pUrl = new URL(`${VAKIT_BASE}/api/place`);
           pUrl.searchParams.set('lat', String(lat));
@@ -85,6 +105,10 @@ export default function NamazWidget({ coords, variant = 'card', useIpFallback = 
           if (pres.ok) {
             const pl = await pres.json();
             setLabel(`${pl?.name || ''}${pl?.stateName ? ' / ' + pl.stateName : ''}`);
+            // Tüm verileri önbelleğe yaz
+            try {
+              localStorage.setItem(cacheKey, JSON.stringify({ times: mapped, label: `${pl?.name || ''}${pl?.stateName ? ' / ' + pl.stateName : ''}` }));
+            } catch {}
           }
           return;
         }
@@ -96,6 +120,16 @@ export default function NamazWidget({ coords, variant = 'card', useIpFallback = 
     };
     run();
   }, [coords, useIpFallback]);
+
+  // Dakikada bir kalan süreyi güncelle (times mevcutken)
+  useEffect(() => {
+    if (!times?.times) return;
+    setNextInfo(computeNext(times.times));
+    const id = setInterval(() => {
+      setNextInfo(computeNext(times.times));
+    }, 60 * 1000);
+    return () => clearInterval(id);
+  }, [times]);
 
   if (!times && error && !useIpFallback && !coords) {
     return null;
@@ -116,7 +150,7 @@ export default function NamazWidget({ coords, variant = 'card', useIpFallback = 
     <div className="min-w-[280px] sm:min-w-[360px] bg-white/90 border border-slate-200 rounded-2xl shadow-sm p-3 md:p-4">
       <div className="flex items-center justify-between mb-1">
         <h3 className="font-semibold text-slate-800 text-base md:text-lg">Namaz Vakitleri {label ? `— ${label}` : ''}</h3>
-        <a href="/namaz-vakitleri" className="text-primary text-xs md:text-sm font-medium">Detaylar →</a>
+        <a href="/namaz" className="text-primary text-xs md:text-sm font-medium">Detaylar →</a>
       </div>
       {nextInfo && (
         <div className="text-xs md:text-sm text-slate-700">{nextInfo.name} vaktine kalan: <span className="font-semibold text-emerald-700">{fmtRemain(nextInfo.remaining_minutes)}</span></div>

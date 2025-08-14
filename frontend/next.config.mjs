@@ -38,7 +38,6 @@ const nextConfig = {
   async rewrites() {
     return [
       { source: '/namaz', destination: '/namaz/index.html' },
-      { source: '/youtube-analiz', destination: '/youtube-arama' },
     ];
   },
 };

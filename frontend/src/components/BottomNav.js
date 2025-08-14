@@ -7,7 +7,7 @@ const items = [
   { href: "/kitaplar", label: "Kitaplar", icon: "📚" },
   { href: "/makaleler", label: "Makaleler", icon: "📰" },
   { href: "/ses-kayitlari", label: "Ses", icon: "🎧" },
-  { href: "/youtube-analiz", label: "YouTube Analiz", icon: "🧠" },
+  { href: "/video-analizi", label: "YouTube", icon: "▶️" },
   { href: "/namaz", label: "Namaz", icon: "🕌" },
 ];
 
