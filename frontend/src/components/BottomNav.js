@@ -8,7 +8,7 @@ const items = [
   { href: "/makaleler", label: "Makaleler", icon: "📰" },
   { href: "/ses-kayitlari", label: "Ses", icon: "🎧" },
   { href: "/video-analizi", label: "YouTube", icon: "▶️" },
-  { href: "/namaz", label: "Namaz", icon: "🕌" },
+  { href: "/namaz/index.html", label: "Namaz", icon: "🕌" },
 ];
 
 export default function BottomNav() {

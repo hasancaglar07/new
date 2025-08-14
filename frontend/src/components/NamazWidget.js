@@ -150,7 +150,7 @@ export default function NamazWidget({ coords, variant = 'card', useIpFallback = 
     <div className="min-w-[280px] sm:min-w-[360px] bg-white/90 border border-slate-200 rounded-2xl shadow-sm p-3 md:p-4">
       <div className="flex items-center justify-between mb-1">
         <h3 className="font-semibold text-slate-800 text-base md:text-lg">Namaz Vakitleri {label ? `— ${label}` : ''}</h3>
-        <a href="/namaz" className="text-primary text-xs md:text-sm font-medium">Detaylar →</a>
+        <a href="/namaz/index.html" className="text-primary text-xs md:text-sm font-medium">Detaylar →</a>
       </div>
       {nextInfo && (
         <div className="text-xs md:text-sm text-slate-700">{nextInfo.name} vaktine kalan: <span className="font-semibold text-emerald-700">{fmtRemain(nextInfo.remaining_minutes)}</span></div>
