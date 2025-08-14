@@ -56,7 +56,7 @@ export default function Navbar() {
         { enableHighAccuracy: true, timeout: 8000 }
       );
     }
-  }, []);
+  }, [coords]);
 
   return (
     <header className="sticky top-0 z-50 py-3">
@@ -259,7 +259,7 @@ function HeaderNextPrayer({ coords }) {
     const id = window.setInterval(tick, 1000);
     tick();
     return () => window.clearInterval(id);
-  }, [targetDate, nameTime]);
+  }, [targetDate, nameTime, minuteKey]);
   return text ? (
     <motion.span
       animate={pulse ? { scale: 1.05, color: '#065f46', backgroundColor: 'rgba(16,185,129,0.08)', paddingInline: 8, borderRadius: 999 } : { scale: 1, color: '#047857', backgroundColor: 'rgba(0,0,0,0)', paddingInline: 0 }}
