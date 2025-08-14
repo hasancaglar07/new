@@ -161,7 +161,9 @@
             prayers: {
               imsak: pImsak.checked, gunes: pGunes.checked, ogle: pOgle.checked,
               ikindi: pIkindi.checked, aksam: pAksam.checked, yatsi: pYatsi.checked
-            }
+            },
+            times: times,
+            label: coords?.label || ''
           };
           postToRN('notify:set', snapshot);
           postToRN('widget:update', { times, label: coords.label });
@@ -178,13 +180,16 @@
           postToRN('widget:theme', theme);
         }, { passive: true });
         document.getElementById('btn-notify').addEventListener('click', function(){
+          let cache = loadFromCache();
           const payload = {
             before_minutes: Number(preMinutesInput.value||15),
             ezanEnabled: ezanToggle.checked,
             prayers: {
               imsak: pImsak.checked, gunes: pGunes.checked, ogle: pOgle.checked,
               ikindi: pIkindi.checked, aksam: pAksam.checked, yatsi: pYatsi.checked
-            }
+            },
+            times: cache?.times || undefined,
+            label: cache?.meta?.coords?.label || ''
           };
           postToRN('notify:set', payload);
         }, { passive: true });
