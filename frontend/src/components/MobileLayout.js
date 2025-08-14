@@ -1,7 +1,14 @@
 "use client";
 import React from 'react';
 
-const MobileLayout = ({ children, hideNavbar = false }) => {
+const MobileLayout = ({ children, hideNavbar = false, isNativeApp, setIsNativeApp }) => {
+    React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isNative = document.body.classList.contains('native-app');
+      setIsNativeApp(isNative);
+    }
+  }, [setIsNativeApp]);
+
   React.useEffect(() => {
     // Detect if running in WebView
     const isWebView = window.navigator.userAgent.includes('wv') || 

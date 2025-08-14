@@ -1,5 +1,3 @@
-// frontend/src/app/makaleler/[id]/page.js
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -31,16 +29,16 @@ function ArticleSkeleton() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 bg-slate-300 rounded animate-pulse"></div>
-                            <div className="h-5 bg-slate-200 rounded w-24 animate-pulse"></div>
+                            <div className="w-5 h-5 bg-emerald-300 rounded animate-pulse"></div>
+                            <div className="h-5 bg-emerald-200 rounded w-24 animate-pulse"></div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 bg-slate-300 rounded animate-pulse"></div>
-                            <div className="h-5 bg-slate-200 rounded w-20 animate-pulse"></div>
+                            <div className="w-5 h-5 bg-emerald-300 rounded animate-pulse"></div>
+                            <div className="h-5 bg-emerald-200 rounded w-20 animate-pulse"></div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 bg-slate-300 rounded animate-pulse"></div>
-                            <div className="h-5 bg-slate-200 rounded w-16 animate-pulse"></div>
+                            <div className="w-5 h-5 bg-emerald-300 rounded animate-pulse"></div>
+                            <div className="h-5 bg-emerald-200 rounded w-16 animate-pulse"></div>
                         </div>
                     </div>
                 </div>
@@ -198,6 +196,115 @@ export default function ArticleReadPage({ params }) {
                             {article.title}
                         </h1>
 
+                        {/* Subtitle/Description */}
+                        <p className="text-xl text-slate-600 leading-relaxed mb-8 font-light">
+                            Bu makalede {article.category.toLowerCase()} konusunda değerli bilgiler bulacaksınız.
+                        </p>
+
+                        {/* Metadata */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-600">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-full flex items-center justify-center">
+                                    <User className="h-5 w-5 text-emerald-600" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Yazar</p>
+                                    <p className="font-semibold text-slate-700">{article.author}</p>
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-full flex items-center justify-center">
+                                    <Calendar className="h-5 w-5 text-emerald-600" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Tarih</p>
+                                    <time dateTime={article.scraped_at} className="font-semibold text-slate-700">
+                                        {articleDate}
+                                    </time>
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-full flex items-center justify-center">
+                                    <Clock className="h-5 w-5 text-emerald-600" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Okuma Süresi</p>
+                                    <p className="font-semibold text-slate-700">~5 dakika</p>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.header>
+                    
+                    {/* Article Content */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4, duration: 0.6 }}
+                        className="bg-white rounded-2xl border border-gray-200/50 shadow-lg overflow-hidden"
+                    >
+                        <div className="p-8 md:p-12">
+                            <div
+                                className="prose prose-lg max-w-none 
+                                prose-headings:text-slate-800 prose-headings:font-bold prose-headings:tracking-tight
+                                prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl
+                                prose-p:text-slate-700 prose-p:leading-relaxed prose-p:mb-6
+                                prose-a:text-emerald-600 prose-a:font-medium prose-a:no-underline hover:prose-a:text-emerald-700 hover:prose-a:underline
+                                prose-strong:text-slate-800 prose-strong:font-semibold
+                                prose-em:text-slate-600 prose-em:italic
+                                prose-blockquote:border-l-4 prose-blockquote:border-emerald-200 prose-blockquote:bg-emerald-50/50 prose-blockquote:pl-6 prose-blockquote:py-4 prose-blockquote:my-8 prose-blockquote:rounded-r-lg
+                                prose-ul:my-6 prose-ol:my-6 prose-li:my-2 prose-li:text-slate-700
+                                prose-code:text-emerald-700 prose-code:bg-emerald-50 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:font-mono prose-code:text-sm
+                                prose-pre:bg-slate-50 prose-pre:border prose-pre:border-slate-200 prose-pre:rounded-lg
+                                prose-hr:border-emerald-200 prose-hr:my-12
+                                prose-table:my-8 prose-thead:bg-emerald-50 prose-th:text-emerald-700 prose-th:font-semibold prose-th:p-3 prose-td:p-3 prose-td:border-slate-200
+                                "
+                                dangerouslySetInnerHTML={{ __html: article.content }}
+                            />
+                        </div>
+                        
+                        {/* Article Footer */}
+                        <div className="bg-gradient-to-r from-emerald-50/60 to-teal-50/40 border-t border-emerald-100/50 p-6">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <Button 
+                                        asChild 
+                                        className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white"
+                                    >
+                                        <Link href="/makaleler">
+                                            <Library className="mr-2 h-4 w-4" />
+                                            Diğer Makaleler
+                                        </Link>
+                                    </Button>
+                                </div>
+                                
+                                <div className="flex items-center gap-2">
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        className="border-emerald-200 hover:bg-emerald-50 text-emerald-700"
+                                    >
+                                        <Share2 className="h-4 w-4 mr-2" />
+                                        Paylaş
+                                    </Button>
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        className="border-emerald-200 hover:bg-emerald-50 text-emerald-700"
+                                    >
+                                        <Bookmark className="h-4 w-4 mr-2" />
+                                        Kaydet
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                </article>
+            </motion.div>
+        </div>
+    );
+}
                         {/* Subtitle/Description */}
                         <p className="text-xl text-slate-600 leading-relaxed mb-8 font-light">
                             Bu makalede {article.category.toLowerCase()} konusunda değerli bilgiler bulacaksınız.
