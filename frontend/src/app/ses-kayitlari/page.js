@@ -353,14 +353,13 @@ export default function AudioLibraryPage() {
                         <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
                             {/* Search */}
                             <div className="relative flex-1 lg:max-w-md">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#177267]" />
                                 <input
                                     type="text"
                                     placeholder="Başlık veya konu ara..."
                                     aria-label="Ses kaydı ara"
                                     value={inputQuery}
                                     onChange={(e) => setInputQuery(e.target.value)}
-                                    className="w-full pl-9 pr-4 py-3 border border-slate-300 rounded-lg focus:border-[#177267] focus:ring-0 bg-white text-slate-700 placeholder-slate-400"
+                                    className="w-full pl-4 pr-4 py-3 border border-slate-300 rounded-lg focus:border-[#177267] focus:ring-0 bg-white text-slate-700 placeholder-slate-400"
                                 />
                             </div>
                             {/* Source Filter */}

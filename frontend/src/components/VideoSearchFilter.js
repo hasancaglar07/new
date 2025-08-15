@@ -104,12 +104,12 @@ const VideoSearchFilter = ({
                 <div className="space-y-4">
                     {/* Main Search Bar */}
                     <div className="relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 z-10" />
+                        {/* <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 z-10" /> */}
                         <Input
                             placeholder="Video başlığı veya konu başlığında ara..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="text-base md:text-lg h-14 pl-12 pr-16 rounded-lg"
+                            className="text-base md:text-lg h-14 pl-4 pr-16 rounded-lg"
                         />
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
                             <Button

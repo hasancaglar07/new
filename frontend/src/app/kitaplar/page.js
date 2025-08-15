@@ -400,9 +400,17 @@ export default function LibraryPage() {
     }, []);
 
     const filteredData = useMemo(() => {
+        // Deduplicate books by kitap_adi and pdf_dosyasi
         return libraryData.map(authorData => {
             if (selectedAuthor !== "all" && authorData.yazar !== selectedAuthor) return null;
-            const filteredBooks = authorData.kitaplar.filter(book => book.kitap_adi.toLowerCase().includes(searchTerm.toLowerCase()));
+            // Remove duplicate books for each author
+            const seen = new Set();
+            const filteredBooks = authorData.kitaplar.filter(book => {
+                const key = `${book.kitap_adi}-${book.pdf_dosyasi}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return book.kitap_adi.toLowerCase().includes(searchTerm.toLowerCase());
+            });
             if (filteredBooks.length === 0) return null;
             return { ...authorData, kitaplar: filteredBooks };
         }).filter(Boolean);
@@ -448,12 +456,11 @@ export default function LibraryPage() {
                             </div>
                             {/* Search */}
                             <div className="relative w-full">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#177267]" />
-                                <Input 
-                                    placeholder="Kitap adı ile ara..." 
-                                    value={searchTerm} 
-                                    onChange={(e) => setSearchTerm(e.target.value)} 
-                                    className="w-full h-11 pl-9 border-slate-300 focus:border-[#177267] focus:ring-0"
+                                <Input
+                                    placeholder="Kitap adı veya yazar ile ara..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full h-11 pl-4 border-slate-300 focus:border-[#177267] focus:ring-0"
                                 />
                             </div>
                         </div>

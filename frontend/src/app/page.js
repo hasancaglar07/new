@@ -1004,13 +1004,13 @@ export default function HomePage() {
                     animate={{ x: 0, opacity: 1 }}
                     transition={{ duration: 0.3, ease: "easeOut" }}
                   >
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 z-10" />
+                    
                   </motion.div>
                   <Input
                     placeholder="Konu, eser veya yazar adı..."
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    className={`text-base md:text-lg h-14 pl-12 rounded-lg transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary/50 ${
+                    className={`text-base md:text-lg h-14 pl-4 rounded-lg transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary/50 ${
                       query.trim() ? 'pr-32' : 'pr-12'
                     }`}
                   />
