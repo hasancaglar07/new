@@ -21,11 +21,10 @@ export default function MiniPlayer() {
       <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white/95 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-white/80">
         <div className="px-4 pt-3">
           <div className="flex items-center gap-3">
-            <button aria-label={isPlaying ? "Durdur" : "Oynat"} onClick={toggle} className="h-10 w-10 rounded-full bg-[#177267] text-white grid place-items-center">
-              {isPlaying ? <Pause className="h-5 w-5"/> : <Play className="h-5 w-5"/>}
+            <button aria-label={isPlaying ? "Durdur" : "Oynat"} onClick={toggle} className="h-14 w-14 rounded-full bg-[#177267] text-white grid place-items-center hover:bg-[#116358] transition-colors shadow-lg">
+              {isPlaying ? <Pause className="h-7 w-7"/> : <Play className="h-7 w-7"/>}
             </button>
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold text-slate-900 truncate">{current.title}</div>
               <div className="text-xs text-slate-500 truncate">{current.source}</div>
             </div>
             <button aria-label="Kapat" onClick={stop} className="text-slate-400 hover:text-slate-600 text-sm">Kapat</button>
@@ -52,8 +51,8 @@ export default function MiniPlayer() {
                 </h4>
                 <span className="text-xs text-slate-500">{chapters.length} konu</span>
               </div>
-              <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                {chapters.slice(0,4).map((c, i) => (
+              <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                {chapters.map((c, i) => (
                    <div key={i} className="w-full border border-slate-200 rounded-lg hover:border-emerald-200 transition-colors">
                      <button onClick={() => {
                        const parts = (c.time||'0:00:00').split(':').map(Number);
@@ -116,11 +115,6 @@ export default function MiniPlayer() {
                       </div>
                    </div>
                  ))}
-                {chapters.length > 4 && (
-                  <div className="text-center">
-                    <span className="text-xs text-slate-500">+{chapters.length - 4} konu daha</span>
-                  </div>
-                )}
               </div>
             </div>
           )}

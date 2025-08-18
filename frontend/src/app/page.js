@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import NamazWidget from "@/components/NamazWidget";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { useAudio } from "@/components/audio/AudioProvider";
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Separator } from "@/components/ui/separator";
@@ -132,107 +133,7 @@ function ArticleViewerDialog({ articleId, onClose, isOpen }) {
     </Dialog>
   );
 }
-// *** Mobile-optimized Audio Player Dialog ***
-function AudioPlayerDialog({ audio, onClose, isOpen }) {
-    const audioRef = useRef(null);
-    const [activeChapter, setActiveChapter] = useState(null);
-    
-    const audioSrc = `${API_BASE_URL}/audio/file/${audio?.mp3_filename}`;
 
-    const jumpToTime = (timeString) => {
-        const parts = timeString.split(':').map(Number);
-        const seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
-        const audioElement = audioRef.current;
-        if (audioElement && audioElement.readyState >= 3) {
-            audioElement.currentTime = seconds;
-            audioElement.play().catch(e => console.error("Oynatma hatası:", e));
-            setActiveChapter(timeString);
-        }
-    };
-
-    if (!audio) return null;
-    
-    return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-4xl w-full h-[90vh] overflow-hidden bg-white rounded-2xl p-0 gap-0">
-                <DialogHeader className="p-6 pb-4 border-b border-slate-200">
-                    <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 border border-purple-200 mb-3">
-                                <Music className="w-3 h-3 mr-1.5" />
-                                {audio.source}
-                            </span>
-                            <DialogTitle className="text-xl md:text-2xl font-bold text-slate-900 line-clamp-2">
-                                {audio.title}
-                            </DialogTitle>
-                        </div>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={onClose}
-                            className="ml-4 h-8 w-8 p-0 shrink-0"
-                        >
-                            <X className="w-4 h-4" />
-                        </Button>
-                    </div>
-                </DialogHeader>
-                
-                <div className="flex flex-col h-full overflow-hidden">
-                    {/* Audio Player */}
-                    <div className="p-6 border-b border-slate-200">
-                        <audio
-                            ref={audioRef}
-                            src={audioSrc}
-                            controls
-                            className="w-full"
-                            key={audio.mp3_filename}
-                        />
-                    </div>
-                    
-                    {/* Chapters */}
-                    <div className="flex-1 overflow-y-auto p-6">
-                        <h3 className="text-lg font-semibold text-slate-900 mb-4">
-                            Konu Başlıkları ({audio.matching_chapters.length})
-                        </h3>
-                        <div className="space-y-3">
-                            {audio.matching_chapters.map((chapter, index) => (
-                                <button
-                                    key={index}
-                                    onClick={() => jumpToTime(chapter.time)}
-                                    className={`w-full p-4 rounded-xl border transition-all text-left hover:shadow-sm ${
-                                        activeChapter === chapter.time
-                                            ? 'bg-purple-50 border-purple-300 shadow-sm'
-                                            : 'border-slate-200 hover:bg-slate-50 hover:border-slate-300'
-                                    }`}
-                                >
-                                    <div className="flex items-start gap-4">
-                                        <div className="shrink-0">
-                                            <Play className={`h-5 w-5 ${
-                                                activeChapter === chapter.time ? 'text-purple-600' : 'text-slate-400'
-                                            }`} />
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <span className={`font-mono text-sm font-medium px-2 py-1 rounded border ${
-                                                activeChapter === chapter.time
-                                                    ? 'bg-purple-100 text-purple-700 border-purple-200'
-                                                    : 'bg-slate-100 text-slate-600 border-slate-200'
-                                            }`}>
-                                                {chapter.time}
-                                            </span>
-                                            <p className="text-slate-700 font-medium leading-relaxed mt-2 text-sm md:text-base">
-                                                {chapter.title}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </DialogContent>
-        </Dialog>
-    );
-}
 function ArticleResultCard({ result, onReadClick, query, index }) {
     const cardVariants = {
         hidden: { opacity: 0, y: 20, scale: 0.98 },
@@ -875,7 +776,8 @@ function InfoState({ title, message, icon: Icon, onClearFilters }) {
 }
 // --- ANA SAYFA BİLEŞENİ ---
 export default function HomePage() {
-    const [query, setQuery] = useState("");
+    const { play } = useAudio();
+    const [query, setQuery] = useState('');
     const [allResults, setAllResults] = useState({ books: [], articles: [], videos: [], analyses: [], audio: [] });
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -884,8 +786,6 @@ export default function HomePage() {
     const [selectedBook, setSelectedBook] = useState(null);
     const [isArticleModalOpen, setIsArticleModalOpen] = useState(false);
     const [selectedArticleId, setSelectedArticleId] = useState(null);
-    const [isAudioModalOpen, setIsAudioModalOpen] = useState(false);
-    const [selectedAudio, setSelectedAudio] = useState(null);
     const [activeTab, setActiveTab] = useState('kitaplar');
     const performSearch = useCallback(async (currentQuery) => {
       if (!currentQuery.trim()) {
@@ -945,7 +845,15 @@ export default function HomePage() {
     // Modal açma fonksiyonları
     const handleBookReadClick = (book) => { setSelectedBook(book); setIsBookModalOpen(true); };
     const handleArticleReadClick = (articleId) => { setSelectedArticleId(articleId); setIsArticleModalOpen(true); };
-    const handleAudioPlayClick = (audio) => { setSelectedAudio(audio); setIsAudioModalOpen(true); };
+    const handleAudioPlayClick = (audio) => {
+        play({
+            id: `${audio.source}-${audio.id}`,
+            title: audio.title.replace(/\.(mp3|wav|m4a)$/i, '').replace(/_/g, ' '),
+            source: audio.source,
+            mp3Filename: audio.mp3_filename,
+            chapters: audio.matching_chapters || []
+        });
+    };
    
     // Arama kutusunu ve filtreleri temizler
     const handleClearSearch = () => {
@@ -1412,7 +1320,6 @@ export default function HomePage() {
       
         <BookViewerDialog isOpen={isBookModalOpen} onClose={() => setIsBookModalOpen(false)} book={selectedBook} />
         <ArticleViewerDialog isOpen={isArticleModalOpen} onClose={() => setIsArticleModalOpen(false)} articleId={selectedArticleId} />
-        <AudioPlayerDialog isOpen={isAudioModalOpen} onClose={() => setIsAudioModalOpen(false)} audio={selectedAudio} />
       </div>
     );
 }

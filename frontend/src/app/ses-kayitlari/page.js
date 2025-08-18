@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useAudio } from '@/components/audio/AudioProvider';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-function AudioPlayer({ source, title, chapters, mp3Filename, onReadyToPlay, onClose }) {
+function AudioPlayer({ source, title, chapters, mp3Filename, onReadyToPlay, onClose, searchQuery }) {
     const audioRef = useRef(null);
     const [activeChapter, setActiveChapter] = useState(null);
     
@@ -69,8 +69,7 @@ function AudioPlayer({ source, title, chapters, mp3Filename, onReadyToPlay, onCl
                     <X className="h-5 w-5" />
                 </button>
                 <div className="pr-12">
-                    <h2 className="text-2xl font-bold mb-2">{title}</h2>
-                    <p className="text-emerald-100 mb-4">Kaynak: {source}</p>
+                    <h2 className="text-2xl font-bold mb-4">Kaynak: {source}</h2>
                     
                     {/* Sosyal Medya Paylaşım Butonları */}
                     <div className="flex items-center gap-1">
@@ -116,15 +115,21 @@ function AudioPlayer({ source, title, chapters, mp3Filename, onReadyToPlay, onCl
                 </div>
             </div>
             
-            {/* Audio Player */}
-            <div className="p-6 border-b border-slate-200 flex-shrink-0">
-                <audio
-                    ref={audioRef}
-                    src={audioSrc}
-                    controls
-                    className="w-full h-12 rounded-lg"
-                    key={mp3Filename}
-                />
+            {/* Audio Player - Büyük */}
+            <div className="p-8 border-b border-slate-200 flex-shrink-0 bg-gradient-to-r from-slate-50 to-slate-100">
+                <div className="bg-white rounded-xl p-4 shadow-md border border-slate-200">
+                    <audio
+                        ref={audioRef}
+                        src={audioSrc}
+                        controls
+                        className="w-full h-16 rounded-lg"
+                        key={mp3Filename}
+                        style={{
+                            filter: 'drop-shadow(0 4px 6px rgb(0 0 0 / 0.1))',
+                            transform: 'scale(1.05)'
+                        }}
+                    />
+                </div>
             </div>
             
             {/* Konu Başlıkları - Aşağı Doğru Seçilebilir */}
@@ -160,7 +165,7 @@ function AudioPlayer({ source, title, chapters, mp3Filename, onReadyToPlay, onCl
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <h4 className="text-base font-semibold text-slate-900 leading-relaxed mb-1">
-                                                {chapter.title}
+                                                {highlightSearchTerm(chapter.title, searchQuery)}
                                             </h4>
                                             <div className="flex items-center gap-2 text-xs text-emerald-600">
                                                 <Play className="h-3.5 w-3.5" />
@@ -234,7 +239,22 @@ function AudioPlayer({ source, title, chapters, mp3Filename, onReadyToPlay, onCl
         </div>
     );
 }
-function AudioCard({ audio, source, onPlay }) {
+// Arama kelimelerini vurgulama fonksiyonu
+function highlightSearchTerm(text, searchTerm) {
+    if (!searchTerm || searchTerm.trim() === '') return text;
+    
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    
+    return parts.map((part, index) => {
+        if (regex.test(part)) {
+            return <strong key={index} className="bg-yellow-200 text-yellow-900 px-0.5 rounded">{part}</strong>;
+        }
+        return part;
+    });
+}
+
+function AudioCard({ audio, source, onPlay, searchQuery }) {
     const [expanded, setExpanded] = useState(false);
     // Dosya adından temiz başlık çıkar
     const cleanTitle = audio.title.replace(/\.(mp3|wav|m4a)$/i, '').replace(/_/g, ' ');
@@ -274,33 +294,27 @@ function AudioCard({ audio, source, onPlay }) {
                         <div className="w-1 h-6 bg-[#177267] rounded-full"></div>
                         Konu Başlıkları
                     </h3>
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {audio.chapters.slice(0, expanded ? audio.chapters.length : 4).map((chapter, index) => (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {audio.chapters.map((chapter, index) => (
                             <div key={index} className="flex items-start gap-3 p-3 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200 hover:border-emerald-300 transition-colors">
                                 <span className="text-xs text-[#177267] font-mono bg-white px-2 py-1 rounded border border-emerald-300 shrink-0 font-semibold">
                                     {chapter.time}
                                 </span>
-                                <span className="text-sm text-slate-800 flex-1 font-medium leading-relaxed">{chapter.title}</span>
+                                <span className="text-sm text-slate-800 flex-1 font-medium leading-relaxed">
+                                    {highlightSearchTerm(chapter.title, searchQuery)}
+                                </span>
                             </div>
                         ))}
-                        {audio.chapters.length > 4 && (
-                            <button
-                                onClick={() => setExpanded(!expanded)}
-                                className="text-sm text-[#177267] hover:text-[#116358] font-semibold flex items-center gap-1 mt-3 w-full justify-center py-2 bg-emerald-50 rounded-lg border border-emerald-200 hover:bg-emerald-100 transition-colors"
-                            >
-                                {expanded ? 'Daha az göster' : `+${audio.chapters.length - 4} konu daha göster`}
-                            </button>
-                        )}
                     </div>
                 </div>
                 
-                {/* Şık Play Button */}
+                {/* Büyük Play Button */}
                 <button
                     onClick={() => onPlay(audio, source)}
-                    className="w-full bg-gradient-to-r from-[#177267] to-[#0d9488] hover:from-[#116358] hover:to-[#0f766e] text-white font-semibold py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] group"
+                    className="w-full bg-gradient-to-r from-[#177267] to-[#0d9488] hover:from-[#116358] hover:to-[#0f766e] text-white font-bold py-6 px-8 rounded-xl flex items-center justify-center gap-4 transition-all duration-300 hover:shadow-xl hover:scale-[1.03] group"
                 >
-                    <Play className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                    <span className="text-lg">Dinlemeye Başla</span>
+                    <Play className="h-8 w-8 group-hover:scale-110 transition-transform" />
+                    <span className="text-xl">Dinlemeye Başla</span>
                 </button>
             </div>
         </motion.div>
@@ -313,9 +327,7 @@ export default function AudioLibraryPage() {
     const [selectedAudio, setSelectedAudio] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [inputQuery, setInputQuery] = useState('');
-    const [selectedSource, setSelectedSource] = useState('all');
-    const [viewMode, setViewMode] = useState('grid');
-    const [sortBy, setSortBy] = useState('topics');
+    const [viewMode] = useState('grid');
     const [limit, setLimit] = useState(12);
     const loaderRef = useRef(null);
     const { play } = useAudio();
@@ -374,21 +386,12 @@ export default function AudioLibraryPage() {
                     chapter.title.toLowerCase().includes(searchQuery.toLowerCase())
                 );
          
-            const matchesSource = selectedSource === 'all' || audio.source === selectedSource;
-         
-            return matchesSearch && matchesSource;
+            return matchesSearch;
         });
-        // sort
-        items.sort((a,b)=>{
-          if (sortBy === 'newest') return (b.created_at||0) - (a.created_at||0);
-          if (sortBy === 'oldest') return (a.created_at||0) - (b.created_at||0);
-          if (sortBy === 'az') return a.title.localeCompare(b.title);
-          if (sortBy === 'za') return b.title.localeCompare(a.title);
-          if (sortBy === 'topics') return (b.chapters?.length||0) - (a.chapters?.length||0);
-          return 0;
-        });
+        // En çok konu başlığına göre sırala
+        items.sort((a,b) => (b.chapters?.length||0) - (a.chapters?.length||0));
         return items;
-    }, [allAudios, searchQuery, selectedSource, sortBy]);
+    }, [allAudios, searchQuery]);
 
 
     // infinite scroll observer
@@ -456,69 +459,27 @@ export default function AudioLibraryPage() {
                         </p>
                     </div>
 
-                    {/* Filter toolbelt */}
-                    <div className="w-full bg-white border border-slate-200 rounded-xl p-4">
-                        <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
-                            {/* Search */}
-                            <div className="relative flex-1 lg:max-w-md">
-                                <input
-                                    type="text"
-                                    placeholder="Başlık veya konu ara..."
-                                    aria-label="Ses kaydı ara"
-                                    value={inputQuery}
-                                    onChange={(e) => setInputQuery(e.target.value)}
-                                    className="w-full pl-4 pr-4 py-3 border border-slate-300 rounded-lg focus:border-[#177267] focus:ring-0 bg-white text-slate-700 placeholder-slate-400"
-                                />
-                            </div>
-                            {/* Source Filter */}
-                            <div className="relative">
-                                <select
-                                    value={selectedSource}
-                                    onChange={(e) => setSelectedSource(e.target.value)}
-                                    className="appearance-none px-5 py-3 pr-9 border border-slate-300 rounded-lg focus:border-[#177267] focus:ring-0 bg-white text-slate-700 min-w-48"
-                                >
-                                    <option value="all">Tüm Kaynaklar</option>
-                                    {Object.keys(audioData).map(source => (
-                                        <option key={source} value={source}>{source}</option>
-                                    ))}
-                                </select>
-                                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                    <div className="w-2 h-2 border-r-2 border-b-2 border-[#177267] rotate-45"></div>
-                                </div>
-                            </div>
-                            {/* Sort */}
-                            <div className="relative">
-                              <select value={sortBy} onChange={(e)=> setSortBy(e.target.value)} className="appearance-none px-5 py-3 pr-9 border border-slate-300 rounded-lg focus:border-[#177267] focus:ring-0 bg-white text-slate-700 min-w-48">
-                                <option value="newest">En Yeni</option>
-                                <option value="oldest">En Eski</option>
-                                <option value="az">A–Z</option>
-                                <option value="za">Z–A</option>
-                                <option value="topics">Konu Sayısı</option>
-                              </select>
-                              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                <div className="w-2 h-2 border-r-2 border-b-2 border-[#177267] rotate-45"></div>
-                              </div>
-                            </div>
-                            {/* View toggle */}
-                            <div className="flex rounded-lg border border-slate-300 overflow-hidden bg-white">
-                                <button
-                                    onClick={() => setViewMode('grid')}
-                                    className={`px-4 py-3 ${viewMode==='grid' ? 'bg-[#177267] text-white' : 'text-slate-600 hover:bg-slate-50'}`}
-                                >
-                                    <Grid className="h-5 w-5" />
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('list')}
-                                    className={`px-4 py-3 ${viewMode==='list' ? 'bg-[#177267] text-white' : 'text-slate-600 hover:bg-slate-50'}`}
-                                >
-                                    <List className="h-5 w-5" />
-                                </button>
-                            </div>
+                    {/* Search Section */}
+                    <div className="max-w-2xl mx-auto">
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="Konu, başlık veya kaynak ara..."
+                                aria-label="Ses kaydı ara"
+                                value={inputQuery}
+                                onChange={(e) => setInputQuery(e.target.value)}
+                                className="w-full text-base md:text-lg h-14 pl-4 pr-4 rounded-lg border border-slate-300 focus:border-[#177267] focus:ring-2 focus:ring-[#177267]/20 bg-white text-slate-700 placeholder-slate-400 transition-all duration-200 shadow-sm"
+                            />
                         </div>
+                        
                         {/* Suggestions */}
-                        <div className="flex flex-wrap gap-2 mt-3">
+                        <div className="flex flex-wrap justify-center gap-2 mt-4">
                             {["Sohbet", "Dua", "Nasihat", "İlim", "Ahlak"].map((label) => (
-                                <button key={label} onClick={() => setSearchQuery(label)} className="px-3 py-1.5 text-sm rounded-full border border-slate-300 text-[#177267] hover:bg-slate-50">
+                                <button 
+                                    key={label} 
+                                    onClick={() => setInputQuery(label)} 
+                                    className="px-4 py-2 text-sm rounded-full border border-slate-300 text-[#177267] hover:bg-[#177267] hover:text-white transition-colors duration-200"
+                                >
                                     {label}
                                 </button>
                             ))}
@@ -552,6 +513,7 @@ export default function AudioLibraryPage() {
                                 audio={audio}
                                 source={audio.source}
                                 onPlay={handlePlayAudio}
+                                searchQuery={searchQuery}
                             />
                         ))}
                     </div>
@@ -577,6 +539,7 @@ export default function AudioLibraryPage() {
                             mp3Filename={selectedAudio.mp3_filename}
                             onReadyToPlay={handleReadyToPlay}
                             onClose={() => setSelectedAudio(null)}
+                            searchQuery={searchQuery}
                         />
                     </motion.div>
                 )}
