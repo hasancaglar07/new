@@ -243,6 +243,7 @@ export default function VideoAnalysisPage() {
     const [historyLoading, setHistoryLoading] = useState(true);
     const [taskId, setTaskId] = useState(null);
     const [statusMessage, setStatusMessage] = useState("");
+    const [searchQuery, setSearchQuery] = useState('');
     const pollingIntervalRef = useRef(null);
 
     const fetchHistory = useCallback(async () => {
@@ -362,86 +363,189 @@ export default function VideoAnalysisPage() {
     };
 
     return (
-        <div className="bg-slate-50 min-h-screen">
-            <div className="container mx-auto px-4 py-12 md:py-20">
-                <motion.header initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-center mb-12">
-                    <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter text-slate-800">Video İçerik Analizi</h1>
-                    <p className="mt-4 text-lg md:text-xl text-slate-600">Bir YouTube videosunu analiz ederek önemli konu başlıklarını çıkarın.</p>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+            {/* Modern Centered Layout */}
+            <div className="container mx-auto px-4 py-8 max-w-6xl">
+                {/* Header */}
+                <motion.header 
+                    initial={{ opacity: 0, y: -20 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    className="text-center mb-12"
+                >
+                    <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-4">
+                        Video İçerik Analizi
+                    </h1>
+                    <p className="text-base md:text-lg text-slate-600 max-w-3xl mx-auto leading-relaxed">
+                        YouTube videolarınızı AI ile analiz edin ve önemli konu başlıklarını keşfedin
+                    </p>
                 </motion.header>
 
-                <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
-                    <Card className="max-w-3xl mx-auto p-6 md:p-8">
-                        <form onSubmit={handleAnalyze} id="analysis-form" className="space-y-4">
-                            <div>
-                                <label htmlFor="youtube_url" className="block mb-2 text-sm font-medium text-slate-700">YouTube Video Linki</label>
-                                <Input id="youtube_url" type="text" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="w-full h-12 text-base rounded-lg" />
+                {/* Ana Analiz Kartı */}
+                <motion.section 
+                    initial={{ opacity: 0, y: 20 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                    className="mb-12"
+                >
+                    <Card className="border-0 shadow-2xl shadow-emerald-500/20 bg-white/80 backdrop-blur-sm overflow-hidden">
+                        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6">
+                            <div className="flex items-center gap-4 text-white">
+                                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                                    <Sparkles className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold">Yeni Video Analizi</h2>
+                                    <p className="text-emerald-100">YouTube video linkini yapıştırın ve AI analizi başlatın</p>
+                                </div>
                             </div>
-                            <Button type="submit" disabled={isLoading} className="w-full h-12 text-base bg-emerald-600 hover:bg-emerald-700 text-white transition-all transform hover:scale-[1.02]">
-                                {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
-                                {isLoading ? 'Analiz Ediliyor...' : 'Analizi Başlat'}
-                            </Button>
-                        </form>
+                        </div>
+                        
+                        <div className="p-8">
+                            <form onSubmit={handleAnalyze} id="analysis-form" className="space-y-6">
+                                <div className="space-y-3">
+                                    <label htmlFor="youtube_url" className="block text-sm font-semibold text-slate-700">
+                                        YouTube Video Linki
+                                    </label>
+                                    <div className="relative">
+                                        <Input 
+                                            id="youtube_url" 
+                                            type="text" 
+                                            value={url} 
+                                            onChange={e => setUrl(e.target.value)} 
+                                            placeholder="https://www.youtube.com/watch?v=..." 
+                                            className="w-full h-16 text-lg pl-6 pr-16 rounded-2xl border-2 border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-300 bg-slate-50/50"
+                                        />
+                                        <div className="absolute right-5 top-1/2 -translate-y-1/2">
+                                            <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center shadow-lg">
+                                                <span className="text-white text-sm font-bold">▶</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <Button 
+                                    type="submit" 
+                                    disabled={isLoading} 
+                                    className="w-full h-16 text-lg font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg"
+                                >
+                                    {isLoading ? (
+                                        <>
+                                            <Loader2 className="mr-4 h-6 w-6 animate-spin" />
+                                            Analiz Ediliyor...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles className="mr-4 h-6 w-6" />
+                                            AI Analizi Başlat
+                                        </>
+                                    )}
+                                </Button>
+                            </form>
+                        </div>
                     </Card>
                 </motion.section>
                 
-                <section className="mt-12 max-w-3xl mx-auto">
+                {/* Analiz Sonuçları */}
+                <motion.section
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                    className="mb-12"
+                >
                      <AnimatePresence mode="wait">
                         {isLoading && <EnhancedAnalysisStatusCard statusMessage={statusMessage} />}
                         {error && <InfoState title="Bir Hata Oluştu" message={error} icon={ServerCrash} />}
                         {analysisResult && <AnalysisResultCard result={analysisResult} url={currentAnalysisUrl} />}
                     </AnimatePresence>
-                </section>
+                </motion.section>
 
-                <section className="mt-20">
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-                        <h2 className="text-3xl md:text-4xl font-bold text-slate-700 mb-8 pb-3 border-b-4 border-emerald-500 inline-block">
-                            <History className="inline-block h-8 w-8 mr-3 -mt-1 text-emerald-600" /> Analiz Geçmişi
-                        </h2>
-                        
-                        {/* Search and Filter Component */}
-                        {!historyLoading && history.length > 0 && (
-                            <div className="mb-8">
-                                <VideoSearchFilter
-                                    history={history}
-                                    onFilteredResults={setFilteredHistory}
-                                />
-                            </div>
-                        )}
-                        
-                        {historyLoading && <HistorySkeleton />}
-                        {!historyLoading && history.length === 0 && <InfoState title="Geçmişiniz Boş" message="Henüz bir video analizi yapmadınız." icon={FileQuestion} />}
-                        {!historyLoading && history.length > 0 && (
-                            <motion.div
-                                initial="hidden"
-                                animate="visible"
-                                variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
-                            >
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                                    {/* ★★★ ENHANCED: Using new EnhancedVideoCard component ★★★ */}
-                                    {filteredHistory.map(({ id, data }, index) => (
-                                        <EnhancedVideoCard
-                                            key={id}
-                                            videoId={id}
-                                            data={data}
-                                            onAnalyzeAgain={handleAnalyzeAgain}
-                                            index={index}
-                                            showEmbeddedPlayer={true}
-                                        />
-                                    ))}
+                {/* Video Geçmişi Bölümü */}
+                <motion.section 
+                    initial={{ opacity: 0, y: 20 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                >
+                    <Card className="border-0 shadow-xl shadow-blue-500/10 bg-white/80 backdrop-blur-sm overflow-hidden">
+                        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6">
+                            <div className="flex items-center gap-4 text-white">
+                                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                                    <History className="h-6 w-6" />
                                 </div>
+                                <div>
+                                    <h2 className="text-xl font-bold">Analiz Geçmişi</h2>
+                                    <p className="text-blue-100">Önceki video analizlerinizi görüntüleyin ve yeniden analiz edin</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="p-8">
+                            {/* Search and Filter Component */}
+                            {!historyLoading && history.length > 0 && (
+                                <div className="mb-8">
+                                    <VideoSearchFilter
+                                        history={history}
+                                        onFilteredResults={(filtered, query) => {
+                                            setFilteredHistory(filtered);
+                                            setSearchQuery(query);
+                                        }}
+                                    />
+                                </div>
+                            )}
+                            
+                            {/* Video Grid */}
+                            <div>
+                                {historyLoading && <HistorySkeleton />}
+                                {!historyLoading && history.length === 0 && (
+                                    <div className="text-center py-16">
+                                        <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                                            <FileQuestion className="h-12 w-12 text-slate-400" />
+                                        </div>
+                                        <h3 className="text-2xl font-bold text-slate-800 mb-3">Geçmişiniz Boş</h3>
+                                        <p className="text-slate-600 text-lg">Henüz bir video analizi yapmadınız. Yukarıdaki formdan başlayın!</p>
+                                    </div>
+                                )}
+                                {!historyLoading && history.length > 0 && (
+                                    <motion.div
+                                        initial="hidden"
+                                        animate="visible"
+                                        variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
+                                        className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+                                    >
+                                        {filteredHistory.map(({ id, data }, index) => (
+                                            <motion.div
+                                                key={id}
+                                                variants={{
+                                                    hidden: { opacity: 0, y: 30, scale: 0.95 },
+                                                    visible: { opacity: 1, y: 0, scale: 1 }
+                                                }}
+                                                transition={{ duration: 0.4, ease: "easeOut" }}
+                                            >
+                                                <EnhancedVideoCard
+                                                    videoId={id}
+                                                    data={data}
+                                                    onAnalyzeAgain={handleAnalyzeAgain}
+                                                    index={index}
+                                                    showEmbeddedPlayer={true}
+                                                    searchQuery={searchQuery}
+                                                />
+                                            </motion.div>
+                                        ))}
+                                    </motion.div>
+                                )}
                                 
                                 {/* No results message for filtered search */}
-                                {filteredHistory.length === 0 && history.length > 0 && (
-                                    <InfoState
-                                        title="Sonuç Bulunamadı"
-                                        message="Arama kriterlerinize uygun analiz bulunamadı. Filtreleri temizleyerek tekrar deneyin."
-                                        icon={FileQuestion}
-                                    />
+                                {!historyLoading && filteredHistory.length === 0 && history.length > 0 && (
+                                    <div className="text-center py-12">
+                                        <FileQuestion className="h-16 w-16 text-slate-400 mx-auto mb-4" />
+                                        <h3 className="text-xl font-bold text-slate-800 mb-2">Sonuç Bulunamadı</h3>
+                                        <p className="text-slate-600">Arama kriterlerinize uygun analiz bulunamadı. Filtreleri temizleyerek tekrar deneyin.</p>
+                                    </div>
                                 )}
-                            </motion.div>
-                        )}
-                    </motion.div>
-                </section>
+                            </div>
+                        </div>
+                    </Card>
+                </motion.section>
             </div>
         </div>
     );

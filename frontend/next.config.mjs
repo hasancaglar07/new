@@ -33,6 +33,13 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
+      // YouTube thumbnail API için
+      {
+        protocol: 'https',
+        hostname: 'img.youtube.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   async rewrites() {

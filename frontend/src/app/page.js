@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Loader2, Search, BookOpen, Video, ArrowRight, ArrowLeft, FileQuestion, ServerCrash, X, Sparkles, ZoomIn, ZoomOut, RotateCcw, Download, BotMessageSquare, Newspaper, User, Clock, Library, Music, Trash2, Play, ListMusic } from "lucide-react";
+import { Loader2, Search, BookOpen, Video, ArrowRight, ArrowLeft, FileQuestion, ServerCrash, X, Sparkles, ZoomIn, ZoomOut, RotateCcw, Download, BotMessageSquare, Newspaper, User, Clock, Library, Music, Trash2, Play, ListMusic, List, ExternalLink, Eye, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 
@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import NamazWidget from "@/components/NamazWidget";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useAudio } from "@/components/audio/AudioProvider";
+import ChapterNavigationModal from "@/components/ChapterNavigationModal";
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Separator } from "@/components/ui/separator";
@@ -123,7 +124,28 @@ function ArticleViewerDialog({ articleId, onClose, isOpen }) {
             </DialogHeader>
             <Separator />
             <div id="article-scroll-container" className="px-6 py-6 flex-grow overflow-y-auto">
-              <article className="prose prose-lg prose-emerald max-w-none">
+              <article className="
+                prose prose-lg max-w-none
+                prose-headings:text-slate-800 prose-headings:font-bold prose-headings:tracking-tight
+                prose-h1:text-3xl prose-h1:mb-6 prose-h1:mt-8 prose-h1:text-emerald-800
+                prose-h2:text-2xl prose-h2:mb-4 prose-h2:mt-6 prose-h2:text-emerald-700 prose-h2:border-b prose-h2:border-emerald-200 prose-h2:pb-2
+                prose-h3:text-xl prose-h3:mb-3 prose-h3:mt-5 prose-h3:text-emerald-600
+                prose-h4:text-lg prose-h4:mb-2 prose-h4:mt-4 prose-h4:text-slate-700
+                prose-p:text-slate-700 prose-p:leading-relaxed prose-p:mb-4 prose-p:text-base
+                prose-a:text-emerald-600 prose-a:font-medium prose-a:no-underline hover:prose-a:text-emerald-700 hover:prose-a:underline
+                prose-strong:text-slate-800 prose-strong:font-semibold prose-strong:bg-yellow-100 prose-strong:px-1 prose-strong:rounded
+                prose-em:text-slate-600 prose-em:italic
+                prose-blockquote:border-l-4 prose-blockquote:border-emerald-300 prose-blockquote:bg-emerald-50/70 prose-blockquote:pl-6 prose-blockquote:py-4 prose-blockquote:my-6 prose-blockquote:rounded-r-lg prose-blockquote:italic
+                prose-ul:my-4 prose-ul:space-y-2 prose-ol:my-4 prose-ol:space-y-2 prose-li:text-slate-700 prose-li:leading-relaxed
+                prose-code:text-emerald-700 prose-code:bg-emerald-50 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:font-mono prose-code:text-sm
+                prose-pre:bg-slate-50 prose-pre:border prose-pre:border-slate-200 prose-pre:rounded-lg prose-pre:p-4 prose-pre:my-4
+                prose-hr:border-emerald-200 prose-hr:my-8
+                prose-table:my-6 prose-thead:bg-emerald-50 prose-th:text-emerald-700 prose-th:font-semibold prose-th:p-3 prose-td:p-3
+                prose-img:rounded-lg prose-img:shadow-md prose-img:my-4
+              " style={{
+                textAlign: 'justify',
+                hyphens: 'auto'
+              }}>
                 <div dangerouslySetInnerHTML={{ __html: article.content }} />
               </article>
             </div>
@@ -436,11 +458,10 @@ function VideoCard({ video, index }) {
 }
 function AnalysisCard({ analysis, query, index }) {
     const [showChapterModal, setShowChapterModal] = useState(false);
-    const playerRef = useRef(null);
-    const playerElRef = useRef(null);
+    const [isHovered, setIsHovered] = useState(false);
     
     const cardVariants = {
-        hidden: { opacity: 0, y: 20, scale: 0.98 },
+        hidden: { opacity: 0, y: 20, scale: 0.95 },
         visible: {
             opacity: 1,
             y: 0,
@@ -448,12 +469,21 @@ function AnalysisCard({ analysis, query, index }) {
             transition: {
                 delay: index * 0.05,
                 duration: 0.4,
-                ease: "easeOut"
+                ease: [0.25, 0.46, 0.45, 0.94]
             }
         }
     };
 
-    // Parse chapters with time information - exact same logic as working version
+    const hoverVariants = {
+        rest: { scale: 1, y: 0 },
+        hover: { 
+            scale: 1.03, 
+            y: -5,
+            transition: { duration: 0.2, ease: "easeOut" }
+        }
+    };
+
+    // Parse chapters with time information
     const parsedChapters = useMemo(() => {
         const re = /^\*\*(\d{2}:\d{2}:\d{2})\*\*\s*-\s*(.*)$/;
         return (analysis.chapters || []).map(raw => {
@@ -466,136 +496,156 @@ function AnalysisCard({ analysis, query, index }) {
         });
     }, [analysis.chapters]);
 
-    // Initialize YouTube Player - exact same logic as working version
-    useEffect(() => {
-        if (!analysis.video_id) return;
-
-        const init = () => {
-            if (playerRef.current || !playerElRef.current) return;
-            playerRef.current = new window.YT.Player(playerElRef.current, {
-                videoId: analysis.video_id,
-                playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
-            });
-        };
-
-        if (typeof window !== 'undefined') {
-            if (window.YT && window.YT.Player) init();
-            else {
-                const tag = document.createElement('script');
-                tag.src = 'https://www.youtube.com/iframe_api';
-                document.body.appendChild(tag);
-                window.onYouTubeIframeAPIReady = init;
-            }
-        }
-
-        return () => {
-            if (playerRef.current && playerRef.current.destroy) {
-                try {
-                    playerRef.current.destroy();
-                    playerRef.current = null;
-                } catch (e) {
-                    // Ignore cleanup errors
-                }
-            }
-        };
-    }, [analysis.video_id]);
-
-    // Jump to time function - exact same logic as working version
-    const jumpTo = (seconds) => {
-        const p = playerRef.current;
-        if (p && p.seekTo) {
-            try {
-                p.seekTo(seconds, true);
-                p.playVideo && p.playVideo();
-            } catch (e) {
-                // Ignore player errors
-            }
-        }
-    };
-
-    const handleScrollChapters = () => {
-        // Scroll to chapters section
-        const chaptersSection = document.querySelector(`#chapters-${analysis.video_id}`);
-        if (chaptersSection) {
-            chaptersSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-    };
+    // Highlight search terms in text
+    function highlightSearchTerm(text, searchTerm) {
+        if (!text || !searchTerm) return text;
+        
+        const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-800 px-1 rounded font-bold">$1</mark>');
+    }
     
     return (
-        <motion.div variants={cardVariants} className="h-full flex">
-            <Card className="w-full overflow-hidden bg-white hover:shadow-xl transition-all duration-300 border border-slate-200/60 hover:border-slate-300/80 rounded-2xl group flex flex-col h-full hover:-translate-y-2">
-                {/* Video Player Section - Using YouTube Player API like working version */}
-                <div className="aspect-video bg-slate-100 relative overflow-hidden">
-                    <div className="w-full h-full">
-                        <div ref={playerElRef} className="w-full h-full" />
-                    </div>
-                    
-                    <div className="absolute top-4 left-4">
-                        <span className="bg-violet-600 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg flex items-center gap-1.5">
-                            <BotMessageSquare className="h-3 w-3" />
-                            AI Analiz
-                        </span>
-                    </div>
-                    
-                    {parsedChapters.length > 0 && (
-                        <div className="absolute top-4 right-4">
-                            <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg flex items-center gap-1.5">
-                                <ListMusic className="h-3 w-3" />
-                                {parsedChapters.length} Bölüm
-                            </span>
+        <>
+            <motion.div 
+                variants={cardVariants}
+                initial="hidden"
+                animate="visible"
+                whileHover="hover"
+                onHoverStart={() => setIsHovered(true)}
+                onHoverEnd={() => setIsHovered(false)}
+                className="h-full cursor-pointer"
+                onClick={() => setShowChapterModal(true)}
+            >
+                <motion.div variants={hoverVariants} className="h-full">
+                    <Card className="overflow-hidden bg-white/90 backdrop-blur-sm border-0 shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col h-full group">
+                        {/* Video Thumbnail */}
+                        <div className="aspect-video bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden">
+                            <Image
+                                src={`https://img.youtube.com/vi/${analysis.video_id}/maxresdefault.jpg`}
+                                alt={analysis.title}
+                                fill
+                                style={{ objectFit: 'cover' }}
+                                className="transition-all duration-500 group-hover:scale-110"
+                                sizes="(max-width: 768px) 100vw, 33vw"
+                                quality={85}
+                                onError={(e) => {
+                                    e.target.src = `https://img.youtube.com/vi/${analysis.video_id}/hqdefault.jpg`;
+                                }}
+                            />
+                            
+                            {/* Gradient Overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            
+                            {/* Play Button */}
+                            <motion.div 
+                                className="absolute inset-0 flex items-center justify-center"
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: isHovered ? 1 : 0, scale: isHovered ? 1 : 0.8 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                <div className="bg-white/95 backdrop-blur-sm rounded-full p-4 shadow-2xl">
+                                    <Play className="h-8 w-8 text-slate-800 ml-1" />
+                                </div>
+                            </motion.div>
+
+                            {/* Badges */}
+                            <div className="absolute top-4 left-4 flex gap-2">
+                                <span className="bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                                    AI Analiz
+                                </span>
+                                {parsedChapters.length > 0 && (
+                                    <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                                        <List className="h-3 w-3" />
+                                        {parsedChapters.length}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* External Link */}
+                            <div className="absolute top-4 right-4">
+                                <a 
+                                    href={`https://www.youtube.com/watch?v=${analysis.video_id}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="bg-black/70 hover:bg-black/90 text-white p-2 rounded-full transition-colors shadow-lg"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <ExternalLink className="h-4 w-4" />
+                                </a>
+                            </div>
                         </div>
-                    )}
-                </div>
-                
-                {/* Clean Header */}
-                <div className="p-8 pb-6">
-                    <div className="flex items-start justify-between mb-4">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-violet-50 text-violet-700 border border-violet-200">
-                            <BotMessageSquare className="w-3 h-3 mr-1.5" />
-                            Analiz
-                        </span>
-                        <div className="text-xs text-slate-400 font-mono">
-                            AI
+
+                        {/* Content */}
+                        <div className="p-6 flex-grow flex flex-col">
+                            {/* Title */}
+                            <h3 className="text-lg font-bold text-slate-800 line-clamp-2 mb-3 group-hover:text-emerald-700 transition-colors">
+                                <Highlight text={analysis.title} query={query} />
+                            </h3>
+                            
+                            {/* Stats */}
+                            <div className="flex items-center gap-4 text-sm text-slate-500 mb-4">
+                                <div className="flex items-center gap-1">
+                                    <Clock className="h-4 w-4" />
+                                    <span>{parsedChapters.length} konu</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <BotMessageSquare className="h-4 w-4" />
+                                    <span>AI Analizi</span>
+                                </div>
+                            </div>
+
+                            {/* Chapter Preview - Show All */}
+                            {parsedChapters.length > 0 && (
+                                <div className="flex-grow">
+                                    <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                                        <List className="h-4 w-4 text-emerald-600" />
+                                        Konu Başlıkları ({parsedChapters.length})
+                                    </h4>
+                                    <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
+                                        {parsedChapters.map((chapter, chapterIndex) => (
+                                            <div key={chapterIndex} className="flex items-center gap-3 p-2 rounded-lg bg-slate-50/80 hover:bg-emerald-50/80 transition-colors">
+                                                <span className="font-mono text-xs font-bold text-emerald-600 bg-white px-2 py-1 rounded-md shrink-0 shadow-sm">
+                                                    {chapter.time}
+                                                </span>
+                                                <span 
+                                                    className="text-sm text-slate-700 line-clamp-2"
+                                                    dangerouslySetInnerHTML={{ __html: highlightSearchTerm(chapter.title, query) }}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Action Button */}
+                            <div className="mt-6">
+                                <Button 
+                                    className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowChapterModal(true);
+                                    }}
+                                >
+                                    <BotMessageSquare className="mr-2 h-5 w-5" />
+                                    Detaylı İncele
+                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <CardTitle className="text-xl font-bold text-slate-900 mb-4 line-clamp-2 leading-tight group-hover:text-slate-800 transition-colors">
-                        <Highlight text={analysis.title} query={query} />
-                    </CardTitle>
-                    
-                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                        <a href={`https://www.youtube.com/watch?v=${analysis.video_id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium transition-colors">
-                            YouTube&apos;da İzle
-                        </a>
-                        <TapButton onClick={handleScrollChapters} className="bg-white text-violet-700 border border-violet-600 hover:bg-violet-50">
-                            Bölümleri Göster
-                        </TapButton>
-                    </div>
-                </div>
-                
-                {/* Chapters Section - Inline like working version */}
-                <CardContent className="flex-grow px-8 pb-6" id={`chapters-${analysis.video_id}`}>
-                    <div className="space-y-3">
-                        <h4 className="text-sm font-medium text-slate-700 mb-3">Konu Başlıkları ({parsedChapters.length})</h4>
-                        <ul className="space-y-2 text-sm max-h-60 overflow-y-auto border rounded-lg p-3 bg-slate-50/80">
-                            {parsedChapters.map((chapter, chapterIndex) => (
-                                <li key={chapterIndex}>
-                                    <button
-                                        onClick={() => jumpTo(chapter.seconds)}
-                                        className="w-full text-left p-2 rounded-md hover:bg-violet-50 border border-transparent hover:border-violet-200 transition-all"
-                                    >
-                                        <span className="font-semibold text-violet-700 mr-2">{chapter.time}</span>
-                                        <span className="text-slate-700">
-                                            <Highlight text={chapter.title} query={query} />
-                                        </span>
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                </CardContent>
-            </Card>
-        </motion.div>
+                    </Card>
+                </motion.div>
+            </motion.div>
+
+            {/* Chapter Navigation Modal */}
+            <ChapterNavigationModal
+                isOpen={showChapterModal}
+                onClose={() => setShowChapterModal(false)}
+                videoId={analysis.video_id}
+                title={analysis.title}
+                chapters={analysis.chapters || []}
+                searchQuery={query}
+            />
+        </>
     );
 }
 // Diğer Yardımcı Bileşenler

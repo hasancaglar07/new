@@ -4,50 +4,57 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Play,
-    Pause,
     ExternalLink,
     Clock,
     List,
-    Maximize2,
-    AlertTriangle,
-    Repeat,
-    Volume2,
-    VolumeX
+    Eye,
+    ChevronRight
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ChapterNavigationModal from "./ChapterNavigationModal";
+
+// Highlight search terms in text
+function highlightSearchTerm(text, searchTerm) {
+    if (!text || !searchTerm) return text;
+    
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-800 px-1 rounded font-bold">$1</mark>');
+}
 
 const EnhancedVideoCard = ({ 
     videoId, 
     data, 
     onAnalyzeAgain, 
     index = 0,
-    showEmbeddedPlayer = true 
+    showEmbeddedPlayer = true,
+    searchQuery = '' 
 }) => {
-    const [isPlayerReady, setIsPlayerReady] = useState(false);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [isMuted, setIsMuted] = useState(true);
     const [showChapterModal, setShowChapterModal] = useState(false);
-    const [currentTime, setCurrentTime] = useState(0);
-    const [duration, setDuration] = useState(0);
-    const playerRef = useRef(null);
-    const playerElRef = useRef(null);
+    const [isHovered, setIsHovered] = useState(false);
 
     // Animation variants
     const cardVariants = {
-        hidden: { opacity: 0, y: 30, scale: 0.95 },
+        hidden: { opacity: 0, y: 20, scale: 0.95 },
         visible: { 
             opacity: 1, 
             y: 0, 
             scale: 1,
             transition: { 
-                delay: index * 0.1, 
-                duration: 0.6,
+                delay: index * 0.05, 
+                duration: 0.4,
                 ease: [0.25, 0.46, 0.45, 0.94] 
             } 
+        }
+    };
+
+    const hoverVariants = {
+        rest: { scale: 1, y: 0 },
+        hover: { 
+            scale: 1.03, 
+            y: -5,
+            transition: { duration: 0.2, ease: "easeOut" }
         }
     };
 
@@ -64,120 +71,29 @@ const EnhancedVideoCard = ({
         return { time: '00:00:00', title: raw.replace(/\*\*/g, ''), seconds: 0 };
     }) || [];
 
-    // Initialize YouTube player
-    useEffect(() => {
-        if (!showEmbeddedPlayer || !videoId) return;
-
-        const initPlayer = () => {
-            if (playerRef.current || !playerElRef.current) return;
-            
-            playerRef.current = new window.YT.Player(playerElRef.current, {
-                videoId,
-                height: '100%',
-                width: '100%',
-                playerVars: {
-                    rel: 0,
-                    modestbranding: 1,
-                    playsinline: 1,
-                    controls: 1,
-                    mute: 1,
-                    autoplay: 0
-                },
-                events: {
-                    onReady: (event) => {
-                        setIsPlayerReady(true);
-                        setDuration(event.target.getDuration());
-                    },
-                    onStateChange: (event) => {
-                        setIsPlaying(event.data === window.YT.PlayerState.PLAYING);
-                    }
-                }
-            });
-        };
-
-        if (typeof window !== 'undefined') {
-            if (window.YT && window.YT.Player) {
-                initPlayer();
-            } else {
-                const tag = document.createElement('script');
-                tag.src = 'https://www.youtube.com/iframe_api';
-                document.body.appendChild(tag);
-                window.onYouTubeIframeAPIReady = initPlayer;
-            }
-        }
-
-        return () => {
-            if (playerRef.current && playerRef.current.destroy) {
-                playerRef.current.destroy();
-                playerRef.current = null;
-            }
-        };
-    }, [videoId, showEmbeddedPlayer]);
-
-    // Update current time periodically
-    useEffect(() => {
-        if (!isPlaying || !playerRef.current) return;
-
-        const interval = setInterval(() => {
-            if (playerRef.current && playerRef.current.getCurrentTime) {
-                setCurrentTime(playerRef.current.getCurrentTime());
-            }
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [isPlaying]);
-
-    const jumpToTime = (seconds) => {
-        if (playerRef.current && playerRef.current.seekTo) {
-            playerRef.current.seekTo(seconds, true);
-            if (playerRef.current.playVideo) {
-                playerRef.current.playVideo();
-            }
-        }
-    };
-
-    const togglePlayPause = () => {
-        if (!playerRef.current) return;
-        
-        if (isPlaying) {
-            playerRef.current.pauseVideo();
-        } else {
-            playerRef.current.playVideo();
-        }
-    };
-
-    const toggleMute = () => {
-        if (!playerRef.current) return;
-        
-        if (isMuted) {
-            playerRef.current.unMute();
-            setIsMuted(false);
-        } else {
-            playerRef.current.mute();
-            setIsMuted(true);
-        }
-    };
-
     // Handle invalid data
     if (!data || typeof data !== 'object' || !data.chapters || !Array.isArray(data.chapters)) {
         return (
             <motion.div variants={cardVariants} className="h-full">
-                <Card className="overflow-hidden bg-white border border-amber-300 flex flex-col items-center justify-center text-center p-6 h-full">
-                    <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
-                    <CardTitle className="text-lg font-bold text-slate-800 mb-2">
-                        Uyumsuz Veri
-                    </CardTitle>
-                    <CardDescription className="text-sm mb-4">
-                        Bu kayıt eski formatta veya bozuk.
-                    </CardDescription>
-                    <Button 
-                        variant="outline" 
-                        onClick={() => onAnalyzeAgain(`https://www.youtube.com/watch?v=${videoId}`)} 
-                        className="w-full text-sm text-slate-600 hover:text-emerald-700"
+                <Card className="overflow-hidden bg-white/90 backdrop-blur-sm border border-amber-200 flex flex-col items-center justify-center text-center p-8 h-full shadow-lg">
+                    <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
+                        <ExternalLink className="h-8 w-8 text-amber-600" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800 mb-2">
+                        Veri Hatası
+                    </h3>
+                    <p className="text-sm text-slate-600 mb-4">
+                        Bu analiz verisi okunamıyor.
+                    </p>
+                    <a 
+                        href={`https://www.youtube.com/watch?v=${videoId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors"
                     >
-                        <Repeat className="mr-2 h-4 w-4" /> 
-                        Tekrar Analiz Et
-                    </Button>
+                        <ExternalLink className="h-4 w-4" />
+                        YouTube'da Aç
+                    </a>
                 </Card>
             </motion.div>
         );
@@ -185,142 +101,144 @@ const EnhancedVideoCard = ({
 
     return (
         <>
-            <motion.div variants={cardVariants} className="h-full">
-                <Card className="overflow-hidden bg-white border border-gray-200 hover:border-emerald-200 group transition-all duration-300 hover:shadow-xl hover:-translate-y-1 flex flex-col h-full">
-                    {/* Video Player Section */}
-                    <div className="aspect-video bg-gradient-to-br from-emerald-100/60 to-teal-100/40 relative overflow-hidden">
-                        <div className="w-full h-full relative">
-                            {/* Always show thumbnail with play button */}
+            <motion.div 
+                variants={cardVariants}
+                initial="hidden"
+                animate="visible"
+                whileHover="hover"
+                onHoverStart={() => setIsHovered(true)}
+                onHoverEnd={() => setIsHovered(false)}
+                className="h-full cursor-pointer"
+                onClick={() => setShowChapterModal(true)}
+            >
+                <motion.div variants={hoverVariants} className="h-full">
+                    <Card className="overflow-hidden bg-white/90 backdrop-blur-sm border-0 shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col h-full group">
+                        {/* Video Thumbnail */}
+                        <div className="aspect-video bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden">
                             <Image
                                 src={data.thumbnail || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`}
                                 alt={data.title}
                                 fill
                                 style={{ objectFit: 'cover' }}
-                                className="transition-transform group-hover:scale-105"
-                                sizes="(max-width: 768px) 100vw, 50vw"
-                                quality={75}
+                                className="transition-all duration-500 group-hover:scale-110"
+                                sizes="(max-width: 768px) 100vw, 33vw"
+                                quality={85}
                                 onError={(e) => {
-                                    // Fallback to standard quality if maxres fails
                                     e.target.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
                                 }}
                             />
-                            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-all duration-300 flex items-center justify-center">
-                                <Button
-                                    size="lg"
-                                    className="bg-white/90 hover:bg-white text-slate-800 shadow-lg"
-                                    onClick={() => setShowChapterModal(true)}
+                            
+                            {/* Gradient Overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            
+                            {/* Play Button */}
+                            <motion.div 
+                                className="absolute inset-0 flex items-center justify-center"
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: isHovered ? 1 : 0, scale: isHovered ? 1 : 0.8 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                <div className="bg-white/95 backdrop-blur-sm rounded-full p-4 shadow-2xl">
+                                    <Play className="h-8 w-8 text-slate-800 ml-1" />
+                                </div>
+                            </motion.div>
+
+                            {/* Badges */}
+                            <div className="absolute top-4 left-4 flex gap-2">
+                                <span className="bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                                    AI Analiz
+                                </span>
+                                {parsedChapters.length > 0 && (
+                                    <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                                        <List className="h-3 w-3" />
+                                        {parsedChapters.length}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* External Link */}
+                            <div className="absolute top-4 right-4">
+                                <a 
+                                    href={`https://www.youtube.com/watch?v=${videoId}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="bg-black/70 hover:bg-black/90 text-white p-2 rounded-full transition-colors shadow-lg"
+                                    onClick={(e) => e.stopPropagation()}
                                 >
-                                    <Play className="h-6 w-6 mr-2" />
-                                    Videoyu İzle
-                                </Button>
+                                    <ExternalLink className="h-4 w-4" />
+                                </a>
                             </div>
                         </div>
 
-                        {/* Video Info Badges */}
-                        <div className="absolute top-3 left-3 flex gap-2">
-                            <span className="bg-emerald-500/90 text-white px-2 py-1 rounded-full text-xs font-semibold shadow-md">
-                                AI Analiz
-                            </span>
-                            {parsedChapters.length > 0 && (
-                                <span className="bg-blue-500/90 text-white px-2 py-1 rounded-full text-xs font-semibold shadow-md flex items-center gap-1">
-                                    <List className="h-3 w-3" />
-                                    {parsedChapters.length} Bölüm
-                                </span>
-                            )}
-                        </div>
+                        {/* Content */}
+                        <div className="p-6 flex-grow flex flex-col">
+                            {/* Title */}
+                            <h3 className="text-lg font-bold text-slate-800 line-clamp-2 mb-3 group-hover:text-emerald-700 transition-colors">
+                                {data.title}
+                            </h3>
+                            
+                            {/* Stats */}
+                            <div className="flex items-center gap-4 text-sm text-slate-500 mb-4">
+                                <div className="flex items-center gap-1">
+                                    <Clock className="h-4 w-4" />
+                                    <span>{parsedChapters.length} konu</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <Eye className="h-4 w-4" />
+                                    <span>AI Analizi</span>
+                                </div>
+                            </div>
 
-                        {/* External Link */}
-                        <div className="absolute top-3 right-3">
-                            <a 
-                                href={`https://www.youtube.com/watch?v=${videoId}`} 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
-                                className="bg-black/50 text-white p-2 rounded-full hover:bg-black/80 transition-colors shadow-md"
-                            >
-                                <ExternalLink className="h-4 w-4" />
-                            </a>
-                        </div>
-                    </div>
+                            {/* Chapter Preview - Show All */}
+                             {parsedChapters.length > 0 && (
+                                 <div className="flex-grow">
+                                     <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                                         <List className="h-4 w-4 text-emerald-600" />
+                                         Konu Başlıkları ({parsedChapters.length})
+                                     </h4>
+                                     <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
+                                         {parsedChapters.map((chapter, chapterIndex) => (
+                                              <div key={chapterIndex} className="flex items-center gap-3 p-2 rounded-lg bg-slate-50/80 hover:bg-emerald-50/80 transition-colors">
+                                                  <span className="font-mono text-xs font-bold text-emerald-600 bg-white px-2 py-1 rounded-md shrink-0 shadow-sm">
+                                                      {chapter.time}
+                                                  </span>
+                                                  <span 
+                                                      className="text-sm text-slate-700 line-clamp-2"
+                                                      dangerouslySetInnerHTML={{ __html: highlightSearchTerm(chapter.title, searchQuery) }}
+                                                  />
+                                              </div>
+                                          ))}
+                                     </div>
+                                 </div>
+                             )}
 
-                    {/* Card Header */}
-                    <CardHeader className="p-6 pb-4">
-                        <CardTitle className="text-lg font-bold text-slate-800 line-clamp-2 group-hover:text-emerald-700 transition-colors">
-                            {data.title}
-                        </CardTitle>
-                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                            <Clock className="h-4 w-4" />
-                            <span>{parsedChapters.length} konu başlığı</span>
+                            {/* Action Button */}
+                            <div className="mt-6">
+                                <Button 
+                                    className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowChapterModal(true);
+                                    }}
+                                >
+                                    <Eye className="mr-2 h-5 w-5" />
+                                    Detaylı İncele
+                                    <ChevronRight className="ml-2 h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
-                    </CardHeader>
-
-                    {/* Chapters Accordion */}
-                    <CardContent className="p-0 flex-grow">
-                        <Accordion type="single" collapsible className="w-full">
-                            <AccordionItem value="chapters" className="border-b-0">
-                                <AccordionTrigger className="text-sm font-semibold text-emerald-700 hover:no-underline px-6 py-4 hover:bg-emerald-50/30 transition-colors">
-                                    <div className="flex items-center gap-2">
-                                        <List className="h-4 w-4" />
-                                        Konu Başlıklarını Gör ({parsedChapters.length})
-                                    </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="px-6 pb-4">
-                                    <div className="max-h-48 overflow-y-auto border border-emerald-200/60 rounded-lg bg-gradient-to-r from-emerald-50/40 to-transparent">
-                                        <ul className="space-y-2 p-3">
-                                            {parsedChapters.map((chapter, chapterIndex) => (
-                                                <li key={chapterIndex}>
-                                                    <button
-                                                        onClick={() => jumpToTime(chapter.seconds)}
-                                                        className="w-full text-left p-2 rounded-md hover:bg-emerald-100/60 border border-transparent hover:border-emerald-200 transition-all group/chapter"
-                                                        disabled={!isPlayerReady}
-                                                    >
-                                                        <div className="flex items-start gap-3">
-                                                            <span className="font-mono text-sm font-bold text-emerald-600 bg-white px-2 py-1 rounded-md shrink-0 shadow-sm group-hover/chapter:bg-emerald-100">
-                                                                {chapter.time}
-                                                            </span>
-                                                            <span className="text-sm text-slate-700 leading-relaxed">
-                                                                {chapter.title}
-                                                            </span>
-                                                        </div>
-                                                    </button>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-                        </Accordion>
-                    </CardContent>
-
-                    {/* Footer Actions */}
-                    <div className="p-6 border-t border-emerald-100/60 mt-auto">
-                        <div className="flex gap-2">
-                            <Button 
-                                variant="outline" 
-                                onClick={() => onAnalyzeAgain(`https://www.youtube.com/watch?v=${videoId}`)} 
-                                className="flex-1 text-sm text-slate-600 hover:text-emerald-700 border-emerald-200 hover:border-emerald-300"
-                            >
-                                <Repeat className="mr-2 h-4 w-4" /> 
-                                Yeniden Analiz Et
-                            </Button>
-                            <Button 
-                                onClick={() => setShowChapterModal(true)}
-                                className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white"
-                            >
-                                <Maximize2 className="mr-2 h-4 w-4" />
-                                Detaylı Görünüm
-                            </Button>
-                        </div>
-                    </div>
-                </Card>
+                    </Card>
+                </motion.div>
             </motion.div>
 
-            {/* Enhanced Chapter Navigation Modal */}
+            {/* Chapter Navigation Modal */}
             <ChapterNavigationModal
                 isOpen={showChapterModal}
                 onClose={() => setShowChapterModal(false)}
                 videoId={videoId}
                 title={data.title}
                 chapters={data.chapters || []}
+                searchQuery={searchQuery}
             />
         </>
     );

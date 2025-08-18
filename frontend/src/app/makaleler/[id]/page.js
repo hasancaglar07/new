@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Clock, User, Library, Loader2, ServerCrash, FileText, Calendar, Share2, Bookmark } from 'lucide-react';
+import { ArrowLeft, Clock, User, Library, Loader2, ServerCrash, FileText, Share2, Bookmark, MessageCircle, Twitter, Facebook } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
@@ -110,10 +111,103 @@ function ErrorState({ message }) {
 // --- ANA MAKALE OKUMA SAYFASI ---
 // 'params' prop'u sayesinde URL'deki [id] değerini alabiliyoruz.
 export default function ArticleReadPage({ params }) {
+    const searchParams = useSearchParams();
     const [article, setArticle] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
-    const { id } = params; // URL'den ID'yi al: /makaleler/123 -> id = "123"
+    const [selectedText, setSelectedText] = useState("");
+    const [showShareMenu, setShowShareMenu] = useState(false);
+    const [shareMenuPosition, setShareMenuPosition] = useState({ x: 0, y: 0 });
+    
+    // URL parametrelerini koru
+    const preservedParams = searchParams.toString();
+    const backUrl = preservedParams ? `/makaleler?${preservedParams}` : '/makaleler';
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // URL'den arama parametresini al
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const urlParams = new URLSearchParams(window.location.search);
+            const query = urlParams.get('search') || '';
+            setSearchQuery(query);
+        }
+    }, []);
+
+    // Arama kelimesi vurgulaması
+    const highlightSearchTerm = (text, searchTerm) => {
+        if (!text || !searchTerm) return text;
+        const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-800 px-1 rounded font-bold">$1</mark>');
+    };
+
+    // Metin seçimi algılama
+    useEffect(() => {
+        const handleTextSelection = () => {
+            // Kısa bir gecikme ekleyerek selection'ın tamamlanmasını bekle
+            setTimeout(() => {
+                const selection = window.getSelection();
+                const text = selection.toString().trim();
+                
+                if (text.length > 10) { // En az 10 karakter seçilmeli
+                    setSelectedText(text);
+                    const range = selection.getRangeAt(0);
+                    const rect = range.getBoundingClientRect();
+                    setSharePosition({
+                        x: rect.left + rect.width / 2,
+                        y: rect.top + window.scrollY - 60
+                    });
+                    setShowShareMenu(true);
+                } else {
+                    setShowShareMenu(false);
+                    setSelectedText('');
+                }
+            }, 100);
+        };
+
+        const handleClickOutside = () => {
+            setShowShareMenu(false);
+            setSelectedText('');
+        };
+
+        document.addEventListener('mouseup', handleTextSelection);
+        document.addEventListener('touchend', handleTextSelection);
+        document.addEventListener('click', handleClickOutside);
+        
+        return () => {
+            document.removeEventListener('mouseup', handleTextSelection);
+            document.removeEventListener('touchend', handleTextSelection);
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, []);
+
+    // Sosyal paylaşım fonksiyonları
+    const shareOnWhatsApp = (text) => {
+        const articleTitle = article?.title || article?.baslik || 'Makale';
+        const authorName = article?.author || article?.yazar || 'Bilinmeyen Yazar';
+        const shareText = `📚 *${articleTitle}*\n\n✍️ Yazar: ${authorName}\n\n📝 Seçilen metin: "${text}"\n\n🔗 Tam makaleyi okumak için: ${window.location.href}\n\n#makale #okuma`;
+        const url = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+        window.open(url, '_blank');
+        setShowShareMenu(false);
+    };
+
+    const shareOnFacebook = (text) => {
+        const articleTitle = article?.title || article?.baslik || 'Makale';
+        const authorName = article?.author || article?.yazar || 'Bilinmeyen Yazar';
+        const shareText = `📚 ${articleTitle}\n\n✍️ Yazar: ${authorName}\n\n📝 "${text}"\n\nBu değerli makaleyi okumak için tıklayın!`;
+        const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(shareText)}`;
+        window.open(url, '_blank');
+        setShowShareMenu(false);
+    };
+
+    const shareOnTwitter = (text) => {
+        const articleTitle = article?.title || article?.baslik || 'Makale';
+        const authorName = article?.author || article?.yazar || 'Bilinmeyen Yazar';
+        const shareText = `📚 "${articleTitle}" - ${authorName}\n\n📝 "${text}"\n\n🔗 ${window.location.href}\n\n#makale #okuma #bilgi`;
+        const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+        window.open(url, '_blank');
+        setShowShareMenu(false);
+    };
+    const { id } = use(params); // URL'den ID'yi al: /makaleler/123 -> id = "123"
 
     useEffect(() => {
         if (!id) return;
@@ -143,10 +237,7 @@ export default function ArticleReadPage({ params }) {
     if (error) return <ErrorState message={error} />;
     if (!article) return null;
 
-    // Makalenin tarihini formatlayalım
-    const articleDate = new Date(article.scraped_at).toLocaleDateString('tr-TR', {
-        year: 'numeric', month: 'long', day: 'numeric'
-    });
+
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-emerald-50/30 via-teal-50/20 to-green-50/30">
@@ -168,7 +259,7 @@ export default function ArticleReadPage({ params }) {
                         variant="ghost" 
                         className="text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/50 transition-colors"
                     >
-                        <Link href="/makaleler">
+                        <Link href={backUrl}>
                             <ArrowLeft className="mr-2 h-4 w-4" />
                             Tüm Makaleler
                         </Link>
@@ -196,10 +287,7 @@ export default function ArticleReadPage({ params }) {
                             {article.title}
                         </h1>
 
-                        {/* Subtitle/Description */}
-                        <p className="text-xl text-slate-600 leading-relaxed mb-8 font-light">
-                            Bu makalede {article.category.toLowerCase()} konusunda değerli bilgiler bulacaksınız.
-                        </p>
+
 
                         {/* Metadata */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-600">
@@ -213,17 +301,7 @@ export default function ArticleReadPage({ params }) {
                                 </div>
                             </div>
                             
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-full flex items-center justify-center">
-                                    <Calendar className="h-5 w-5 text-emerald-600" />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Tarih</p>
-                                    <time dateTime={article.scraped_at} className="font-semibold text-slate-700">
-                                        {articleDate}
-                                    </time>
-                                </div>
-                            </div>
+
                             
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-full flex items-center justify-center">
@@ -247,20 +325,33 @@ export default function ArticleReadPage({ params }) {
                         <div className="p-8 md:p-12">
                             <div
                                 className="prose prose-lg max-w-none 
-                                prose-headings:text-slate-800 prose-headings:font-bold prose-headings:tracking-tight
-                                prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl
-                                prose-p:text-slate-700 prose-p:leading-relaxed prose-p:mb-6
-                                prose-a:text-emerald-600 prose-a:font-medium prose-a:no-underline hover:prose-a:text-emerald-700 hover:prose-a:underline
-                                prose-strong:text-slate-800 prose-strong:font-semibold
-                                prose-em:text-slate-600 prose-em:italic
-                                prose-blockquote:border-l-4 prose-blockquote:border-emerald-200 prose-blockquote:bg-emerald-50/50 prose-blockquote:pl-6 prose-blockquote:py-4 prose-blockquote:my-8 prose-blockquote:rounded-r-lg
-                                prose-ul:my-6 prose-ol:my-6 prose-li:my-2 prose-li:text-slate-700
-                                prose-code:text-emerald-700 prose-code:bg-emerald-50 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:font-mono prose-code:text-sm
-                                prose-pre:bg-slate-50 prose-pre:border prose-pre:border-slate-200 prose-pre:rounded-lg
-                                prose-hr:border-emerald-200 prose-hr:my-12
-                                prose-table:my-8 prose-thead:bg-emerald-50 prose-th:text-emerald-700 prose-th:font-semibold prose-th:p-3 prose-td:p-3 prose-td:border-slate-200
+                                prose-headings:text-slate-800 prose-headings:font-bold prose-headings:tracking-tight prose-headings:scroll-mt-20
+                                prose-h1:text-4xl prose-h1:mb-8 prose-h1:mt-12 prose-h1:leading-tight prose-h1:text-emerald-800
+                                prose-h2:text-3xl prose-h2:mb-6 prose-h2:mt-10 prose-h2:leading-tight prose-h2:text-emerald-700 prose-h2:border-b prose-h2:border-emerald-200 prose-h2:pb-3
+                                prose-h3:text-2xl prose-h3:mb-4 prose-h3:mt-8 prose-h3:leading-snug prose-h3:text-emerald-600
+                                prose-h4:text-xl prose-h4:mb-3 prose-h4:mt-6 prose-h4:text-slate-700 prose-h4:font-semibold
+                                prose-p:text-slate-700 prose-p:leading-relaxed prose-p:mb-6 prose-p:text-lg prose-p:font-normal
+                                prose-a:text-emerald-600 prose-a:font-medium prose-a:no-underline hover:prose-a:text-emerald-700 hover:prose-a:underline prose-a:transition-colors
+                                prose-strong:text-slate-800 prose-strong:font-semibold prose-strong:bg-yellow-100 prose-strong:px-1 prose-strong:rounded
+                                prose-em:text-slate-600 prose-em:italic prose-em:font-medium
+                                prose-blockquote:border-l-4 prose-blockquote:border-emerald-300 prose-blockquote:bg-emerald-50/70 prose-blockquote:pl-8 prose-blockquote:pr-6 prose-blockquote:py-6 prose-blockquote:my-8 prose-blockquote:rounded-r-xl prose-blockquote:shadow-sm prose-blockquote:italic prose-blockquote:text-emerald-800
+                                prose-ul:my-8 prose-ul:space-y-3 prose-ol:my-8 prose-ol:space-y-3 prose-li:text-slate-700 prose-li:leading-relaxed prose-li:text-lg
+                                prose-code:text-emerald-700 prose-code:bg-emerald-50 prose-code:px-3 prose-code:py-1 prose-code:rounded-md prose-code:font-mono prose-code:text-base prose-code:border prose-code:border-emerald-200
+                                prose-pre:bg-slate-50 prose-pre:border prose-pre:border-slate-200 prose-pre:rounded-xl prose-pre:p-6 prose-pre:my-8 prose-pre:shadow-sm
+                                prose-hr:border-emerald-200 prose-hr:my-16 prose-hr:border-2
+                                prose-table:my-10 prose-table:shadow-lg prose-table:rounded-lg prose-table:overflow-hidden
+                                prose-thead:bg-emerald-100 prose-th:text-emerald-800 prose-th:font-bold prose-th:p-4 prose-th:text-left
+                                prose-td:p-4 prose-td:border-slate-200 prose-td:text-slate-700
+                                prose-img:rounded-xl prose-img:shadow-lg prose-img:my-8
+                                first-letter:text-7xl first-letter:font-bold first-letter:text-emerald-600 first-letter:float-left first-letter:mr-3 first-letter:mt-1 first-letter:leading-none
                                 "
-                                dangerouslySetInnerHTML={{ __html: article.content }}
+                                style={{
+                                    textAlign: 'justify',
+                                    hyphens: 'auto',
+                                    wordSpacing: '0.1em',
+                                    letterSpacing: '0.01em'
+                                }}
+                                dangerouslySetInnerHTML={{ __html: highlightSearchTerm(article.content, searchQuery) }}
                             />
                         </div>
                         
@@ -272,7 +363,7 @@ export default function ArticleReadPage({ params }) {
                                         asChild 
                                         className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white"
                                     >
-                                        <Link href="/makaleler">
+                                        <Link href={backUrl}>
                                             <Library className="mr-2 h-4 w-4" />
                                             Diğer Makaleler
                                         </Link>
@@ -301,6 +392,57 @@ export default function ArticleReadPage({ params }) {
                         </div>
                     </motion.div>
                 </article>
+
+                {/* Floating Share Menu */}
+                {showShareMenu && selectedText && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className="fixed z-[9999] bg-white rounded-lg shadow-2xl border border-slate-200 p-2 flex items-center gap-1"
+                        style={{
+                            left: Math.max(10, Math.min(sharePosition.x - 75, (typeof window !== 'undefined' ? window.innerWidth : 1000) - 160)),
+                            top: Math.max(10, sharePosition.y),
+                            pointerEvents: 'auto'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                shareOnWhatsApp(selectedText);
+                            }}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors flex items-center justify-center"
+                            title="WhatsApp'ta Paylaş"
+                        >
+                            <span className="text-base">💬</span>
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                shareOnFacebook(selectedText);
+                            }}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors flex items-center justify-center"
+                            title="Facebook'ta Paylaş"
+                        >
+                            <span className="text-base">📘</span>
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                shareOnTwitter(selectedText);
+                            }}
+                            className="p-2 text-sky-600 hover:bg-sky-50 rounded-full transition-colors flex items-center justify-center"
+                            title="X'te Paylaş"
+                        >
+                            <span className="text-base">🐦</span>
+                        </button>
+                        <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white border-r border-b border-slate-200 rotate-45"></div>
+                    </motion.div>
+                )}
             </motion.div>
         </div>
     );

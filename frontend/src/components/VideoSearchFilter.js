@@ -8,6 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+// Highlight search terms in text
+function highlightSearchTerm(text, searchTerm) {
+    if (!text || !searchTerm) return text;
+    
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-800 px-1 rounded font-bold">$1</mark>');
+}
+
 const VideoSearchFilter = ({ 
     history = [], 
     onFilteredResults, 
@@ -84,10 +92,10 @@ const VideoSearchFilter = ({
         return filtered;
     }, [history, searchQuery, sortBy, dateRange]);
 
-    // Update parent component with filtered results
+    // Update parent component with filtered results and search query
     useEffect(() => {
-        onFilteredResults(filteredAndSortedHistory);
-    }, [filteredAndSortedHistory, onFilteredResults]);
+        onFilteredResults(filteredAndSortedHistory, searchQuery);
+    }, [filteredAndSortedHistory, searchQuery, onFilteredResults]);
 
     const clearAllFilters = () => {
         setSearchQuery("");
