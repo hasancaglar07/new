@@ -392,12 +392,11 @@ export default function ArticlesPage() {
                             </div>
                             {/* Search */}
                             <div className="relative w-full">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#177267]" />
                                 <Input 
                                     placeholder="Başlık veya yazar ile ara..." 
                                     value={searchTerm} 
                                     onChange={(e) => setSearchTerm(e.target.value)} 
-                                    className="w-full h-11 pl-9 border-slate-300 focus:border-[#177267] focus:ring-0"
+                                    className="w-full h-11 pl-4 border-slate-300 focus:border-[#177267] focus:ring-0"
                                 />
                             </div>
                         </div>

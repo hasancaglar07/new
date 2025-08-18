@@ -1,5 +1,3 @@
-// frontend/src/app/makaleler/[id]/page.js
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -31,16 +29,16 @@ function ArticleSkeleton() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 bg-slate-300 rounded animate-pulse"></div>
-                            <div className="h-5 bg-slate-200 rounded w-24 animate-pulse"></div>
+                            <div className="w-5 h-5 bg-emerald-300 rounded animate-pulse"></div>
+                            <div className="h-5 bg-emerald-200 rounded w-24 animate-pulse"></div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 bg-slate-300 rounded animate-pulse"></div>
-                            <div className="h-5 bg-slate-200 rounded w-20 animate-pulse"></div>
+                            <div className="w-5 h-5 bg-emerald-300 rounded animate-pulse"></div>
+                            <div className="h-5 bg-emerald-200 rounded w-20 animate-pulse"></div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 bg-slate-300 rounded animate-pulse"></div>
-                            <div className="h-5 bg-slate-200 rounded w-16 animate-pulse"></div>
+                            <div className="w-5 h-5 bg-emerald-300 rounded animate-pulse"></div>
+                            <div className="h-5 bg-emerald-200 rounded w-16 animate-pulse"></div>
                         </div>
                     </div>
                 </div>
@@ -307,7 +305,6 @@ export default function ArticleReadPage({ params }) {
         </div>
     );
 }
-
 // Tailwind'in `prose` eklentisini kullanabilmek için
 // `tailwind.config.js` dosyasına bir eklenti eklememiz gerekebilir.
 // Eğer metinler stillenmemiş görünürse, bu adımı uygulayacağız.

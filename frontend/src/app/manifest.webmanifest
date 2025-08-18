@@ -1,0 +1,14 @@
+{
+  "name": "Mihmandar E-Kütüphanesi",
+  "short_name": "Mihmandar",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#177267",
+  "scope": "/",
+  "icons": [
+    { "src": "/logo-top.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
+
+

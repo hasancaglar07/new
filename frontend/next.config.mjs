@@ -35,6 +35,11 @@ const nextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return [
+      { source: '/namaz', destination: '/namaz/index.html' },
+    ];
+  },
 };
 
 export default nextConfig;

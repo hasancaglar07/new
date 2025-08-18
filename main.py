@@ -810,6 +810,44 @@ def get_page_image(pdf_file: str, page_num: int = Query(..., gt=0)):
     except Exception as e:
         logger.error(f"PDF sayfa resmi işlenirken hata: {e}")
         raise HTTPException(status_code=500, detail="Sayfa resmi işlenirken hata oluştu.")
+
+@app.get("/pdf/page_text")
+def get_page_text(pdf_file: str, page_num: int = Query(..., gt=0)):
+    """Belirtilen PDF sayfasının düz metnini döndürür."""
+    try:
+        import tempfile, requests
+        # Önce yerel PDF
+        pdf_path = PDF_DIR / urllib.parse.unquote(pdf_file)
+        if pdf_path.is_file():
+            with fitz.open(pdf_path) as doc:
+                if not (0 < page_num <= len(doc)):
+                    raise HTTPException(status_code=400, detail="Geçersiz sayfa.")
+                page = doc.load_page(page_num - 1)
+                return {"text": page.get_text("text") or ""}
+        # Backblaze
+        if not PDF_BASE_URL:
+            raise HTTPException(status_code=404, detail="PDF bulunamadı.")
+        pdf_url = f"{PDF_BASE_URL}/{urllib.parse.unquote(pdf_file)}"
+        resp = requests.get(pdf_url, timeout=30)
+        resp.raise_for_status()
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+        tmp.write(resp.content); tmp.close()
+        try:
+            with fitz.open(tmp.name) as doc:
+                if not (0 < page_num <= len(doc)):
+                    raise HTTPException(status_code=400, detail="Geçersiz sayfa.")
+                page = doc.load_page(page_num - 1)
+                return {"text": page.get_text("text") or ""}
+        finally:
+            try:
+                os.unlink(tmp.name)
+            except Exception:
+                pass
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"PDF sayfa metni alınamadı {pdf_file}: {e}")
+        raise HTTPException(status_code=500, detail="PDF sayfa metni alınamadı.")
 @app.get("/search/videos")
 async def search_videos(q: str):
     if not YOUTUBE_API_KEYS:
@@ -920,3 +958,465 @@ async def stream_audio_file_by_id(audio_id: int):
         with open(full_path, mode="rb") as file_like:
             yield from file_like
     return StreamingResponse(iterfile(), media_type="audio/mpeg")
+
+# --- Mobile App API Endpoints ---
+
+@app.get("/cities")
+async def get_cities():
+    """Türkiye'nin tüm il ve ilçelerini döndürür"""
+    cities_data = {
+        "cities": [
+            {
+                "id": 1,
+                "name": "Adana",
+                "districts": ["Seyhan", "Yüreğir", "Çukurova", "Sarıçam", "Aladağ", "Ceyhan", "Feke", "İmamoğlu", "Karaisalı", "Karataş", "Kozan", "Pozantı", "Saimbeyli", "Tufanbeyli", "Yumurtalık"]
+            },
+            {
+                "id": 6,
+                "name": "Ankara",
+                "districts": ["Altındağ", "Ayaş", "Bala", "Beypazarı", "Çamlıdere", "Çankaya", "Çubuk", "Elmadağ", "Etimesgut", "Evren", "Gölbaşı", "Güdül", "Haymana", "Kalecik", "Kızılcahamam", "Mamak", "Nallıhan", "Polatlı", "Pursaklar", "Sincan", "Şereflikoçhisar", "Yenimahalle"]
+            },
+            {
+                "id": 7,
+                "name": "Antalya",
+                "districts": ["Akseki", "Aksu", "Alanya", "Demre", "Döşemealtı", "Elmalı", "Finike", "Gazipaşa", "Gündoğmuş", "İbradı", "Kaş", "Kemer", "Kepez", "Konyaaltı", "Korkuteli", "Kumluca", "Manavgat", "Muratpaşa", "Serik"]
+            },
+            {
+                "id": 34,
+                "name": "İstanbul",
+                "districts": ["Adalar", "Arnavutköy", "Ataşehir", "Avcılar", "Bağcılar", "Bahçelievler", "Bakırköy", "Başakşehir", "Bayrampaşa", "Beşiktaş", "Beykoz", "Beylikdüzü", "Beyoğlu", "Büyükçekmece", "Çatalca", "Çekmeköy", "Esenler", "Esenyurt", "Eyüpsultan", "Fatih", "Gaziosmanpaşa", "Güngören", "Kadıköy", "Kağıthane", "Kartal", "Küçükçekmece", "Maltepe", "Pendik", "Sancaktepe", "Sarıyer", "Silivri", "Sultanbeyli", "Sultangazi", "Şile", "Şişli", "Tuzla", "Ümraniye", "Üsküdar", "Zeytinburnu"]
+            },
+            {
+                "id": 35,
+                "name": "İzmir",
+                "districts": ["Aliağa", "Balçova", "Bayındır", "Bayraklı", "Bergama", "Beydağ", "Bornova", "Buca", "Çeşme", "Çiğli", "Dikili", "Foça", "Gaziemir", "Güzelbahçe", "Karabağlar", "Karaburun", "Karşıyaka", "Kemalpaşa", "Kınık", "Kiraz", "Konak", "Menderes", "Menemen", "Narlıdere", "Ödemiş", "Seferihisar", "Selçuk", "Tire", "Torbalı", "Urla"]
+            }
+        ]
+    }
+    return cities_data
+
+from typing import Optional
+
+@app.get("/prayer-times")
+async def get_prayer_times(city: str = "", district: str = "", latitude: Optional[float] = None, longitude: Optional[float] = None):
+    """Belirtilen şehir/ilçe için namaz vakitlerini canlı kaynaktan döndürür (önce vakit.vercel.app, başarısızsa Aladhan/Diyanet)."""
+    import datetime as _dt
+    from zoneinfo import ZoneInfo
+
+    client: httpx.AsyncClient = app.state.httpx_client
+
+    def _normalize_tr_name(text: str) -> str:
+        if not text:
+            return text
+        mapping = str.maketrans({
+            "İ": "I", "I": "I", "ı": "i",
+            "Ğ": "G", "ğ": "g",
+            "Ş": "S", "ş": "s",
+            "Ö": "O", "ö": "o",
+            "Ü": "U", "ü": "u",
+            "Ç": "C", "ç": "c",
+        })
+        return text.translate(mapping)
+
+    def _clean(t: str | None) -> str | None:
+        if not t:
+            return None
+        return t.split(" ")[0].strip()
+
+    def _compute_next(times: dict[str, Optional[str]], tz_name: str):
+        now = _dt.datetime.now(ZoneInfo(tz_name))
+        order = [
+            ("İmsak", times.get("imsak")),
+            ("Güneş", times.get("gunes")),
+            ("Öğle", times.get("ogle")),
+            ("İkindi", times.get("ikindi")),
+            ("Akşam", times.get("aksam")),
+            ("Yatsı", times.get("yatsi")),
+        ]
+        next_name = next_time_str = None
+        remaining_minutes = None
+        for name, t in order:
+            if not t:
+                continue
+            hh, mm = [int(x) for x in t.split(":")[:2]]
+            candidate = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
+            if candidate >= now:
+                next_name = name
+                next_time_str = f"{hh:02d}:{mm:02d}"
+                remaining_minutes = int((candidate - now).total_seconds() // 60)
+                break
+        if next_name is None and times.get("imsak"):
+            hh, mm = [int(x) for x in times["imsak"].split(":")[:2]]
+            tomorrow = (now + _dt.timedelta(days=1)).replace(hour=hh, minute=mm, second=0, microsecond=0)
+            next_name = "İmsak"
+            next_time_str = f"{hh:02d}:{mm:02d}"
+            remaining_minutes = int((tomorrow - now).total_seconds() // 60)
+        return next_name, next_time_str, remaining_minutes
+
+    # 0) Eğer GPS verisi verildiyse doğrudan Vakit: timesForGPS → Aladhan byCoordinates fallback
+    if latitude is not None and longitude is not None:
+        try:
+            tz_name_guess = "Europe/Istanbul"
+            tz_now = _dt.datetime.now(ZoneInfo(tz_name_guess))
+            offset_minutes = int(tz_now.utcoffset().total_seconds() // 60) if tz_now.utcoffset() else 180
+            today = _dt.date.today().isoformat()
+
+            timesgps_url = "https://vakit.vercel.app/api/timesForGPS"
+            tg_params = {
+                "lat": latitude,
+                "lng": longitude,
+                "date": today,
+                "days": 1,
+                "timezoneOffset": offset_minutes,
+                "calculationMethod": "Turkey",
+                "lang": "tr",
+            }
+            rg = await client.get(timesgps_url, params=tg_params, timeout=15)
+            rg.raise_for_status()
+            payload = rg.json()
+            items = payload.get("times") or payload.get("data") or []
+            first = (items[0] if isinstance(items, list) and items else items) or {}
+            fajr = first.get("fajr") or first.get("imsak") or first.get("Fajr")
+            sunrise = first.get("sunrise") or first.get("gunes") or first.get("Sunrise")
+            dhuhr = first.get("dhuhr") or first.get("ogle") or first.get("Dhuhr")
+            asr = first.get("asr") or first.get("ikindi") or first.get("Asr")
+            maghrib = first.get("maghrib") or first.get("aksam") or first.get("Maghrib")
+            isha = first.get("isha") or first.get("yatsi") or first.get("Isha")
+
+            times_clean = {
+                "imsak": _clean(fajr),
+                "gunes": _clean(sunrise),
+                "ogle": _clean(dhuhr),
+                "ikindi": _clean(asr),
+                "aksam": _clean(maghrib),
+                "yatsi": _clean(isha),
+            }
+            next_name, next_time_str, remaining_minutes = _compute_next(times_clean, tz_name_guess)
+            return {
+                "date": first.get("date") or today,
+                "city": city,
+                "district": district,
+                "times": times_clean,
+                "next_prayer": {
+                    "name": next_name,
+                    "time": next_time_str,
+                    "remaining_minutes": remaining_minutes,
+                },
+                "timezone": tz_name_guess,
+                "source": "vakit.vercel.app:gps-direct",
+            }
+        except Exception as e:
+            logger.warning(f"GPS ile Vakit başarısız, Aladhan/coords'a düşülüyor: {e}")
+            try:
+                api_url = "https://api.aladhan.com/v1/timings"
+                params = {"latitude": latitude, "longitude": longitude, "method": 13}
+                r = await client.get(api_url, params=params, timeout=15)
+                r.raise_for_status()
+                payload = r.json()
+                if payload.get("code") != 200:
+                    raise RuntimeError(f"Servis hatası: {payload.get('status')}")
+                data = payload.get("data", {})
+                timings = data.get("timings", {})
+                tz_name = (data.get("meta", {}) or {}).get("timezone") or "Europe/Istanbul"
+                mapping = {
+                    "imsak": timings.get("Fajr"),
+                    "gunes": timings.get("Sunrise"),
+                    "ogle": timings.get("Dhuhr"),
+                    "ikindi": timings.get("Asr"),
+                    "aksam": timings.get("Maghrib"),
+                    "yatsi": timings.get("Isha"),
+                }
+                clean_times = {k: _clean(v) for k, v in mapping.items()}
+                next_name, next_time_str, remaining_minutes = _compute_next(clean_times, tz_name)
+                now = _dt.datetime.now(ZoneInfo(tz_name))
+                return {
+                    "date": data.get("date", {}).get("gregorian", {}).get("date") or now.strftime("%Y-%m-%d"),
+                    "city": city,
+                    "district": district,
+                    "times": clean_times,
+                    "next_prayer": {
+                        "name": next_name,
+                        "time": next_time_str,
+                        "remaining_minutes": remaining_minutes,
+                    },
+                    "timezone": tz_name,
+                    "source": "aladhan:coords",
+                }
+            except Exception as e2:
+                logger.error(f"GPS ile de namaz vakitleri alınamadı: {e2}")
+                raise HTTPException(status_code=500, detail="Namaz vakitleri alınamadı (GPS)")
+
+    # 1) Vakit API (https://vakit.vercel.app/)
+    try:
+        today = _dt.date.today().isoformat()
+        # Bölge/şehir eşlemesi: district yoksa region=city, city=city
+        region = _normalize_tr_name(city)
+        city_name = _normalize_tr_name(district or city)
+        # Istanbul gibi TR saat dilimi: dakika offset'i
+        tz_name_guess = "Europe/Istanbul"
+        tz_now = _dt.datetime.now(ZoneInfo(tz_name_guess))
+        offset_minutes = int(tz_now.utcoffset().total_seconds() // 60) if tz_now.utcoffset() else 180
+
+        vakit_url = "https://vakit.vercel.app/api/timesFromPlace"
+        vakit_params = {
+            "country": "Turkey",
+            "region": region,
+            "city": city_name,
+            "date": today,
+            "days": 1,
+            "timezoneOffset": offset_minutes,
+            "calculationMethod": "Turkey",
+            "lang": "tr",
+        }
+        r = await client.get(vakit_url, params=vakit_params, timeout=15)
+        r.raise_for_status()
+        payload = r.json()
+
+        # Beklenen yapı: { times: [ { date, fajr/sunrise/dhuhr/asr/maghrib/isha ... } ], place: {...} }
+        items = payload.get("times") or payload.get("data") or []
+        first = (items[0] if isinstance(items, list) and items else items) or {}
+        # Anahtar olasılıkları
+        fajr = first.get("fajr") or first.get("imsak") or first.get("Fajr")
+        sunrise = first.get("sunrise") or first.get("gunes") or first.get("Sunrise")
+        dhuhr = first.get("dhuhr") or first.get("ogle") or first.get("Dhuhr")
+        asr = first.get("asr") or first.get("ikindi") or first.get("Asr")
+        maghrib = first.get("maghrib") or first.get("aksam") or first.get("Maghrib")
+        isha = first.get("isha") or first.get("yatsi") or first.get("Isha")
+
+        times_clean = {
+            "imsak": _clean(fajr),
+            "gunes": _clean(sunrise),
+            "ogle": _clean(dhuhr),
+            "ikindi": _clean(asr),
+            "aksam": _clean(maghrib),
+            "yatsi": _clean(isha),
+        }
+        next_name, next_time_str, remaining_minutes = _compute_next(times_clean, tz_name_guess)
+        return {
+            "date": first.get("date") or today,
+            "city": city,
+            "district": district,
+            "times": times_clean,
+            "next_prayer": {
+                "name": next_name,
+                "time": next_time_str,
+                "remaining_minutes": remaining_minutes,
+            },
+            "timezone": tz_name_guess,
+            "source": "vakit.vercel.app",
+        }
+    except Exception as e:
+        logger.warning(f"Vakit API başarısız, Aladhan'a düşülüyor: {e}")
+
+    # 1b) Alternatif: Coordinates + timesForGPS (Vakit)
+    try:
+        today = _dt.date.today().isoformat()
+        region = _normalize_tr_name(city)
+        city_name = _normalize_tr_name(district or city)
+        tz_name_guess = "Europe/Istanbul"
+        tz_now = _dt.datetime.now(ZoneInfo(tz_name_guess))
+        offset_minutes = int(tz_now.utcoffset().total_seconds() // 60) if tz_now.utcoffset() else 180
+
+        coords_url = "https://vakit.vercel.app/api/coordinates"
+        coords_params = {"country": "Turkey", "region": region, "city": city_name, "lang": "tr"}
+        rc = await client.get(coords_url, params=coords_params, timeout=15)
+        rc.raise_for_status()
+        coords = rc.json() or {}
+        lat = coords.get("lat") or coords.get("latitude")
+        lng = coords.get("lng") or coords.get("longitude")
+        if lat is None or lng is None:
+            raise RuntimeError("Koordinatlar bulunamadı")
+
+        timesgps_url = "https://vakit.vercel.app/api/timesForGPS"
+        tg_params = {
+            "lat": lat,
+            "lng": lng,
+            "date": today,
+            "days": 1,
+            "timezoneOffset": offset_minutes,
+            "calculationMethod": "Turkey",
+            "lang": "tr",
+        }
+        rg = await client.get(timesgps_url, params=tg_params, timeout=15)
+        rg.raise_for_status()
+        payload = rg.json()
+        items = payload.get("times") or payload.get("data") or []
+        first = (items[0] if isinstance(items, list) and items else items) or {}
+        fajr = first.get("fajr") or first.get("imsak") or first.get("Fajr")
+        sunrise = first.get("sunrise") or first.get("gunes") or first.get("Sunrise")
+        dhuhr = first.get("dhuhr") or first.get("ogle") or first.get("Dhuhr")
+        asr = first.get("asr") or first.get("ikindi") or first.get("Asr")
+        maghrib = first.get("maghrib") or first.get("aksam") or first.get("Maghrib")
+        isha = first.get("isha") or first.get("yatsi") or first.get("Isha")
+
+        times_clean = {
+            "imsak": _clean(fajr),
+            "gunes": _clean(sunrise),
+            "ogle": _clean(dhuhr),
+            "ikindi": _clean(asr),
+            "aksam": _clean(maghrib),
+            "yatsi": _clean(isha),
+        }
+        next_name, next_time_str, remaining_minutes = _compute_next(times_clean, tz_name_guess)
+        return {
+            "date": first.get("date") or today,
+            "city": city,
+            "district": district,
+            "times": times_clean,
+            "next_prayer": {
+                "name": next_name,
+                "time": next_time_str,
+                "remaining_minutes": remaining_minutes,
+            },
+            "timezone": tz_name_guess,
+            "source": "vakit.vercel.app:gps",
+        }
+    except Exception as e:
+        logger.warning(f"Vakit GPS akışı da başarısız: {e}")
+
+    # 1c) Alternatif: Place ID ile timesForPlace
+    try:
+        today = _dt.date.today().isoformat()
+        region = _normalize_tr_name(city)
+        city_name = _normalize_tr_name(district or city)
+        tz_name_guess = "Europe/Istanbul"
+        tz_now = _dt.datetime.now(ZoneInfo(tz_name_guess))
+        offset_minutes = int(tz_now.utcoffset().total_seconds() // 60) if tz_now.utcoffset() else 180
+
+        # Önce coordinates -> place id
+        coords_url = "https://vakit.vercel.app/api/coordinates"
+        coords_params = {"country": "Turkey", "region": region, "city": city_name, "lang": "tr"}
+        rc = await client.get(coords_url, params=coords_params, timeout=15)
+        rc.raise_for_status()
+        coords = rc.json() or {}
+        lat = coords.get("lat") or coords.get("latitude")
+        lng = coords.get("lng") or coords.get("longitude")
+        if lat is None or lng is None:
+            raise RuntimeError("Koordinatlar bulunamadı")
+
+        place_url = "https://vakit.vercel.app/api/place"
+        rp = await client.get(place_url, params={"lat": lat, "lng": lng, "lang": "tr"}, timeout=15)
+        rp.raise_for_status()
+        place = rp.json() or {}
+        place_id = place.get("id") or place.get("placeId") or place.get("placeID")
+        if not place_id:
+            raise RuntimeError("Place ID alınamadı")
+
+        times_place_url = "https://vakit.vercel.app/api/timesForPlace"
+        tp = await client.get(times_place_url, params={"id": place_id, "timezoneOffset": offset_minutes, "lang": "tr"}, timeout=15)
+        tp.raise_for_status()
+        payload = tp.json()
+        items = payload.get("times") or payload.get("data") or []
+        first = (items[0] if isinstance(items, list) and items else items) or {}
+        fajr = first.get("fajr") or first.get("imsak") or first.get("Fajr")
+        sunrise = first.get("sunrise") or first.get("gunes") or first.get("Sunrise")
+        dhuhr = first.get("dhuhr") or first.get("ogle") or first.get("Dhuhr")
+        asr = first.get("asr") or first.get("ikindi") or first.get("Asr")
+        maghrib = first.get("maghrib") or first.get("aksam") or first.get("Maghrib")
+        isha = first.get("isha") or first.get("yatsi") or first.get("Isha")
+
+        times_clean = {
+            "imsak": _clean(fajr),
+            "gunes": _clean(sunrise),
+            "ogle": _clean(dhuhr),
+            "ikindi": _clean(asr),
+            "aksam": _clean(maghrib),
+            "yatsi": _clean(isha),
+        }
+        next_name, next_time_str, remaining_minutes = _compute_next(times_clean, tz_name_guess)
+        return {
+            "date": first.get("date") or today,
+            "city": city,
+            "district": district,
+            "times": times_clean,
+            "next_prayer": {
+                "name": next_name,
+                "time": next_time_str,
+                "remaining_minutes": remaining_minutes,
+            },
+            "timezone": tz_name_guess,
+            "source": "vakit.vercel.app:place",
+        }
+    except Exception as e:
+        logger.warning(f"Vakit Place akışı da başarısız: {e}")
+
+    # 2) Fallback: Aladhan (Diyanet method=13)
+    try:
+        api_url = "https://api.aladhan.com/v1/timingsByCity"
+        params = {"city": _normalize_tr_name(city), "country": "Turkey", "method": 13}
+        r = await client.get(api_url, params=params, timeout=15)
+        r.raise_for_status()
+        payload = r.json()
+        if payload.get("code") != 200:
+            raise RuntimeError(f"Servis hatası: {payload.get('status')}")
+        data = payload.get("data", {})
+        timings = data.get("timings", {})
+        meta = data.get("meta", {})
+        tz_name = (meta.get("timezone") or "Europe/Istanbul")
+        mapping = {
+            "imsak": timings.get("Fajr"),
+            "gunes": timings.get("Sunrise"),
+            "ogle": timings.get("Dhuhr"),
+            "ikindi": timings.get("Asr"),
+            "aksam": timings.get("Maghrib"),
+            "yatsi": timings.get("Isha"),
+        }
+        clean_times = {k: _clean(v) for k, v in mapping.items()}
+        next_name, next_time_str, remaining_minutes = _compute_next(clean_times, tz_name)
+        now = _dt.datetime.now(ZoneInfo(tz_name))
+        return {
+            "date": data.get("date", {}).get("gregorian", {}).get("date") or now.strftime("%Y-%m-%d"),
+            "city": city,
+            "district": district,
+            "times": clean_times,
+            "next_prayer": {
+                "name": next_name,
+                "time": next_time_str,
+                "remaining_minutes": remaining_minutes,
+            },
+            "timezone": tz_name,
+            "source": "aladhan",
+        }
+    except Exception as e:
+        logger.error(f"Namaz vakitleri alınırken hata: {e}")
+        raise HTTPException(status_code=500, detail="Namaz vakitleri alınamadı")
+
+@app.get("/qibla-direction")
+async def get_qibla_direction(latitude: float, longitude: float):
+    """Verilen koordinatlar için kıble yönünü hesaplar"""
+    try:
+        import math
+        
+        # Kâbe koordinatları
+        kaaba_lat = 21.4225
+        kaaba_lon = 39.8262
+        
+        # Radyana çevir
+        lat1 = math.radians(latitude)
+        lat2 = math.radians(kaaba_lat)
+        delta_lon = math.radians(kaaba_lon - longitude)
+        
+        # Kıble açısını hesapla
+        y = math.sin(delta_lon) * math.cos(lat2)
+        x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(delta_lon)
+        
+        # Açıyı dereceye çevir
+        bearing = math.atan2(y, x)
+        bearing = math.degrees(bearing)
+        bearing = (bearing + 360) % 360
+        
+        return {
+            "qibla_direction": round(bearing, 2),
+            "latitude": latitude,
+            "longitude": longitude,
+            "distance_to_kaaba_km": round(
+                6371 * math.acos(
+                    math.sin(lat1) * math.sin(lat2) + 
+                    math.cos(lat1) * math.cos(lat2) * math.cos(delta_lon)
+                ), 2
+            )
+        }
+        
+    except Exception as e:
+        logger.error(f"Kıble yönü hesaplanırken hata: {e}")
+        raise HTTPException(status_code=500, detail="Kıble yönü hesaplanamadı")

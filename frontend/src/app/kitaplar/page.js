@@ -4,9 +4,10 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Download, ArrowLeft, ArrowRight, BookOpen, Search, Library, ZoomIn, ZoomOut, RotateCcw, X } from "lucide-react";
+import { Loader2, Download, ArrowLeft, ArrowRight, BookOpen, Search, Library, ZoomIn, ZoomOut, RotateCcw, X, Share2 } from "lucide-react";
 import Image from 'next/image';
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
+import dynamic from 'next/dynamic';
 
 // ShadCN UI ve Yerel Bileşenler
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
   const [totalPages, setTotalPages] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [pageInput, setPageInput] = useState('');
 
   useEffect(() => {
     if (book) {
@@ -49,6 +51,12 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     if (!book) return null;
     return `${API_BASE_URL}/pdf/page_image?pdf_file=${book.pdf_dosyasi}&page_num=${currentPage}`;
   }, [book, currentPage]);
+
+  const pdfUrl = useMemo(() => {
+    if (!book) return null;
+    // Önce doğrudan dosya URL'si (Backblaze) varsa onu kullan, yoksa backend proxy
+    return book.pdf_url || `${API_BASE_URL}/pdf/access?pdf_file=${encodeURIComponent(book.pdf_dosyasi)}`;
+  }, [book]);
 
   useEffect(() => { setIsLoading(true); }, [currentPage]);
 
@@ -79,6 +87,20 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     finally { setIsDownloading(false); }
   };
 
+
+  const shareCurrentPage = async () => {
+    const pageLink = `${API_BASE_URL}/pdf/page_image?pdf_file=${book.pdf_dosyasi}&page_num=${currentPage}`;
+    const text = `${book.kitap_adi} - Sayfa ${currentPage}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: book.kitap_adi, text, url: pageLink });
+      } else {
+        const wa = `https://api.whatsapp.com/send?text=${encodeURIComponent(text + '\n' + pageLink)}`;
+        window.open(wa, '_blank');
+      }
+    } catch {}
+  };
+
   if (!book) return null;
 
   return (
@@ -94,29 +116,39 @@ function BookViewerDialog({ book, onClose, isOpen }) {
             <TransformWrapper limitToBounds={true} doubleClick={{ mode: 'reset' }} pinch={{ step: 1 }} wheel={{ step: 0.2 }}>
               {({ zoomIn, zoomOut, resetTransform }) => (
                 <>
-                  <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
+                   <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
                     <Button aria-label="Yakınlaştır" onClick={() => zoomIn()} className="bg-slate-900/70 hover:bg-slate-800/90 text-white backdrop-blur-sm"><ZoomIn /></Button>
                     <Button aria-label="Uzaklaştır" onClick={() => zoomOut()} className="bg-slate-900/70 hover:bg-slate-800/90 text-white backdrop-blur-sm"><ZoomOut /></Button>
                     <Button aria-label="Görünümü sıfırla" onClick={() => resetTransform()} className="bg-slate-900/70 hover:bg-slate-800/90 text-white backdrop-blur-sm"><RotateCcw /></Button>
+                    <div className="flex flex-col gap-2">
+                      <Button aria-label="Sayfayı paylaş" onClick={shareCurrentPage} className="bg-emerald-700 hover:bg-emerald-600 text-white backdrop-blur-sm"><Share2 /></Button>
+                      {pdfUrl && <Button aria-label="PDF'yi yeni sekmede aç" onClick={()=> window.open(pdfUrl, '_blank')} className="bg-slate-700 hover:bg-slate-600 text-white">PDF</Button>}
+                    </div>
                   </div>
                   <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full">
-                     <Image key={imageUrl} src={imageUrl} alt={`Sayfa ${currentPage}`} onLoad={() => setIsLoading(false)} onError={() => { setIsLoading(false); }} fill style={{ objectFit: 'contain' }} className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`} sizes="100vw"/>
+                    <Image key={imageUrl} src={imageUrl} alt={`Sayfa ${currentPage}`} onLoad={() => setIsLoading(false)} onError={() => { setIsLoading(false); }} fill style={{ objectFit: 'contain' }} className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`} sizes="100vw"/>
                   </TransformComponent>
                 </>
               )}
             </TransformWrapper>
           )}
         </div>
-        <DialogFooter className="flex-row justify-between items-center p-3 bg-slate-900/50 border-t border-slate-700 flex-shrink-0 text-white backdrop-blur-sm">
-          <Button aria-label="Sayfayı indir" onClick={handleDownload} disabled={isDownloading} className="bg-slate-700 hover:bg-slate-600"><div className="w-12">{isDownloading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : <Download className="h-5 w-5 mx-auto" />}</div></Button>
-          <div className="flex items-center gap-2">
-            <Button aria-label="Önceki sayfa" onClick={() => setCurrentPage(p => p > 1 ? p - 1 : 1)} disabled={currentPage <= 1} className="bg-slate-700 hover:bg-slate-600"><ArrowLeft className="h-5 w-5" /></Button>
+        <DialogFooter className="flex-col gap-3 md:flex-row md:gap-0 md:justify-between md:items-center p-3 bg-slate-900/50 border-t border-slate-700 flex-shrink-0 text-white backdrop-blur-sm">
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <Button aria-label="Sayfayı indir" onClick={handleDownload} disabled={isDownloading} className="bg-slate-700 hover:bg-slate-600"><div className="w-12">{isDownloading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : <Download className="h-5 w-5 mx-auto" />}</div></Button>
+          </div>
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <Button aria-label="Önceki sayfa" onClick={() => setCurrentPage(p => p > 1 ? p - 1 : 1)} disabled={currentPage <= 1} className="bg-slate-700 hover:bg-slate-600 h-12 w-12 md:h-10 md:w-10"><ArrowLeft className="h-5 w-5" /></Button>
+            <div className="flex items-center gap-2">
+              <input value={pageInput} onChange={(e)=> setPageInput(e.target.value.replace(/\D/g,''))} placeholder={`${currentPage}`} className="w-20 h-10 px-2 rounded bg-slate-800 border border-slate-700 text-center" />
+              <Button onClick={()=>{ const n=parseInt(pageInput||'0',10); if (n && totalPages && n>=1 && n<=totalPages) setCurrentPage(n); }} className="bg-slate-700 hover:bg-slate-600">Git</Button>
+            </div>
             <div className="text-lg font-semibold tabular-nums">
               <span>{currentPage}</span><span className="text-slate-400 mx-1.5">/</span><span className="text-slate-300">{totalPages || '...'}</span>
             </div>
-            <Button aria-label="Sonraki sayfa" onClick={() => setCurrentPage(p => totalPages && p < totalPages ? p + 1 : p)} disabled={!totalPages || currentPage >= totalPages} className="bg-slate-700 hover:bg-slate-600"><ArrowRight className="h-5 w-5" /></Button>
+            <Button aria-label="Sonraki sayfa" onClick={() => setCurrentPage(p => totalPages && p < totalPages ? p + 1 : p)} disabled={!totalPages || currentPage >= totalPages} className="bg-slate-700 hover:bg-slate-600 h-12 w-12 md:h-10 md:w-10"><ArrowRight className="h-5 w-5" /></Button>
           </div>
-          <div className="w-12"></div>
+          {/* metin önizleme kaldırıldı */}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -368,9 +400,17 @@ export default function LibraryPage() {
     }, []);
 
     const filteredData = useMemo(() => {
+        // Deduplicate books by kitap_adi and pdf_dosyasi
         return libraryData.map(authorData => {
             if (selectedAuthor !== "all" && authorData.yazar !== selectedAuthor) return null;
-            const filteredBooks = authorData.kitaplar.filter(book => book.kitap_adi.toLowerCase().includes(searchTerm.toLowerCase()));
+            // Remove duplicate books for each author
+            const seen = new Set();
+            const filteredBooks = authorData.kitaplar.filter(book => {
+                const key = `${book.kitap_adi}-${book.pdf_dosyasi}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return book.kitap_adi.toLowerCase().includes(searchTerm.toLowerCase());
+            });
             if (filteredBooks.length === 0) return null;
             return { ...authorData, kitaplar: filteredBooks };
         }).filter(Boolean);
@@ -416,12 +456,11 @@ export default function LibraryPage() {
                             </div>
                             {/* Search */}
                             <div className="relative w-full">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#177267]" />
-                                <Input 
-                                    placeholder="Kitap adı ile ara..." 
-                                    value={searchTerm} 
-                                    onChange={(e) => setSearchTerm(e.target.value)} 
-                                    className="w-full h-11 pl-9 border-slate-300 focus:border-[#177267] focus:ring-0"
+                                <Input
+                                    placeholder="Kitap adı veya yazar ile ara..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full h-11 pl-4 border-slate-300 focus:border-[#177267] focus:ring-0"
                                 />
                             </div>
                         </div>
@@ -483,9 +522,9 @@ export default function LibraryPage() {
                                             }
                                         }}
                                     >
-                                        {authorData.kitaplar.map(book => (
+                                        {authorData.kitaplar.map((book, idx) => (
                                             <BookCard 
-                                                key={book.kitap_adi} 
+                                                key={`${book.pdf_dosyasi || book.kitap_adi}-${idx}`} 
                                                 book={book} 
                                                 onReadClick={() => handleReadClick(book)} 
                                                 searchTerm={searchTerm} 
