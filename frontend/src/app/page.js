@@ -518,7 +518,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
               doubleClick={{ mode: 'reset', disabled: isSelecting }} 
               pinch={{ step: 1, disabled: isSelecting }} 
               wheel={{ step: 0.2 }}
-              panning={{ disabled: isSelecting }}
+              panning={{ disabled: false }}
             >
               {({ zoomIn, zoomOut, resetTransform }) => (
                 <>

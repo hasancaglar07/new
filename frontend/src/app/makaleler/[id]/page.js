@@ -391,9 +391,9 @@ function ArticleContent({ params }) {
                     <div 
                         className="share-menu"
                         style={{
-                            position: 'absolute',
-                            left: `${selection.x}px`,
-                            top: `${selection.y}px`,
+                            position: 'fixed',
+                            left: '50%',
+                            bottom: '20px',
                             transform: 'translateX(-50%)',
                             zIndex: 9999,
                             backgroundColor: 'white',
@@ -403,39 +403,44 @@ function ArticleContent({ params }) {
                             padding: '8px',
                             display: 'flex',
                             gap: '4px',
-                            minWidth: 'max-content'
+                            minWidth: 'max-content',
+                            maxWidth: 'calc(100vw - 40px)'
                         }}
                     >
                         <button
                             onClick={() => shareOn('whatsapp')}
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-green-50 transition-colors text-green-700 font-medium text-sm"
+                            className="flex items-center gap-1 px-2 py-2 md:px-3 rounded-lg hover:bg-green-50 transition-colors text-green-700 font-medium text-xs md:text-sm"
                             title="WhatsApp'ta Paylaş"
                         >
-                            💬 WhatsApp
+                            <span className="text-base">💬</span>
+                            <span className="hidden sm:inline">WhatsApp</span>
                         </button>
                         
                         <button
                             onClick={() => shareOn('facebook')}
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors text-blue-700 font-medium text-sm"
+                            className="flex items-center gap-1 px-2 py-2 md:px-3 rounded-lg hover:bg-blue-50 transition-colors text-blue-700 font-medium text-xs md:text-sm"
                             title="Facebook'ta Paylaş"
                         >
-                            📘 Facebook
+                            <span className="text-base">📘</span>
+                            <span className="hidden sm:inline">Facebook</span>
                         </button>
                         
                         <button
                             onClick={() => shareOn('twitter')}
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-sky-50 transition-colors text-sky-700 font-medium text-sm"
+                            className="flex items-center gap-1 px-2 py-2 md:px-3 rounded-lg hover:bg-sky-50 transition-colors text-sky-700 font-medium text-xs md:text-sm"
                             title="Twitter'da Paylaş"
                         >
-                            🐦 Twitter
+                            <span className="text-base">🐦</span>
+                            <span className="hidden sm:inline">Twitter</span>
                         </button>
                         
                         <button
                             onClick={copyToClipboard}
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-gray-700 font-medium text-sm"
+                            className="flex items-center gap-1 px-2 py-2 md:px-3 rounded-lg hover:bg-gray-50 transition-colors text-gray-700 font-medium text-xs md:text-sm"
                             title="Panoya Kopyala"
                         >
-                            📋 Kopyala
+                            <span className="text-base">📋</span>
+                            <span className="hidden sm:inline">Kopyala</span>
                         </button>
                         
                         <button
