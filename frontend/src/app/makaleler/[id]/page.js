@@ -11,6 +11,14 @@ import { Card, CardContent } from '@/components/ui/card';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
+// Arama terimlerini vurgulama fonksiyonu
+function highlightSearchTerm(text, searchTerm) {
+    if (!text || !searchTerm) return text;
+    
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-800 px-1 rounded font-bold">$1</mark>');
+}
+
 // --- Yüklenme İskeleti Bileşeni ---
 function ArticleSkeleton() {
     return (
@@ -111,101 +119,87 @@ function ErrorState({ message }) {
 // --- ARTICLE CONTENT COMPONENT ---
 function ArticleContent({ params }) {
     const searchParams = useSearchParams();
+    const searchQuery = searchParams.get('search') || '';
+    const backUrl = searchQuery ? `/makaleler?search=${encodeURIComponent(searchQuery)}` : '/makaleler';
     const [article, setArticle] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [selectedText, setSelectedText] = useState("");
-    const [showShareMenu, setShowShareMenu] = useState(false);
-    const [shareMenuPosition, setShareMenuPosition] = useState({ x: 0, y: 0 });
-    
-    // URL parametrelerini koru
-    const preservedParams = searchParams.toString();
-    const backUrl = preservedParams ? `/makaleler?${preservedParams}` : '/makaleler';
-    const [searchQuery, setSearchQuery] = useState('');
+    const [selection, setSelection] = useState({ showMenu: false, text: '', x: 0, y: 0 });
 
-    // URL'den arama parametresini al
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const urlParams = new URLSearchParams(window.location.search);
-            const query = urlParams.get('search') || '';
-            setSearchQuery(query);
-        }
-    }, []);
-
-    // Arama kelimesi vurgulaması
-    const highlightSearchTerm = (text, searchTerm) => {
-        if (!text || !searchTerm) return text;
-        const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-        return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-800 px-1 rounded font-bold">$1</mark>');
-    };
-
-    // Metin seçimi algılama
+    // Metin seçimi işlemini yönet
     useEffect(() => {
         const handleTextSelection = () => {
-            // Kısa bir gecikme ekleyerek selection'ın tamamlanmasını bekle
-            setTimeout(() => {
-                const selection = window.getSelection();
-                const text = selection.toString().trim();
-                
-                if (text.length > 10) { // En az 10 karakter seçilmeli
-                    setSelectedText(text);
-                    const range = selection.getRangeAt(0);
-                    const rect = range.getBoundingClientRect();
-                    setSharePosition({
-                        x: rect.left + rect.width / 2,
-                        y: rect.top + window.scrollY - 60
-                    });
-                    setShowShareMenu(true);
-                } else {
-                    setShowShareMenu(false);
-                    setSelectedText('');
-                }
-            }, 100);
+            const selectedText = window.getSelection().toString().trim();
+            if (selectedText.length > 10) { // En az 10 karakter seçilmeli
+                const range = window.getSelection().getRangeAt(0);
+                const rect = range.getBoundingClientRect();
+                setSelection({
+                    showMenu: true,
+                    text: selectedText,
+                    x: rect.left + window.scrollX + rect.width / 2,
+                    y: rect.top + window.scrollY - 10
+                });
+            }
         };
 
-        const handleClickOutside = () => {
-            setShowShareMenu(false);
-            setSelectedText('');
+        const handleClickOutside = (event) => {
+            // Paylaşım menüsü açıksa ve tıklama menünün dışındaysa kapat
+            if (selection.showMenu && !event.target.closest('.share-menu')) {
+                setSelection({ showMenu: false, text: '', x: 0, y: 0 });
+            }
         };
 
         document.addEventListener('mouseup', handleTextSelection);
-        document.addEventListener('touchend', handleTextSelection);
-        document.addEventListener('click', handleClickOutside);
+        document.addEventListener('mousedown', handleClickOutside);
         
         return () => {
             document.removeEventListener('mouseup', handleTextSelection);
-            document.removeEventListener('touchend', handleTextSelection);
-            document.removeEventListener('click', handleClickOutside);
+            document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, []);
+    }, [selection.showMenu]);
 
-    // Sosyal paylaşım fonksiyonları
-    const shareOnWhatsApp = (text) => {
+    // Modern ve güvenilir paylaşım fonksiyonları
+    const shareOn = (platform) => {
+        if (!selection.showMenu) return;
+
         const articleTitle = article?.title || article?.baslik || 'Makale';
         const authorName = article?.author || article?.yazar || 'Bilinmeyen Yazar';
-        const shareText = `📚 *${articleTitle}*\n\n✍️ Yazar: ${authorName}\n\n📝 Seçilen metin: "${text}"\n\n🔗 Tam makaleyi okumak için: ${window.location.href}\n\n#makale #okuma`;
-        const url = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
-        window.open(url, '_blank');
-        setShowShareMenu(false);
+        const pageUrl = window.location.href;
+        const shareText = `"${selection.text}" - ${articleTitle} (${authorName})`;
+        
+        let url = '';
+
+        switch (platform) {
+            case 'whatsapp':
+                url = `https://wa.me/?text=${encodeURIComponent(shareText + '\n' + pageUrl)}`;
+                break;
+            case 'facebook':
+                url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}&quote=${encodeURIComponent(shareText)}`;
+                break;
+            case 'twitter':
+                url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(pageUrl)}`;
+                break;
+            default:
+                return;
+        }
+        
+        window.open(url, '_blank', 'noopener,noreferrer');
+        setSelection({ showMenu: false, text: '', x: 0, y: 0 }); // Paylaştıktan sonra menüyü kapat
     };
 
-    const shareOnFacebook = (text) => {
-        const articleTitle = article?.title || article?.baslik || 'Makale';
-        const authorName = article?.author || article?.yazar || 'Bilinmeyen Yazar';
-        const shareText = `📚 ${articleTitle}\n\n✍️ Yazar: ${authorName}\n\n📝 "${text}"\n\nBu değerli makaleyi okumak için tıklayın!`;
-        const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(shareText)}`;
-        window.open(url, '_blank');
-        setShowShareMenu(false);
+    // Modern Pano API'si ile kopyalama
+    const copyToClipboard = () => {
+        if (!selection.showMenu) return;
+
+        navigator.clipboard.writeText(selection.text).then(() => {
+            alert('✅ Metin panoya kopyalandı!');
+            setSelection({ showMenu: false, text: '', x: 0, y: 0 }); // Kopyaladıktan sonra menüyü kapat
+        }).catch(err => {
+            console.error('Kopyalama hatası:', err);
+            alert('❌ Metin kopyalanamadı.');
+        });
     };
 
-    const shareOnTwitter = (text) => {
-        const articleTitle = article?.title || article?.baslik || 'Makale';
-        const authorName = article?.author || article?.yazar || 'Bilinmeyen Yazar';
-        const shareText = `📚 "${articleTitle}" - ${authorName}\n\n📝 "${text}"\n\n🔗 ${window.location.href}\n\n#makale #okuma #bilgi`;
-        const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
-        window.open(url, '_blank');
-        setShowShareMenu(false);
-    };
     const { id } = use(params); // URL'den ID'yi al: /makaleler/123 -> id = "123"
 
     useEffect(() => {
@@ -392,55 +386,66 @@ function ArticleContent({ params }) {
                     </motion.div>
                 </article>
 
-                {/* Floating Share Menu */}
-                {showShareMenu && selectedText && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        className="fixed z-[9999] bg-white rounded-lg shadow-2xl border border-slate-200 p-2 flex items-center gap-1"
+                {/* Modern Paylaşım Menüsü */}
+                {selection.showMenu && selection.text && (
+                    <div 
+                        className="share-menu"
                         style={{
-                            left: Math.max(10, Math.min(sharePosition.x - 75, (typeof window !== 'undefined' ? window.innerWidth : 1000) - 160)),
-                            top: Math.max(10, sharePosition.y),
-                            pointerEvents: 'auto'
+                            position: 'absolute',
+                            left: `${selection.x}px`,
+                            top: `${selection.y}px`,
+                            transform: 'translateX(-50%)',
+                            zIndex: 9999,
+                            backgroundColor: 'white',
+                            borderRadius: '12px',
+                            boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+                            border: '1px solid #e5e7eb',
+                            padding: '8px',
+                            display: 'flex',
+                            gap: '4px',
+                            minWidth: 'max-content'
                         }}
-                        onClick={(e) => e.stopPropagation()}
                     >
                         <button
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                shareOnWhatsApp(selectedText);
-                            }}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors flex items-center justify-center"
+                            onClick={() => shareOn('whatsapp')}
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-green-50 transition-colors text-green-700 font-medium text-sm"
                             title="WhatsApp'ta Paylaş"
                         >
-                            <span className="text-base">💬</span>
+                            💬 WhatsApp
                         </button>
+                        
                         <button
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                shareOnFacebook(selectedText);
-                            }}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors flex items-center justify-center"
+                            onClick={() => shareOn('facebook')}
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors text-blue-700 font-medium text-sm"
                             title="Facebook'ta Paylaş"
                         >
-                            <span className="text-base">📘</span>
+                            📘 Facebook
                         </button>
+                        
                         <button
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                shareOnTwitter(selectedText);
-                            }}
-                            className="p-2 text-sky-600 hover:bg-sky-50 rounded-full transition-colors flex items-center justify-center"
-                            title="X'te Paylaş"
+                            onClick={() => shareOn('twitter')}
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-sky-50 transition-colors text-sky-700 font-medium text-sm"
+                            title="Twitter'da Paylaş"
                         >
-                            <span className="text-base">🐦</span>
+                            🐦 Twitter
                         </button>
-                        <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white border-r border-b border-slate-200 rotate-45"></div>
-                    </motion.div>
+                        
+                        <button
+                            onClick={copyToClipboard}
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-gray-700 font-medium text-sm"
+                            title="Panoya Kopyala"
+                        >
+                            📋 Kopyala
+                        </button>
+                        
+                        <button
+                            onClick={() => setSelection({ showMenu: false, text: '', x: 0, y: 0 })}
+                            className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-50 transition-colors text-red-500 font-bold"
+                            title="Kapat"
+                        >
+                            ✕
+                        </button>
+                    </div>
                 )}
             </motion.div>
         </div>

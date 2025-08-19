@@ -120,7 +120,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
          const height = Math.abs(selectionEnd.y - selectionStart.y);
          console.log('Selection size:', width, 'x', height);
          
-         if (width > 20 && height > 20) {
+         if (width > 15 && height > 15) { // Daha düşük threshold
            const selectedText = `Seçilen alan: ${Math.round(width)}x${Math.round(height)} piksel`;
            console.log('Showing share menu with text:', selectedText);
            setSelectedText(selectedText);
@@ -136,6 +136,65 @@ function BookViewerDialog({ book, onClose, isOpen }) {
        }
      };
 
+    // Touch event handlers for mobile
+    const handleTouchStart = (e) => {
+      if (e.touches.length !== 1) return; // Only single touch
+      e.preventDefault();
+      const touch = e.touches[0];
+      const target = document.querySelector('.pdf-image-container img');
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        const startPos = {
+          x: touch.clientX - rect.left,
+          y: touch.clientY - rect.top
+        };
+        setSelectionStart(startPos);
+        setSelectionEnd(startPos);
+        setIsSelecting(true);
+        setShowSelectionBox(true);
+        console.log('Touch start at:', startPos);
+      }
+    };
+
+    const handleTouchMove = (e) => {
+      if (!isSelecting || e.touches.length !== 1) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      const target = document.querySelector('.pdf-image-container img');
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        setSelectionEnd({
+          x: touch.clientX - rect.left,
+          y: touch.clientY - rect.top
+        });
+      }
+    };
+
+    const handleTouchEnd = (e) => {
+      console.log('Touch end event, isSelecting:', isSelecting);
+      if (isSelecting) {
+        setIsSelecting(false);
+        const width = Math.abs(selectionEnd.x - selectionStart.x);
+        const height = Math.abs(selectionEnd.y - selectionStart.y);
+        console.log('Touch selection size:', width, 'x', height);
+        
+        if (width > 20 && height > 20) { // Daha düşük touch threshold
+          const selectedText = `Seçilen alan: ${Math.round(width)}x${Math.round(height)} piksel`;
+          console.log('Showing share menu with text:', selectedText);
+          setSelectedText(selectedText);
+          // Position menu in center for mobile
+          setShareMenuPosition({
+            x: window.innerWidth / 2 - 100,
+            y: window.innerHeight / 2 - 100
+          });
+          setShowShareMenu(true);
+        } else {
+          console.log('Touch selection too small, hiding box');
+          setShowSelectionBox(false);
+        }
+      }
+    };
+
     const handleClickOutside = (e) => {
       if (!e.target.closest('.share-menu')) {
         setShowShareMenu(false);
@@ -149,12 +208,22 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     document.addEventListener('mouseup', handleMouseUp);
     document.addEventListener('click', handleClickOutside);
     
+    // Touch events for mobile
+    document.addEventListener('touchstart', handleTouchStart, { passive: false });
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd);
+    
     return () => {
-      document.removeEventListener('mousedown', handleMouseDown);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('click', handleClickOutside);
-    };
+       document.removeEventListener('mousedown', handleMouseDown);
+       document.removeEventListener('mousemove', handleMouseMove);
+       document.removeEventListener('mouseup', handleMouseUp);
+       document.removeEventListener('click', handleClickOutside);
+       
+       // Remove touch events
+       document.removeEventListener('touchstart', handleTouchStart);
+       document.removeEventListener('touchmove', handleTouchMove);
+       document.removeEventListener('touchend', handleTouchEnd);
+     };
   }, [isOpen, isSelecting, selectionStart, selectionEnd]);
 
   const handleDownload = async () => {
@@ -420,12 +489,43 @@ function BookViewerDialog({ book, onClose, isOpen }) {
             >
               {({ zoomIn, zoomOut, resetTransform }) => (
                 <>
-                   <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
-                    <Button aria-label="Yakınlaştır" onClick={() => zoomIn()} className="bg-slate-900/70 hover:bg-slate-800/90 text-white backdrop-blur-sm"><ZoomIn /></Button>
-                    <Button aria-label="Uzaklaştır" onClick={() => zoomOut()} className="bg-slate-900/70 hover:bg-slate-800/90 text-white backdrop-blur-sm"><ZoomOut /></Button>
-                    <Button aria-label="Görünümü sıfırla" onClick={() => resetTransform()} className="bg-slate-900/70 hover:bg-slate-800/90 text-white backdrop-blur-sm"><RotateCcw /></Button>
-                    <div className="flex flex-col gap-2">
-                      {pdfUrl && <Button aria-label="PDF'yi yeni sekmede aç" onClick={()=> window.open(pdfUrl, '_blank')} className="bg-slate-700 hover:bg-slate-600 text-white">PDF</Button>}
+                   <div className="absolute top-4 right-4 z-20 flex flex-col gap-3">
+                    <Button 
+                      aria-label="Yakınlaştır" 
+                      onClick={() => zoomIn()} 
+                      className="bg-slate-900/80 hover:bg-slate-800/90 text-white backdrop-blur-sm h-12 w-12 md:h-10 md:w-10 p-0 rounded-lg shadow-lg border border-slate-700/50"
+                      size="lg"
+                    >
+                      <ZoomIn className="h-6 w-6 md:h-5 md:w-5" />
+                    </Button>
+                    <Button 
+                      aria-label="Uzaklaştır" 
+                      onClick={() => zoomOut()} 
+                      className="bg-slate-900/80 hover:bg-slate-800/90 text-white backdrop-blur-sm h-12 w-12 md:h-10 md:w-10 p-0 rounded-lg shadow-lg border border-slate-700/50"
+                      size="lg"
+                    >
+                      <ZoomOut className="h-6 w-6 md:h-5 md:w-5" />
+                    </Button>
+                    <Button 
+                      aria-label="Görünümü sıfırla" 
+                      onClick={() => resetTransform()} 
+                      className="bg-slate-900/80 hover:bg-slate-800/90 text-white backdrop-blur-sm h-12 w-12 md:h-10 md:w-10 p-0 rounded-lg shadow-lg border border-slate-700/50"
+                      size="lg"
+                    >
+                      <RotateCcw className="h-6 w-6 md:h-5 md:w-5" />
+                    </Button>
+                    <div className="flex flex-col gap-3">
+                      {pdfUrl && 
+                        <Button 
+                          aria-label="PDF'yi yeni sekmede aç" 
+                          onClick={()=> window.open(pdfUrl, '_blank')} 
+                          className="bg-emerald-600/80 hover:bg-emerald-700/90 text-white backdrop-blur-sm h-12 w-12 md:h-10 md:w-auto md:px-3 p-0 rounded-lg shadow-lg border border-emerald-500/50 text-xs md:text-sm font-medium"
+                          size="lg"
+                        >
+                          <span className="md:hidden text-lg">📄</span>
+                          <span className="hidden md:inline">PDF</span>
+                        </Button>
+                      }
                     </div>
                   </div>
                   <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full">
