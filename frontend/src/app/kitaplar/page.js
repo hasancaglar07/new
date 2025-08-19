@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Download, ArrowLeft, ArrowRight, BookOpen, Search, Library, ZoomIn, ZoomOut, RotateCcw, X, Crop, Eye } from "lucide-react";
 import Image from 'next/image';
@@ -61,7 +61,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
   const [croppedImageUrl, setCroppedImageUrl] = useState(null);
 
   // Kırpma modu toggle fonksiyonları
-  const toggleCropMode = () => {
+  const toggleCropMode = useCallback(() => {
     setIsCropMode(!isCropMode);
     setShowSelectionBox(false);
     setShowShareMenu(false);
@@ -69,7 +69,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
       // Kırpma modundan çıkarken temizle
       setCroppedImageUrl(null);
     }
-  };
+  }, [isCropMode]);
 
   // Kırpılmış görüntüye bilgi metni ekleme fonksiyonu
   const addInfoToCanvas = (canvas) => {
