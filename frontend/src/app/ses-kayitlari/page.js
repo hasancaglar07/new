@@ -333,6 +333,20 @@ export default function AudioLibraryPage() {
     const { play } = useAudio();
     // *** YENİ: URL'den gelen zaman parametresini saklamak için state ***
     const [initialSeconds, setInitialSeconds] = useState(null);
+    
+    const handlePlayAudio = useCallback((audio, source, startTimeString = null) => {
+        console.log('=== HANDLE PLAY AUDIO ===');
+        console.log('Audio:', audio.title);
+        console.log('StartTime:', startTimeString);
+        let seconds = null;
+        if (startTimeString) {
+            const parts = startTimeString.split(':').map(Number);
+            seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+        }
+        // Sadece global mini-player üzerinden çal (modalı açma)
+        play({ id: `${source}-${audio.id}`, title: audio.title.replace(/\.(mp3|wav|m4a)$/i, '').replace(/_/g, ' '), source, mp3Filename: audio.mp3_filename, startSeconds: seconds ?? undefined, chapters: audio.chapters });
+    }, [play]);
+    
     useEffect(() => {
         fetch(`${API_BASE_URL}/audio/all`)
             .then(res => {
@@ -363,7 +377,7 @@ export default function AudioLibraryPage() {
             })
             .catch(err => setError(err.message))
             .finally(() => setIsLoading(false));
-    }, []);
+    }, [handlePlayAudio]);
     // debounce search input
     useEffect(() => {
       const id = setTimeout(() => setSearchQuery(inputQuery), 300);
@@ -406,18 +420,6 @@ export default function AudioLibraryPage() {
       observer.observe(loaderRef.current);
       return () => observer.disconnect();
     }, [loaderRef, filteredAudios.length]);
-    const handlePlayAudio = (audio, source, startTimeString = null) => {
-        console.log('=== HANDLE PLAY AUDIO ===');
-        console.log('Audio:', audio.title);
-        console.log('StartTime:', startTimeString);
-        let seconds = null;
-        if (startTimeString) {
-            const parts = startTimeString.split(':').map(Number);
-            seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
-        }
-        // Sadece global mini-player üzerinden çal (modalı açma)
-        play({ id: `${source}-${audio.id}`, title: audio.title.replace(/\.(mp3|wav|m4a)$/i, '').replace(/_/g, ' '), source, mp3Filename: audio.mp3_filename, startSeconds: seconds ?? undefined, chapters: audio.chapters });
-    };
 
     const handleOpenDetails = (audio, source) => {
       setInitialSeconds(null);

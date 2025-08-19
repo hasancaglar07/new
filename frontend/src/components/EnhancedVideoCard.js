@@ -92,7 +92,7 @@ const EnhancedVideoCard = ({
                         className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors"
                     >
                         <ExternalLink className="h-4 w-4" />
-                        YouTube'da Aç
+                        YouTube&apos;da Aç
                     </a>
                 </Card>
             </motion.div>

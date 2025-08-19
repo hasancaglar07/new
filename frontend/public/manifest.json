@@ -1,0 +1,94 @@
+{
+  "name": "Mihmandar.org E-Kütüphanesi",
+  "short_name": "Mihmandar",
+  "description": "İslami kitaplar, ses kayıtları, makaleler ve daha fazlası. İlim ve maneviyat dünyasına açılan kapınız.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#10b981",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "tr",
+  "dir": "ltr",
+  "categories": ["education", "books", "religion"],
+  "icons": [
+    {
+      "src": "/mihmandar-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Mihmandar.org Ana Sayfa"
+    },
+    {
+      "src": "/screenshot-narrow.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mihmandar.org Mobil Görünüm"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Kitaplar",
+      "short_name": "Kitaplar",
+      "description": "İslami kitaplar koleksiyonu",
+      "url": "/kitaplar",
+      "icons": [
+        {
+          "src": "/mihmandar-logo.svg",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Makaleler",
+      "short_name": "Makaleler",
+      "description": "İslami makaleler koleksiyonu",
+      "url": "/makaleler",
+      "icons": [
+        {
+          "src": "/mihmandar-logo.svg",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Ses Kayıtları",
+      "short_name": "Ses",
+      "description": "İslami ses kayıtları",
+      "url": "/ses-kayitlari",
+      "icons": [
+        {
+          "src": "/mihmandar-logo.svg",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ]
+}

@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Download, ArrowLeft, ArrowRight, BookOpen, Search, Library, ZoomIn, ZoomOut, RotateCcw, X, Share2 } from "lucide-react";
+import { Loader2, Download, ArrowLeft, ArrowRight, BookOpen, Search, Library, ZoomIn, ZoomOut, RotateCcw, X } from "lucide-react";
 import Image from 'next/image';
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import dynamic from 'next/dynamic';
@@ -39,6 +39,13 @@ function BookViewerDialog({ book, onClose, isOpen }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [pageInput, setPageInput] = useState('');
+  const [selectedText, setSelectedText] = useState('');
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [shareMenuPosition, setShareMenuPosition] = useState({ x: 0, y: 0 });
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectionStart, setSelectionStart] = useState({ x: 0, y: 0 });
+  const [selectionEnd, setSelectionEnd] = useState({ x: 0, y: 0 });
+  const [showSelectionBox, setShowSelectionBox] = useState(false);
 
   useEffect(() => {
     if (book) {
@@ -70,6 +77,86 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, currentPage, totalPages]);
 
+  // Resim üzerinde alan seçimi için event listener'lar
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleMouseDown = (e) => {
+       console.log('Mouse down event:', e.target.tagName, e.target.className);
+       const target = e.target;
+       if (target.tagName === 'IMG' || target.closest('.pdf-image-container')) {
+         console.log('Starting selection...');
+         setIsSelecting(true);
+         setShowSelectionBox(true);
+         const rect = target.getBoundingClientRect();
+         const startPos = {
+           x: e.clientX - rect.left,
+           y: e.clientY - rect.top
+         };
+         console.log('Selection start:', startPos);
+         setSelectionStart(startPos);
+         setSelectionEnd(startPos);
+         e.preventDefault();
+       }
+     };
+
+    const handleMouseMove = (e) => {
+      if (!isSelecting) return;
+      const target = document.querySelector('.pdf-image-container img');
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        setSelectionEnd({
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top
+        });
+      }
+    };
+
+    const handleMouseUp = (e) => {
+       console.log('Mouse up event, isSelecting:', isSelecting);
+       if (isSelecting) {
+         setIsSelecting(false);
+         const width = Math.abs(selectionEnd.x - selectionStart.x);
+         const height = Math.abs(selectionEnd.y - selectionStart.y);
+         console.log('Selection size:', width, 'x', height);
+         
+         if (width > 20 && height > 20) {
+           const selectedText = `Seçilen alan: ${Math.round(width)}x${Math.round(height)} piksel`;
+           console.log('Showing share menu with text:', selectedText);
+           setSelectedText(selectedText);
+           setShareMenuPosition({
+             x: e.clientX,
+             y: e.clientY - 60
+           });
+           setShowShareMenu(true);
+         } else {
+           console.log('Selection too small, hiding box');
+           setShowSelectionBox(false);
+         }
+       }
+     };
+
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.share-menu')) {
+        setShowShareMenu(false);
+        setSelectedText('');
+        setShowSelectionBox(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('click', handleClickOutside);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [isOpen, isSelecting, selectionStart, selectionEnd]);
+
   const handleDownload = async () => {
     if (!imageUrl || isDownloading) return;
     setIsDownloading(true);
@@ -88,17 +175,228 @@ function BookViewerDialog({ book, onClose, isOpen }) {
   };
 
 
-  const shareCurrentPage = async () => {
-    const pageLink = `${API_BASE_URL}/pdf/page_image?pdf_file=${book.pdf_dosyasi}&page_num=${currentPage}`;
-    const text = `${book.kitap_adi} - Sayfa ${currentPage}`;
+
+
+  // Seçilen alanı resim olarak crop etme ve bilgi overlay'i ekleme fonksiyonu
+  const cropSelectedArea = async () => {
     try {
-      if (navigator.share) {
-        await navigator.share({ title: book.kitap_adi, text, url: pageLink });
-      } else {
-        const wa = `https://api.whatsapp.com/send?text=${encodeURIComponent(text + '\n' + pageLink)}`;
-        window.open(wa, '_blank');
+      const img = document.querySelector('.pdf-image-container img');
+      if (!img) return null;
+      
+      // Resmin gerçek boyutlarını al
+      const imgRect = img.getBoundingClientRect();
+      const naturalWidth = img.naturalWidth;
+      const naturalHeight = img.naturalHeight;
+      const displayWidth = imgRect.width;
+      const displayHeight = imgRect.height;
+      
+      // Ölçekleme oranlarını hesapla
+      const scaleX = naturalWidth / displayWidth;
+      const scaleY = naturalHeight / displayHeight;
+      
+      // Seçim koordinatlarını gerçek resim boyutlarına çevir
+      const x = Math.min(selectionStart.x, selectionEnd.x) * scaleX;
+      const y = Math.min(selectionStart.y, selectionEnd.y) * scaleY;
+      const width = Math.abs(selectionEnd.x - selectionStart.x) * scaleX;
+      const height = Math.abs(selectionEnd.y - selectionStart.y) * scaleY;
+      
+      // Canvas boyutlarını ayarla (crop + info alanı)
+      const infoHeight = 120; // Alt bilgi alanı yüksekliği
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      canvas.width = width;
+      canvas.height = height + infoHeight;
+      
+      // Crop edilmiş resmi çiz
+      ctx.drawImage(img, x, y, width, height, 0, 0, width, height);
+      
+      // Alt bilgi alanını çiz
+      const gradient = ctx.createLinearGradient(0, height, 0, height + infoHeight);
+      gradient.addColorStop(0, '#1f2937');
+      gradient.addColorStop(1, '#111827');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, height, width, infoHeight);
+      
+      // Kitap bilgilerini ekle
+      const bookTitle = book?.kitap_adi || 'Kitap';
+      // Yazar adını farklı alanlardan bulmaya çalış
+      const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 
+                        (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
+      
+      // Gerçek sayfa linki oluştur
+      const pageUrl = `mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+      
+      // Başlık
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 16px Arial';
+      ctx.textAlign = 'left';
+      const titleText = bookTitle.length > 35 ? bookTitle.substring(0, 32) + '...' : bookTitle;
+      ctx.fillText(titleText, 15, height + 20);
+      
+      // Yazar
+      ctx.fillStyle = '#d1d5db';
+      ctx.font = '14px Arial';
+      const displayAuthor = authorName.length > 45 ? authorName.substring(0, 42) + '...' : authorName;
+      ctx.fillText(`✍️ ${displayAuthor}`, 15, height + 40);
+      
+      // Sayfa
+      ctx.fillText(`📖 Sayfa ${currentPage}`, 15, height + 58);
+      
+      // Link
+      ctx.fillStyle = '#60a5fa';
+      ctx.font = '12px Arial';
+      ctx.fillText(`🔗 ${pageUrl}`, 15, height + 76);
+      
+      // Logo/Site adı
+      ctx.fillStyle = '#10b981';
+      ctx.font = 'bold 12px Arial';
+      ctx.textAlign = 'right';
+      ctx.fillText('📚 Mihmandar.org', width - 15, height + 95);
+      
+      // Alt yazı
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '10px Arial';
+      ctx.fillText('E-Kütüphanesi', width - 15, height + 108);
+      
+      // Canvas'ı blob'a çevir
+      return new Promise(resolve => {
+        canvas.toBlob(resolve, 'image/png', 0.9);
+      });
+    } catch (error) {
+      console.error('Crop error:', error);
+      return null;
+    }
+  };
+
+  // Sosyal medya paylaşım fonksiyonları
+  const shareOnWhatsApp = async (text) => {
+    console.log('WhatsApp share clicked with text:', text);
+    const bookTitle = book?.kitap_adi || 'Kitap';
+    // Yazar adını farklı alanlardan bulmaya çalış
+    const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 
+                      (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
+    
+    // Gerçek sayfa linki oluştur
+    const pageUrl = `mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    
+    // Seçilen alanı crop et
+    const croppedImage = await cropSelectedArea();
+    
+    // Ayrı paylaşım: 1 resim + 1 text + 1 link
+    const shareText = `📚 *${bookTitle}*\n\n✍️ Yazar: ${authorName}\n📖 Sayfa: ${currentPage}\n\n💎 Bu değerli kitaptan özel bir bölüm seçtim ve paylaşıyorum!\n\n🔗 Bu sayfayı okumak için:\n${pageUrl}\n\n📚 Tüm kütüphaneyi keşfetmek için:\nmihmandar.org\n\n#MihmandarOrg #EKütüphane #Kitap #İlim #Maneviyat #Tasavvuf`;
+    
+    console.log('Share text prepared:', shareText);
+    console.log('Navigator.share available:', !!navigator.share);
+    console.log('Cropped image available:', !!croppedImage);
+    
+    if (croppedImage && navigator.share && navigator.canShare && navigator.canShare({ files: [new File([croppedImage], 'test.png', { type: 'image/png' })] })) {
+      // 1. Önce sadece resim paylaş (text olmadan)
+      try {
+        console.log('Attempting native share...');
+        const file = new File([croppedImage], `${bookTitle.replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
+        await navigator.share({
+          title: `📚 ${bookTitle} - Mihmandar.org E-Kütüphanesi`,
+          files: [file]
+        });
+        
+        console.log('Native share successful, scheduling text share...');
+        // 2. Sonra ayrı mesaj olarak text + link paylaş
+        setTimeout(() => {
+          console.log('Opening WhatsApp for text share...');
+          const url = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+          window.open(url, '_blank');
+        }, 1500);
+        
+      } catch (shareError) {
+        console.log('Native share failed, falling back to text:', shareError);
+        // Fallback: Text paylaşımı
+        const url = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+        window.open(url, '_blank');
       }
-    } catch {}
+    } else {
+      // Fallback: Text paylaşımı
+      console.log('Using fallback text share. Reasons:');
+      console.log('- Cropped image:', !!croppedImage);
+      console.log('- Navigator.share:', !!navigator.share);
+      console.log('- Navigator.canShare:', !!navigator.canShare);
+      const url = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+      console.log('Opening WhatsApp URL:', url);
+      window.open(url, '_blank');
+    }
+    
+    setShowShareMenu(false);
+    setShowSelectionBox(false);
+  };
+
+  const shareOnFacebook = async (text) => {
+    const bookTitle = book?.kitap_adi || 'Kitap';
+    // Yazar adını farklı alanlardan bulmaya çalış
+    const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 
+                      (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
+    
+    // Gerçek sayfa linki oluştur
+    const pageUrl = `mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    
+    // Seçilen alanı crop et
+    const croppedImage = await cropSelectedArea();
+    
+    if (croppedImage && navigator.share) {
+      try {
+        const file = new File([croppedImage], `${bookTitle.replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
+        await navigator.share({
+          title: `📚 ${bookTitle} - Mihmandar.org E-Kütüphanesi`,
+          text: `📚 ${bookTitle}\n\n✍️ Yazar: ${authorName}\n📖 Sayfa: ${currentPage}\n\n🌟 Bu değerli eserden özel bir bölüm paylaşıyorum. İlim ve maneviyat dolu bu kitabı Mihmandar.org E-Kütüphanesi'nde okuyabilirsiniz.\n\n🔗 Bu sayfayı okumak için:\n${pageUrl}\n\n📚 Tüm kütüphaneyi keşfetmek için:\nmihmandar.org\n\n#MihmandarOrg #EKütüphane #Kitap #İlim #Maneviyat #Tasavvuf #Eğitim #Bilgi`,
+          files: [file]
+        });
+      } catch (shareError) {
+        // Fallback: Text paylaşımı
+        const shareText = `📚 ${bookTitle}\n\n✍️ Yazar: ${authorName}\n📖 Sayfa: ${currentPage}\n\n🌟 Bu değerli eserden özel bir bölüm paylaşıyorum. İlim ve maneviyat dolu bu kitabı Mihmandar.org E-Kütüphanesi'nde okuyabilirsiniz.\n\n🔗 Bu sayfayı okumak için:\n${pageUrl}\n\n📚 Tüm kütüphaneyi keşfetmek için:\nmihmandar.org\n\n#MihmandarOrg #EKütüphane #Kitap #İlim #Maneviyat #Tasavvuf #Eğitim #Bilgi`;
+        const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent('https://mihmandar.org')}&quote=${encodeURIComponent(shareText)}`;
+        window.open(url, '_blank');
+      }
+    } else {
+      const shareText = `📚 ${bookTitle}\n\n✍️ Yazar: ${authorName}\n📖 Sayfa: ${currentPage}\n\n🌟 Bu değerli eserden özel bir bölüm paylaşıyorum. İlim ve maneviyat dolu bu kitabı Mihmandar.org E-Kütüphanesi'nde okuyabilirsiniz.\n\n🔗 Bu sayfayı okumak için:\n${pageUrl}\n\n📚 Tüm kütüphaneyi keşfetmek için:\nmihmandar.org\n\n#MihmandarOrg #EKütüphane #Kitap #İlim #Maneviyat #Tasavvuf #Eğitim #Bilgi`;
+      const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent('https://mihmandar.org')}&quote=${encodeURIComponent(shareText)}`;
+      window.open(url, '_blank');
+    }
+    setShowShareMenu(false);
+    setShowSelectionBox(false);
+  };
+
+  const shareOnTwitter = async (text) => {
+    const bookTitle = book?.kitap_adi || 'Kitap';
+    // Yazar adını farklı alanlardan bulmaya çalış
+    const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 
+                      (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
+    
+    // Gerçek sayfa linki oluştur
+    const pageUrl = `mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    
+    // Seçilen alanı crop et
+    const croppedImage = await cropSelectedArea();
+    
+    if (croppedImage && navigator.share) {
+      try {
+        const file = new File([croppedImage], `${bookTitle.replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
+        await navigator.share({
+          title: `📚 ${bookTitle} | Mihmandar.org E-Kütüphanesi`,
+          text: `📚 "${bookTitle}" - ${authorName}\n📖 Sayfa ${currentPage}\n\n💎 Bu değerli eserden bir bölüm...\n\n🔗 ${pageUrl}\n\n📚 mihmandar.org\n\n#MihmandarOrg #EKütüphane #Kitap #İlim #Maneviyat #Tasavvuf #Bilgi #Hikmet`,
+          files: [file]
+        });
+      } catch (shareError) {
+        // Fallback: Text paylaşımı
+        const shareText = `📚 "${bookTitle}" - ${authorName}\n📖 Sayfa ${currentPage}\n\n💎 Bu değerli eserden bir bölüm...\n\n🔗 ${pageUrl}\n\n📚 mihmandar.org\n\n#MihmandarOrg #EKütüphane #Kitap #İlim #Maneviyat #Tasavvuf #Bilgi #Hikmet`;
+        const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+        window.open(url, '_blank');
+      }
+    } else {
+      const shareText = `📚 "${bookTitle}" - ${authorName}\n📖 Sayfa ${currentPage}\n\n💎 Bu değerli eserden bir bölüm...\n\n🔗 ${pageUrl}\n\n📚 mihmandar.org\n\n#MihmandarOrg #EKütüphane #Kitap #İlim #Maneviyat #Tasavvuf #Bilgi #Hikmet`;
+      const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+      window.open(url, '_blank');
+    }
+    setShowShareMenu(false);
+    setShowSelectionBox(false);
   };
 
   if (!book) return null;
@@ -113,7 +411,15 @@ function BookViewerDialog({ book, onClose, isOpen }) {
         <div className="flex-grow w-full h-full flex justify-center items-center overflow-hidden relative">
           {isLoading && <Loader2 className="h-10 w-10 animate-spin text-slate-400 absolute z-10" />}
           {imageUrl && (
-            <TransformWrapper limitToBounds={true} doubleClick={{ mode: 'reset' }} pinch={{ step: 1 }} wheel={{ step: 0.2 }}>
+            <TransformWrapper 
+              limitToBounds={true} 
+              doubleClick={{ mode: 'reset' }} 
+              pinch={{ step: 1 }} 
+              wheel={{ step: 0.2 }}
+              panning={{ disabled: isSelecting }}
+              pinch={{ disabled: isSelecting }}
+              doubleClick={{ disabled: isSelecting }}
+            >
               {({ zoomIn, zoomOut, resetTransform }) => (
                 <>
                    <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
@@ -121,12 +427,26 @@ function BookViewerDialog({ book, onClose, isOpen }) {
                     <Button aria-label="Uzaklaştır" onClick={() => zoomOut()} className="bg-slate-900/70 hover:bg-slate-800/90 text-white backdrop-blur-sm"><ZoomOut /></Button>
                     <Button aria-label="Görünümü sıfırla" onClick={() => resetTransform()} className="bg-slate-900/70 hover:bg-slate-800/90 text-white backdrop-blur-sm"><RotateCcw /></Button>
                     <div className="flex flex-col gap-2">
-                      <Button aria-label="Sayfayı paylaş" onClick={shareCurrentPage} className="bg-emerald-700 hover:bg-emerald-600 text-white backdrop-blur-sm"><Share2 /></Button>
                       {pdfUrl && <Button aria-label="PDF'yi yeni sekmede aç" onClick={()=> window.open(pdfUrl, '_blank')} className="bg-slate-700 hover:bg-slate-600 text-white">PDF</Button>}
                     </div>
                   </div>
                   <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full">
-                    <Image key={imageUrl} src={imageUrl} alt={`Sayfa ${currentPage}`} onLoad={() => setIsLoading(false)} onError={() => { setIsLoading(false); }} fill style={{ objectFit: 'contain' }} className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`} sizes="100vw"/>
+                    <div className="pdf-image-container relative w-full h-full">
+                      <Image key={imageUrl} src={imageUrl} alt={`Sayfa ${currentPage}`} onLoad={() => setIsLoading(false)} onError={() => { setIsLoading(false); }} fill style={{ objectFit: 'contain' }} className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`} sizes="100vw"/>
+                      
+                      {/* Selection Box Overlay */}
+                      {showSelectionBox && (
+                        <div
+                          className="absolute border-2 border-blue-500 bg-blue-200/20 pointer-events-none"
+                          style={{
+                            left: Math.min(selectionStart.x, selectionEnd.x),
+                            top: Math.min(selectionStart.y, selectionEnd.y),
+                            width: Math.abs(selectionEnd.x - selectionStart.x),
+                            height: Math.abs(selectionEnd.y - selectionStart.y),
+                          }}
+                        />
+                      )}
+                    </div>
                   </TransformComponent>
                 </>
               )}
@@ -151,6 +471,59 @@ function BookViewerDialog({ book, onClose, isOpen }) {
           {/* metin önizleme kaldırıldı */}
         </DialogFooter>
       </DialogContent>
+      
+      {/* Floating Share Menu */}
+      <AnimatePresence>
+        {showShareMenu && selectedText && (
+          <motion.div
+             initial={{ opacity: 0, scale: 0.8 }}
+             animate={{ opacity: 1, scale: 1 }}
+             exit={{ opacity: 0, scale: 0.8 }}
+             className="share-menu fixed z-[9999] bg-white rounded-lg shadow-2xl border border-slate-200 p-2 flex items-center gap-1"
+             style={{
+               left: Math.max(10, Math.min(shareMenuPosition.x - 75, (typeof window !== 'undefined' ? window.innerWidth : 1000) - 160)),
+               top: Math.max(10, shareMenuPosition.y),
+               pointerEvents: 'auto'
+             }}
+             onClick={(e) => e.stopPropagation()}
+           >
+            <button
+               onClick={(e) => {
+                 e.preventDefault();
+                 e.stopPropagation();
+                 shareOnWhatsApp(selectedText);
+               }}
+               className="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors flex items-center justify-center"
+               title="WhatsApp'ta Paylaş"
+             >
+               <span className="text-lg">📱</span>
+             </button>
+             <button
+               onClick={(e) => {
+                 e.preventDefault();
+                 e.stopPropagation();
+                 shareOnFacebook(selectedText);
+               }}
+               className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors flex items-center justify-center"
+               title="Facebook'ta Paylaş"
+             >
+               <span className="text-lg">👥</span>
+             </button>
+             <button
+               onClick={(e) => {
+                 e.preventDefault();
+                 e.stopPropagation();
+                 shareOnTwitter(selectedText);
+               }}
+               className="p-2 text-sky-600 hover:bg-sky-50 rounded-full transition-colors flex items-center justify-center"
+               title="X'te Paylaş"
+             >
+               <span className="text-lg">🔗</span>
+             </button>
+            <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white border-r border-b border-slate-200 rotate-45"></div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Dialog>
   );
 }
