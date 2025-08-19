@@ -1,12 +1,18 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import { Loader2, Search, BookOpen, Video, ArrowRight, ArrowLeft, FileQuestion, ServerCrash, X, Sparkles, ZoomIn, ZoomOut, RotateCcw, Download, BotMessageSquare, Newspaper, User, Clock, Library, Music, Trash2, Play, ListMusic, List, ExternalLink, Eye, ChevronRight, Crop } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import Cropper from 'react-cropper';
 import 'cropperjs/dist/cropper.css';
+
+// Dynamic import for Cropper to reduce initial bundle size
+const Cropper = lazy(() => 
+  import('react-cropper').then(module => {
+    return { default: module.default };
+  })
+);
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -87,7 +93,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     const ctx = canvas.getContext('2d');
     const bookTitle = book?.kitap_adi || book?.kitap || 'Kitap';
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 'Bilinmeyen Yazar';
-    const pageUrl = `mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
     
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
@@ -180,7 +186,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
   const shareOnWhatsAppCropped = async () => {
     const bookTitle = book?.kitap_adi || book?.kitap || 'Kitap';
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 'Bilinmeyen Yazar';
-    const pageUrl = `mihmandar.org/arama?q=${encodeURIComponent(bookTitle)}`;
+    const pageUrl = `https://mihmandar.org/arama?q=${encodeURIComponent(bookTitle)}`;
     const shareText = `📚 "${bookTitle}" - ${authorName}\n📖 Sayfa ${currentPage}\n\n💎 Bu değerli eserden kırpılmış bir bölüm paylaşıyorum...\n\n🔗 ${pageUrl}\n\n📚 mihmandar.org`;
     
     if (navigator.share && croppedImageUrl) {
@@ -203,7 +209,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
   const shareOnFacebookCropped = async () => {
     const bookTitle = book?.kitap_adi || book?.kitap || 'Kitap';
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 'Bilinmeyen Yazar';
-    const pageUrl = `mihmandar.org/arama?q=${encodeURIComponent(bookTitle)}`;
+    const pageUrl = `https://mihmandar.org/arama?q=${encodeURIComponent(bookTitle)}`;
     const shareText = `📚 ${bookTitle}\n\n✍️ Yazar: ${authorName}\n📖 Sayfa: ${currentPage}\n\n🌟 Bu değerli eserden kırpılmış bir bölüm paylaşıyorum.\n\n🔗 ${pageUrl}\n\n📚 mihmandar.org`;
     
     if (navigator.share && croppedImageUrl) {
@@ -226,7 +232,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
   const shareOnTwitterCropped = async () => {
     const bookTitle = book?.kitap_adi || book?.kitap || 'Kitap';
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 'Bilinmeyen Yazar';
-    const pageUrl = `mihmandar.org/arama?q=${encodeURIComponent(bookTitle)}`;
+    const pageUrl = `https://mihmandar.org/arama?q=${encodeURIComponent(bookTitle)}`;
     const shareText = `📚 "${bookTitle}" - ${authorName}\n📖 Sayfa ${currentPage}\n\n💎 Bu değerli eserden kırpılmış bir bölüm...\n\n🔗 ${pageUrl}\n\n📚 mihmandar.org`;
     
     if (navigator.share && croppedImageUrl) {
@@ -508,7 +514,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
                         (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
       
       // Gerçek sayfa linki oluştur
-      const pageUrl = `mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+      const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
       
       // Başlık
       ctx.fillStyle = '#ffffff';
@@ -561,7 +567,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
                       (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
     
     // Gerçek sayfa linki oluştur
-    const pageUrl = `mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
     
     // Seçilen alanı crop et
     const croppedImage = await cropSelectedArea();
@@ -619,7 +625,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
                       (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
     
     // Gerçek sayfa linki oluştur
-    const pageUrl = `mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
     
     // Seçilen alanı crop et
     const croppedImage = await cropSelectedArea();
@@ -654,7 +660,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
                       (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
     
     // Gerçek sayfa linki oluştur
-    const pageUrl = `mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
     
     // Seçilen alanı crop et
     const croppedImage = await cropSelectedArea();
@@ -782,7 +788,8 @@ function BookViewerDialog({ book, onClose, isOpen }) {
                     <div className="pdf-image-container relative w-full h-full">
                       {isCropMode ? (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Cropper
+                          <Suspense fallback={<div className="flex items-center justify-center w-full h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+                            <Cropper
                             src={imageUrl}
                             style={{ height: '100%', width: '100%', maxHeight: '80vh' }}
                             initialAspectRatio={1}
@@ -816,11 +823,27 @@ function BookViewerDialog({ book, onClose, isOpen }) {
                             wheelZoomRatio={0.1}
                             minCropBoxHeight={50}
                             minCropBoxWidth={50}
-                          />
+                            />
+                          </Suspense>
                         </div>
                       ) : (
                         <>
-                          <Image key={imageUrl} src={imageUrl} alt={`Sayfa ${currentPage}`} onLoad={() => setIsLoading(false)} onError={() => { setIsLoading(false); }} fill style={{ objectFit: 'contain' }} className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`} sizes="100vw"/>
+                          <Image 
+                        key={imageUrl} 
+                        src={imageUrl} 
+                        alt={`Sayfa ${currentPage}`} 
+                        onLoad={() => setIsLoading(false)} 
+                        onError={() => { setIsLoading(false); }} 
+                        fill 
+                        style={{ objectFit: 'contain' }} 
+                        className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`} 
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 70vw"
+                        priority={currentPage === 1}
+                        loading={currentPage === 1 ? 'eager' : 'lazy'}
+                        quality={85}
+                        placeholder="blur"
+                        blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                      />
                           
                           {/* Selection Box Overlay */}
                           {showSelectionBox && (
@@ -1838,7 +1861,7 @@ export default function HomePage() {
  
     return (
       <div className="bg-slate-50 min-h-screen w-full font-sans">
-        <main className="container mx-auto px-4 py-6 md:py-8">
+        <main id="main-content" className="container mx-auto px-4 py-6 md:py-8">
           {/* Bismillah üstte */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1.5, delay: 0.1 }} className="text-center mb-3"><p className="text-lg md:text-2xl text-slate-600" style={{ fontFamily: "'Noto Naskh Arabic', serif" }}>بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ</p></motion.div>
           {/* Namaz widget: bismillah altında (kaldırıldı) */}

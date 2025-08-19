@@ -2,14 +2,20 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Download, ArrowLeft, ArrowRight, BookOpen, Search, Library, ZoomIn, ZoomOut, RotateCcw, X, Crop, Eye } from "lucide-react";
 import Image from 'next/image';
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import dynamic from 'next/dynamic';
-import Cropper from 'react-cropper';
 import 'cropperjs/dist/cropper.css';
+
+// Dynamic import for Cropper to reduce initial bundle size
+const Cropper = lazy(() => 
+  import('react-cropper').then(module => {
+    return { default: module.default };
+  })
+);
 
 // ShadCN UI ve Yerel Bileşenler
 import { Button } from "@/components/ui/button";
@@ -70,7 +76,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     const ctx = canvas.getContext('2d');
     const bookTitle = book?.kitap_adi || 'Kitap';
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 'Bilinmeyen Yazar';
-    const pageUrl = `mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
     
     // Canvas boyutları
     const canvasWidth = canvas.width;
@@ -192,7 +198,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
   const shareOnWhatsAppCropped = async () => {
     const bookTitle = book?.kitap_adi || 'Kitap';
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 'Bilinmeyen Yazar';
-    const pageUrl = `mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
     
     const shareText = `📚 "${bookTitle}" - ${authorName}\n📖 Sayfa ${currentPage}\n\n💎 Bu değerli eserden kırpılmış bir bölüm paylaşıyorum...\n\n🔗 Bu sayfayı okumak için:\n${pageUrl}\n\n📚 Tüm kütüphaneyi keşfetmek için:\nmihmandar.org\n\n#MihmandarOrg #EKütüphane #Kitap #İlim #Maneviyat #Tasavvuf`;
     
@@ -217,7 +223,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
   const shareOnFacebookCropped = async () => {
     const bookTitle = book?.kitap_adi || 'Kitap';
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 'Bilinmeyen Yazar';
-    const pageUrl = `mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
     
     const shareText = `📚 ${bookTitle}\n\n✍️ Yazar: ${authorName}\n📖 Sayfa: ${currentPage}\n\n🌟 Bu değerli eserden kırpılmış bir bölüm paylaşıyorum. İlim ve maneviyat dolu bu kitabı Mihmandar.org E-Kütüphanesi'nde okuyabilirsiniz.\n\n🔗 Bu sayfayı okumak için:\n${pageUrl}\n\n📚 Tüm kütüphaneyi keşfetmek için:\nmihmandar.org\n\n#MihmandarOrg #EKütüphane #Kitap #İlim #Maneviyat #Tasavvuf #Eğitim #Bilgi`;
     
@@ -242,7 +248,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
   const shareOnTwitterCropped = async () => {
     const bookTitle = book?.kitap_adi || 'Kitap';
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 'Bilinmeyen Yazar';
-    const pageUrl = `mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
     
     const shareText = `📚 "${bookTitle}" - ${authorName}\n📖 Sayfa ${currentPage}\n\n💎 Bu değerli eserden kırpılmış bir bölüm...\n\n🔗 ${pageUrl}\n\n📚 mihmandar.org\n\n#MihmandarOrg #EKütüphane #Kitap #İlim #Maneviyat #Tasavvuf #Bilgi #Hikmet`;
     
@@ -283,15 +289,63 @@ function BookViewerDialog({ book, onClose, isOpen }) {
 
   useEffect(() => { setIsLoading(true); }, [currentPage]);
 
+  // Enhanced keyboard navigation with accessibility
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!isOpen || !totalPages) return;
-      if (e.key === 'ArrowRight' && currentPage < totalPages) setCurrentPage(p => p + 1);
-      else if (e.key === 'ArrowLeft' && currentPage > 1) setCurrentPage(p => p - 1);
+      
+      // Skip if user is typing in an input field
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      
+      if (e.key === 'ArrowRight' && currentPage < totalPages && !isCropMode) {
+        setCurrentPage(p => p + 1);
+        announceToScreenReader(`Sayfa ${currentPage + 1} / ${totalPages}`);
+      }
+      else if (e.key === 'ArrowLeft' && currentPage > 1 && !isCropMode) {
+        setCurrentPage(p => p - 1);
+        announceToScreenReader(`Sayfa ${currentPage - 1} / ${totalPages}`);
+      }
+      else if (e.key === 'Escape') {
+        if (isCropMode) {
+          cancelCrop();
+        } else if (showShareMenu) {
+          setShowShareMenu(false);
+          setShowSelectionBox(false);
+        }
+      }
+      else if (e.key === 'c' && e.ctrlKey) {
+        e.preventDefault();
+        toggleCropMode();
+        announceToScreenReader(isCropMode ? 'Okuma moduna geçildi' : 'Kırpma moduna geçildi');
+      }
+      else if ((e.key === '+' || e.key === '=') && !isCropMode) {
+        e.preventDefault();
+        // Zoom in functionality would be called here
+      }
+      else if (e.key === '-' && !isCropMode) {
+        e.preventDefault();
+        // Zoom out functionality would be called here
+      }
     };
+    
+    // Screen reader announcements
+    const announceToScreenReader = (message) => {
+      const announcement = document.createElement('div');
+      announcement.setAttribute('aria-live', 'polite');
+      announcement.setAttribute('aria-atomic', 'true');
+      announcement.setAttribute('class', 'sr-only');
+      announcement.textContent = message;
+      document.body.appendChild(announcement);
+      setTimeout(() => {
+        if (document.body.contains(announcement)) {
+          document.body.removeChild(announcement);
+        }
+      }, 1000);
+    };
+    
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, currentPage, totalPages]);
+  }, [isOpen, currentPage, totalPages, isCropMode, showShareMenu]);
 
   // Resim üzerinde alan seçimi için event listener'lar
   useEffect(() => {
@@ -510,7 +564,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
                         (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
       
       // Gerçek sayfa linki oluştur
-      const pageUrl = `mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+      const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
       
       // Başlık
       ctx.fillStyle = '#ffffff';
@@ -563,7 +617,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
                       (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
     
     // Gerçek sayfa linki oluştur
-    const pageUrl = `mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
     
     // Seçilen alanı crop et
     const croppedImage = await cropSelectedArea();
@@ -621,7 +675,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
                       (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
     
     // Gerçek sayfa linki oluştur
-    const pageUrl = `mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
     
     // Seçilen alanı crop et
     const croppedImage = await cropSelectedArea();
@@ -656,7 +710,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
                       (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
     
     // Gerçek sayfa linki oluştur
-    const pageUrl = `mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
     
     // Seçilen alanı crop et
     const croppedImage = await cropSelectedArea();
@@ -784,7 +838,8 @@ function BookViewerDialog({ book, onClose, isOpen }) {
                     <div className="pdf-image-container relative w-full h-full">
                       {isCropMode ? (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Cropper
+                          <Suspense fallback={<div className="flex items-center justify-center w-full h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+                            <Cropper
                              src={imageUrl}
                              style={{ height: '100%', width: '100%', maxHeight: '80vh' }}
                              initialAspectRatio={1}
@@ -820,11 +875,27 @@ function BookViewerDialog({ book, onClose, isOpen }) {
                              wheelZoomRatio={0.1}
                              minCropBoxHeight={50}
                              minCropBoxWidth={50}
-                           />
+                             />
+                           </Suspense>
                         </div>
                       ) : (
                         <>
-                          <Image key={imageUrl} src={imageUrl} alt={`Sayfa ${currentPage}`} onLoad={() => setIsLoading(false)} onError={() => { setIsLoading(false); }} fill style={{ objectFit: 'contain' }} className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`} sizes="100vw"/>
+                          <Image 
+                            key={imageUrl} 
+                            src={imageUrl} 
+                            alt={`Sayfa ${currentPage}`} 
+                            onLoad={() => setIsLoading(false)} 
+                            onError={() => { setIsLoading(false); }} 
+                            fill 
+                            style={{ objectFit: 'contain' }} 
+                            className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`} 
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 70vw"
+                            priority={currentPage === 1}
+                            loading={currentPage === 1 ? 'eager' : 'lazy'}
+                            quality={85}
+                            placeholder="blur"
+                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                          />
                           
                           {/* Selection Box Overlay */}
                           {showSelectionBox && (

@@ -4,8 +4,13 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import ClientLayout from '@/components/ClientLayout';
 import StructuredData, { websiteStructuredData, organizationStructuredData } from '@/components/StructuredData';
+import PWAInstaller from '@/components/PWAInstaller';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+  preload: true
+});
 
 export const metadata = {
   title: {
@@ -41,6 +46,21 @@ export const metadata = {
     ],
     locale: 'tr_TR',
     type: 'website',
+  },
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Mihmandar.org',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-status-bar-style': 'default',
+    'apple-mobile-web-app-title': 'Mihmandar.org',
+    'application-name': 'Mihmandar.org',
+    'msapplication-TileColor': '#10b981',
+    'theme-color': '#10b981',
   },
   twitter: {
     card: 'summary_large_image',
@@ -83,9 +103,13 @@ export default function RootLayout({ children }) {
         <meta name="msapplication-config" content="/browserconfig.xml" />
       </head>
       <body className={inter.className}>
+        <a href="#main-content" className="skip-link">
+          Ana içeriğe geç
+        </a>
         <StructuredData data={websiteStructuredData} />
         <StructuredData data={organizationStructuredData} />
         <ClientLayout>{children}</ClientLayout>
+        <PWAInstaller />
       </body>
     </html>
   );
