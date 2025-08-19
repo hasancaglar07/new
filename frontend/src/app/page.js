@@ -1,6 +1,10 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import { Loader2, Search, BookOpen, Video, ArrowRight, ArrowLeft, FileQuestion, ServerCrash, X, Sparkles, ZoomIn, ZoomOut, RotateCcw, Download, BotMessageSquare, Newspaper, User, Clock, Library, Music, Trash2, Play, ListMusic, List, ExternalLink, Eye, ChevronRight, Crop } from "lucide-react";
+import LoadingSpinner, { PageLoader, InlineLoader } from "@/components/LoadingSpinner";
+import ErrorMessage, { NetworkError, NotFoundError } from "@/components/ErrorMessage";
+import { Skeleton } from "@/components/ui/skeleton";
+import { containerClasses, gridClasses, spacingClasses } from "@/lib/responsive";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 
@@ -14,6 +18,7 @@ const Cropper = lazy(() =>
   })
 );
 import { Button } from "@/components/ui/button";
+import MobileOptimizedButton from "@/components/MobileOptimizedButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -57,7 +62,7 @@ function PagePreview({ pdfFile, pageNum }) {
         fetch(imageUrl).then(res => res.ok ? res.blob() : Promise.reject(new Error("Resim yüklenemedi."))).then(blob => { objectUrl = URL.createObjectURL(blob); setImageSrc(objectUrl); }).catch(err => setError(err.message)).finally(() => setIsLoading(false));
         return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
     }, [pdfFile, pageNum]);
-    return (<div className="relative flex justify-center items-center min-h-[200px] bg-slate-100 rounded-lg p-2 mt-2">{isLoading && <Loader2 className="h-8 w-8 text-slate-400 animate-spin" />}{error && <div className="text-center text-red-600 p-4"><ServerCrash className="mx-auto h-8 w-8 mb-2" />{error}</div>}{imageSrc && !isLoading && <Image src={imageSrc} alt={`Sayfa ${pageNum} önizlemesi`} fill style={{ objectFit: 'contain' }} className="rounded-md" sizes="(max-width: 768px) 100vw, 50vw"/>}</div>);
+    return (<div className="relative flex justify-center items-center min-h-[200px] bg-slate-100 rounded-lg p-2 mt-2">{isLoading && <LoadingSpinner size="lg" variant="muted" />}{error && <ErrorMessage title="Önizleme Hatası" message={error} type="error" />}{imageSrc && !isLoading && <Image src={imageSrc} alt={`Sayfa ${pageNum} önizlemesi`} fill style={{ objectFit: 'contain' }} className="rounded-md" sizes="(max-width: 768px) 100vw, 50vw"/>}</div>);
 }
 function BookViewerDialog({ book, onClose, isOpen }) {
   const [currentPage, setCurrentPage] = useState(1);
@@ -695,10 +700,10 @@ function BookViewerDialog({ book, onClose, isOpen }) {
       <DialogContent className="max-w-none w-screen h-screen p-0 gap-0 flex flex-col bg-slate-800">
         <DialogHeader className="p-3 border-b border-slate-700 flex-shrink-0 flex-row items-center justify-between text-white bg-slate-900/50">
           <DialogTitle className="text-lg md:text-xl text-slate-100 line-clamp-1">{book.kitap_adi || book.kitap}</DialogTitle>
-          <Button aria-label="Kapat" variant="ghost" size="icon" onClick={onClose} className="text-slate-300 hover:text-white hover:bg-slate-700"><X className="h-6 w-6"/></Button>
+          <MobileOptimizedButton aria-label="Kapat" variant="ghost" size="icon" onClick={onClose} className="text-slate-300 hover:text-white hover:bg-slate-700 min-h-[44px] min-w-[44px]"><X className="h-6 w-6"/></MobileOptimizedButton>
         </DialogHeader>
         <div className="flex-grow w-full h-full flex justify-center items-center overflow-hidden relative">
-          {isLoading && <Loader2 className="h-10 w-10 animate-spin text-slate-400 absolute z-10" />}
+          {isLoading && <LoadingSpinner size="xl" variant="muted" className="absolute z-10" />}
           {imageUrl && (
             <TransformWrapper 
               limitToBounds={true} 
@@ -788,7 +793,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
                     <div className="pdf-image-container relative w-full h-full">
                       {isCropMode ? (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Suspense fallback={<div className="flex items-center justify-center w-full h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+                          <Suspense fallback={<div className="flex items-center justify-center w-full h-full"><LoadingSpinner size="lg" variant="muted" /></div>}>
                             <Cropper
                             src={imageUrl}
                             style={{ height: '100%', width: '100%', maxHeight: '80vh' }}
@@ -868,7 +873,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
         </div>
         <DialogFooter className="flex-col gap-3 md:flex-row md:gap-0 md:justify-between md:items-center p-3 bg-slate-900/50 border-t border-slate-700 flex-shrink-0 text-white backdrop-blur-sm">
           <div className="flex items-center gap-2 w-full md:w-auto">
-            <Button aria-label="Sayfayı indir" onClick={handleDownload} disabled={isDownloading} className="bg-slate-700 hover:bg-slate-600"><div className="w-12">{isDownloading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : <Download className="h-5 w-5 mx-auto" />}</div></Button>
+            <Button aria-label="Sayfayı indir" onClick={handleDownload} disabled={isDownloading} className="bg-slate-700 hover:bg-slate-600"><div className="w-12">{isDownloading ? <LoadingSpinner size="sm" variant="white" /> : <Download className="h-5 w-5 mx-auto" />}</div></Button>
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
             <Button aria-label="Önceki sayfa" onClick={() => setCurrentPage(p => p > 1 ? p - 1 : 1)} disabled={currentPage <= 1} className="bg-slate-700 hover:bg-slate-600 h-12 w-12 md:h-10 md:w-10"><ArrowLeft className="h-5 w-5" /></Button>

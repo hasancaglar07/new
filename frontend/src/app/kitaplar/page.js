@@ -746,7 +746,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
       <DialogContent className="max-w-none w-screen h-screen p-0 gap-0 flex flex-col bg-slate-800">
         <DialogHeader className="p-3 border-b border-slate-700 flex-shrink-0 flex-row items-center justify-between text-white bg-slate-900/50">
           <DialogTitle className="text-lg md:text-xl text-slate-100 line-clamp-1">{book.kitap_adi}</DialogTitle>
-          <Button aria-label="Kapat" variant="ghost" size="icon" onClick={onClose} className="text-slate-300 hover:text-white hover:bg-slate-700"><X className="h-6 w-6"/></Button>
+          <MobileOptimizedButton aria-label="Kapat" variant="ghost" size="icon" onClick={onClose} className="text-slate-300 hover:text-white hover:bg-slate-700 min-h-[44px] min-w-[44px]"><X className="h-6 w-6"/></MobileOptimizedButton>
         </DialogHeader>
         <div className="flex-grow w-full h-full flex justify-center items-center overflow-hidden relative">
           {isLoading && <Loader2 className="h-10 w-10 animate-spin text-slate-400 absolute z-10" />}

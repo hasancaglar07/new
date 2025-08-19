@@ -6,6 +6,7 @@ import {
     Search, X, Play, Pause, Grid, List, Tag, Flame, Share2, MessageCircle
 } from 'lucide-react';
 import { useAudio } from '@/components/audio/AudioProvider';
+import MobileOptimizedButton from '@/components/MobileOptimizedButton';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 function AudioPlayer({ source, title, chapters, mp3Filename, onReadyToPlay, onClose, searchQuery }) {
     const audioRef = useRef(null);
@@ -62,12 +63,12 @@ function AudioPlayer({ source, title, chapters, mp3Filename, onReadyToPlay, onCl
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col">
             {/* Header */}
             <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white relative flex-shrink-0" style={{background: 'linear-gradient(to right, #177267, #0d9488)'}}>
-                <button
+                <MobileOptimizedButton
                     onClick={onClose}
-                    className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors z-10"
+                    className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors z-10 min-h-[44px] min-w-[44px]"
                 >
                     <X className="h-5 w-5" />
-                </button>
+                </MobileOptimizedButton>
                 <div className="pr-12">
                     <h2 className="text-2xl font-bold mb-4">Kaynak: {source}</h2>
                     

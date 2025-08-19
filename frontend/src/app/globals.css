@@ -4,6 +4,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import Design System */
+@import '../styles/design-system.css';
+
 /* react-pdf text/annotation layers for selectable text */
 .react-pdf__Page__textContent { user-select: text; }
 .react-pdf__Page__textContent span { white-space: pre-wrap; }
