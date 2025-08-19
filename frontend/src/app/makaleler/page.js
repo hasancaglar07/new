@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -291,8 +291,8 @@ function ArticleCard({ article, index, query }) {
     );
 }
 
-// --- ANA MAKALELER SAYFASI ---
-export default function ArticlesPage() {
+// --- SEARCH PARAMS COMPONENT ---
+function ArticlesContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     
@@ -852,5 +852,14 @@ export default function ArticlesPage() {
                 </main>
             </div>
         </div>
+    );
+}
+
+// --- ANA MAKALELER SAYFASI ---
+export default function ArticlesPage() {
+    return (
+        <Suspense fallback={<ArticlesSkeleton />}>
+            <ArticlesContent />
+        </Suspense>
     );
 }

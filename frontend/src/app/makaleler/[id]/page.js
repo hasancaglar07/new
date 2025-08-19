@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -108,9 +108,8 @@ function ErrorState({ message }) {
 }
 
 
-// --- ANA MAKALE OKUMA SAYFASI ---
-// 'params' prop'u sayesinde URL'deki [id] değerini alabiliyoruz.
-export default function ArticleReadPage({ params }) {
+// --- ARTICLE CONTENT COMPONENT ---
+function ArticleContent({ params }) {
     const searchParams = useSearchParams();
     const [article, setArticle] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -447,6 +446,16 @@ export default function ArticleReadPage({ params }) {
         </div>
     );
 }
+
+// --- ANA MAKALE OKUMA SAYFASI ---
+export default function ArticleReadPage({ params }) {
+    return (
+        <Suspense fallback={<ArticleSkeleton />}>
+            <ArticleContent params={params} />
+        </Suspense>
+    );
+}
+
 // Tailwind'in `prose` eklentisini kullanabilmek için
 // `tailwind.config.js` dosyasına bir eklenti eklememiz gerekebilir.
 // Eğer metinler stillenmemiş görünürse, bu adımı uygulayacağız.
