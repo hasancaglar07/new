@@ -264,4 +264,56 @@
   .skip-link:focus {
     top: 6px;
   }
+  
+  /* Mobile touch optimizations */
+  @media (hover: none) and (pointer: coarse) {
+    /* Remove hover states on touch devices */
+    button:hover,
+    .hover\:bg-slate-600:hover,
+    .hover\:bg-slate-700:hover,
+    .hover\:bg-slate-800:hover,
+    .hover\:bg-emerald-700:hover,
+    .hover\:bg-blue-700:hover,
+    .hover\:bg-orange-700:hover {
+      background-color: inherit !important;
+    }
+    
+    /* Ensure minimum touch target size (44px) */
+    button,
+    .btn,
+    [role="button"],
+    input[type="button"],
+    input[type="submit"] {
+      min-height: 44px;
+      min-width: 44px;
+      touch-action: manipulation;
+    }
+    
+    /* Improve button responsiveness */
+    button,
+    .btn {
+      -webkit-tap-highlight-color: rgba(16, 185, 129, 0.3);
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    
+    /* Active states for better feedback */
+    button:active,
+    .btn:active {
+      transform: scale(0.98);
+      transition: transform 0.1s ease;
+    }
+  }
+  
+  /* Fast click optimization */
+  * {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+  
+  /* Prevent 300ms delay on mobile */
+  html {
+    touch-action: manipulation;
+  }
 }

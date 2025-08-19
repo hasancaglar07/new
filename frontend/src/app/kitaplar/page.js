@@ -19,6 +19,7 @@ const Cropper = lazy(() =>
 
 // ShadCN UI ve Yerel Bileşenler
 import { Button } from "@/components/ui/button";
+import MobileOptimizedButton from "@/components/MobileOptimizedButton";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -760,7 +761,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
               {({ zoomIn, zoomOut, resetTransform }) => (
                 <>
                    <div className="absolute top-4 right-4 z-20 flex flex-col gap-3">
-                    <Button 
+                    <MobileOptimizedButton 
                       aria-label="Yakınlaştır" 
                       onClick={() => zoomIn()} 
                       disabled={isCropMode}
@@ -768,8 +769,8 @@ function BookViewerDialog({ book, onClose, isOpen }) {
                       size="lg"
                     >
                       <ZoomIn className="h-6 w-6 md:h-5 md:w-5" />
-                    </Button>
-                    <Button 
+                    </MobileOptimizedButton>
+                    <MobileOptimizedButton 
                       aria-label="Uzaklaştır" 
                       onClick={() => zoomOut()} 
                       disabled={isCropMode}
@@ -777,8 +778,8 @@ function BookViewerDialog({ book, onClose, isOpen }) {
                       size="lg"
                     >
                       <ZoomOut className="h-6 w-6 md:h-5 md:w-5" />
-                    </Button>
-                    <Button 
+                    </MobileOptimizedButton>
+                    <MobileOptimizedButton 
                       aria-label="Görünümü sıfırla" 
                       onClick={() => resetTransform()} 
                       disabled={isCropMode}
@@ -786,20 +787,20 @@ function BookViewerDialog({ book, onClose, isOpen }) {
                       size="lg"
                     >
                       <RotateCcw className="h-6 w-6 md:h-5 md:w-5" />
-                    </Button>
-                    <Button 
+                    </MobileOptimizedButton>
+                    <MobileOptimizedButton 
                       aria-label={isCropMode ? "Okuma Modu" : "Kırpma Modu"} 
                       onClick={toggleCropMode} 
                       className={`${isCropMode ? 'bg-orange-600/80 hover:bg-orange-700/90' : 'bg-blue-600/80 hover:bg-blue-700/90'} text-white backdrop-blur-sm h-12 w-12 md:h-10 md:w-10 p-0 rounded-lg shadow-lg border ${isCropMode ? 'border-orange-500/50' : 'border-blue-500/50'}`}
                       size="lg"
                     >
                       {isCropMode ? <Eye className="h-6 w-6 md:h-5 md:w-5" /> : <Crop className="h-6 w-6 md:h-5 md:w-5" />}
-                     </Button>
+                     </MobileOptimizedButton>
                      
                      {/* Kırpma Modu Kontrolleri */}
                      {isCropMode && (
                        <>
-                         <Button 
+                         <MobileOptimizedButton 
                            aria-label="Kırpmayı Uygula" 
                            onClick={applyCrop} 
                            className="bg-green-600/80 hover:bg-green-700/90 text-white backdrop-blur-sm h-12 w-12 md:h-10 md:w-auto md:px-3 p-0 rounded-lg shadow-lg border border-green-500/50 text-xs md:text-sm font-medium"
@@ -807,8 +808,8 @@ function BookViewerDialog({ book, onClose, isOpen }) {
                          >
                            <span className="md:hidden text-lg">✓</span>
                            <span className="hidden md:inline">Uygula</span>
-                         </Button>
-                         <Button 
+                         </MobileOptimizedButton>
+                         <MobileOptimizedButton 
                            aria-label="Kırpmayı İptal Et" 
                            onClick={cancelCrop} 
                            className="bg-red-600/80 hover:bg-red-700/90 text-white backdrop-blur-sm h-12 w-12 md:h-10 md:w-auto md:px-3 p-0 rounded-lg shadow-lg border border-red-500/50 text-xs md:text-sm font-medium"
@@ -816,7 +817,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
                          >
                            <span className="md:hidden text-lg">✕</span>
                            <span className="hidden md:inline">İptal</span>
-                         </Button>
+                         </MobileOptimizedButton>
                        </>
                      )}
                      
@@ -928,7 +929,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
             )}
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
-            <Button aria-label="Önceki sayfa" onClick={() => setCurrentPage(p => p > 1 ? p - 1 : 1)} disabled={currentPage <= 1 || isCropMode} className={`${isCropMode ? 'bg-slate-600/50 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600'} h-12 w-12 md:h-10 md:w-10`}><ArrowLeft className="h-5 w-5" /></Button>
+            <MobileOptimizedButton aria-label="Önceki sayfa" onClick={() => setCurrentPage(p => p > 1 ? p - 1 : 1)} disabled={currentPage <= 1 || isCropMode} className={`${isCropMode ? 'bg-slate-600/50 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600'} h-12 w-12 md:h-10 md:w-10`}><ArrowLeft className="h-5 w-5" /></MobileOptimizedButton>
             <div className="flex items-center gap-2">
               <input value={pageInput} onChange={(e)=> setPageInput(e.target.value.replace(/\D/g,''))} placeholder={`${currentPage}`} disabled={isCropMode} className={`w-20 h-10 px-2 rounded ${isCropMode ? 'bg-slate-600/50 cursor-not-allowed' : 'bg-slate-800'} border border-slate-700 text-center`} />
               <Button onClick={()=>{ const n=parseInt(pageInput||'0',10); if (n && totalPages && n>=1 && n<=totalPages) setCurrentPage(n); }} disabled={isCropMode} className={`${isCropMode ? 'bg-slate-600/50 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600'}`}>Git</Button>
@@ -936,7 +937,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
             <div className="text-lg font-semibold tabular-nums">
               <span>{currentPage}</span><span className="text-slate-400 mx-1.5">/</span><span className="text-slate-300">{totalPages || '...'}</span>
             </div>
-            <Button aria-label="Sonraki sayfa" onClick={() => setCurrentPage(p => totalPages && p < totalPages ? p + 1 : p)} disabled={!totalPages || currentPage >= totalPages || isCropMode} className={`${isCropMode ? 'bg-slate-600/50 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600'} h-12 w-12 md:h-10 md:w-10`}><ArrowRight className="h-5 w-5" /></Button>
+            <MobileOptimizedButton aria-label="Sonraki sayfa" onClick={() => setCurrentPage(p => totalPages && p < totalPages ? p + 1 : p)} disabled={!totalPages || currentPage >= totalPages || isCropMode} className={`${isCropMode ? 'bg-slate-600/50 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600'} h-12 w-12 md:h-10 md:w-10`}><ArrowRight className="h-5 w-5" /></MobileOptimizedButton>
           </div>
           {/* metin önizleme kaldırıldı */}
         </DialogFooter>
