@@ -105,7 +105,7 @@ export default function PWAInstaller() {
       </div>
       
       <p className="text-sm text-gray-600 mb-4">
-        Mihmandar.org'u cihazınıza yükleyerek daha hızlı erişim sağlayın ve offline okuma imkanı kazanın.
+        Mihmandar.org&apos;u cihazınıza yükleyerek daha hızlı erişim sağlayın ve offline okuma imkanı kazanın.
       </p>
       
       <div className="flex space-x-2">

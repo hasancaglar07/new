@@ -345,7 +345,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, currentPage, totalPages, isCropMode, showShareMenu]);
+  }, [isOpen, currentPage, totalPages, isCropMode, showShareMenu, toggleCropMode]);
 
   // Resim üzerinde alan seçimi için event listener'lar
   useEffect(() => {
