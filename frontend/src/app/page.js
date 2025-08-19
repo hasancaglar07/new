@@ -445,12 +445,10 @@ function BookViewerDialog({ book, onClose, isOpen }) {
           {imageUrl && (
             <TransformWrapper 
               limitToBounds={true} 
-              doubleClick={{ mode: 'reset' }} 
-              pinch={{ step: 1 }} 
+              doubleClick={{ mode: 'reset', disabled: isSelecting }} 
+              pinch={{ step: 1, disabled: isSelecting }} 
               wheel={{ step: 0.2 }}
               panning={{ disabled: isSelecting }}
-              pinch={{ disabled: isSelecting }}
-              doubleClick={{ disabled: isSelecting }}
             >
               {({ zoomIn, zoomOut, resetTransform }) => (
                 <>
