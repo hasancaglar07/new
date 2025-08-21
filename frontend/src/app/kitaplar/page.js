@@ -1298,7 +1298,7 @@ function EmptyState() {
 }
 
 // --- ANA KÜTÜPHANE SAYFASI ---
-export default function LibraryPage() {
+function LibraryContent() {
     const searchParams = useSearchParams();
     const targetPage = searchParams.get('page');
     const openBook = searchParams.get('open'); // Direkt açılacak kitap
@@ -1483,5 +1483,20 @@ export default function LibraryPage() {
                 {selectedBook && <BookViewerDialog book={selectedBook} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} targetPage={targetPage} />}
             </div>
         </div>
+    );
+}
+
+export default function LibraryPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-gradient-to-br from-emerald-50/30 via-teal-50/20 to-green-50/30 flex items-center justify-center">
+                <div className="text-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-emerald-600 mx-auto mb-4" />
+                    <p className="text-slate-600">Kütüphane yükleniyor...</p>
+                </div>
+            </div>
+        }>
+            <LibraryContent />
+        </Suspense>
     );
 }
