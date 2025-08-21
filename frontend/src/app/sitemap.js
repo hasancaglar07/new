@@ -30,6 +30,12 @@ export default async function sitemap() {
       priority: 0.8,
     },
     {
+      url: `${baseUrl}/sohbet`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.9,
+    },
+    {
       url: `${baseUrl}/video-analizleri`,
       lastModified: new Date(),
       changeFrequency: 'weekly',

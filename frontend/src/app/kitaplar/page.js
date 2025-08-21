@@ -3,6 +3,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react";
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Download, ArrowLeft, ArrowRight, BookOpen, Search, Library, ZoomIn, ZoomOut, RotateCcw, X, Crop, Eye } from "lucide-react";
 import Image from 'next/image';
@@ -42,12 +43,13 @@ const getAuthorColors = (authorName) => {
 
 // --- ALT BİLEŞENLER (TÜM DÜZELTMELERLE) ---
 
-function BookViewerDialog({ book, onClose, isOpen }) {
-  const [currentPage, setCurrentPage] = useState(1);
+function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
+  const [currentPage, setCurrentPage] = useState(targetPage ? parseInt(targetPage) : 1);
   const [totalPages, setTotalPages] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [pageInput, setPageInput] = useState('');
+  const [showTargetPageNotice, setShowTargetPageNotice] = useState(!!targetPage);
   const [selectedText, setSelectedText] = useState('');
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareMenuPosition, setShareMenuPosition] = useState({ x: 0, y: 0 });
@@ -744,9 +746,25 @@ function BookViewerDialog({ book, onClose, isOpen }) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-none w-screen h-screen p-0 gap-0 flex flex-col bg-slate-800">
-        <DialogHeader className="p-3 border-b border-slate-700 flex-shrink-0 flex-row items-center justify-between text-white bg-slate-900/50">
-          <DialogTitle className="text-lg md:text-xl text-slate-100 line-clamp-1">{book.kitap_adi}</DialogTitle>
-          <MobileOptimizedButton aria-label="Kapat" variant="ghost" size="icon" onClick={onClose} className="text-slate-300 hover:text-white hover:bg-slate-700 min-h-[44px] min-w-[44px]"><X className="h-6 w-6"/></MobileOptimizedButton>
+        <DialogHeader className="p-3 border-b border-slate-700 flex-shrink-0 flex-col text-white bg-slate-900/50">
+          <div className="flex items-center justify-between w-full">
+            <DialogTitle className="text-lg md:text-xl text-slate-100 line-clamp-1">{book.kitap_adi}</DialogTitle>
+            <MobileOptimizedButton aria-label="Kapat" variant="ghost" size="icon" onClick={onClose} className="text-slate-300 hover:text-white hover:bg-slate-700 min-h-[44px] min-w-[44px]"><X className="h-6 w-6"/></MobileOptimizedButton>
+          </div>
+          {showTargetPageNotice && (
+            <div className="mt-2 p-2 bg-yellow-600/20 border border-yellow-500/30 rounded-lg flex items-center gap-2">
+              <span className="text-yellow-300 text-sm">📍</span>
+              <span className="text-yellow-100 text-sm font-medium">
+                Sohbet asistanı tarafından referans gösterilen sayfa: {targetPage}
+              </span>
+              <button 
+                onClick={() => setShowTargetPageNotice(false)}
+                className="ml-auto text-yellow-300 hover:text-yellow-100 text-xs"
+              >
+                ✕
+              </button>
+            </div>
+          )}
         </DialogHeader>
         <div className="flex-grow w-full h-full flex justify-center items-center overflow-hidden relative">
           {isLoading && <Loader2 className="h-10 w-10 animate-spin text-slate-400 absolute z-10" />}
@@ -1281,6 +1299,9 @@ function EmptyState() {
 
 // --- ANA KÜTÜPHANE SAYFASI ---
 export default function LibraryPage() {
+    const searchParams = useSearchParams();
+    const targetPage = searchParams.get('page');
+    const openBook = searchParams.get('open'); // Direkt açılacak kitap
     const [libraryData, setLibraryData] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedBook, setSelectedBook] = useState(null);
@@ -1317,6 +1338,25 @@ export default function LibraryPage() {
             return { ...authorData, kitaplar: filteredBooks };
         }).filter(Boolean);
     }, [libraryData, selectedAuthor, searchTerm]);
+
+    // Direkt kitap açma işlemi
+    useEffect(() => {
+        if (openBook && libraryData.length > 0 && !isModalOpen) {
+            // Tüm kitaplar arasında PDF dosya adına göre ara
+            for (const authorData of libraryData) {
+                const foundBook = authorData.kitaplar.find(book => 
+                    book.pdf_dosyasi === openBook || 
+                    book.pdf_dosyasi === `${openBook}.pdf` ||
+                    book.kitap_adi.toLowerCase().includes(openBook.toLowerCase())
+                );
+                if (foundBook) {
+                    setSelectedBook(foundBook);
+                    setIsModalOpen(true);
+                    break;
+                }
+            }
+        }
+    }, [openBook, libraryData, isModalOpen]);
 
     const handleReadClick = (book) => { setSelectedBook(book); setIsModalOpen(true); };
     
@@ -1440,7 +1480,7 @@ export default function LibraryPage() {
                     </AnimatePresence>
                 </div>
                 
-                {selectedBook && <BookViewerDialog book={selectedBook} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />}
+                {selectedBook && <BookViewerDialog book={selectedBook} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} targetPage={targetPage} />}
             </div>
         </div>
     );

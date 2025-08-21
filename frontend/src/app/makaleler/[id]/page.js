@@ -120,6 +120,8 @@ function ErrorState({ message }) {
 function ArticleContent({ params }) {
     const searchParams = useSearchParams();
     const searchQuery = searchParams.get('search') || '';
+    const highlightMode = searchParams.get('highlight') === 'true';
+    const targetPage = searchParams.get('page');
     const backUrl = searchQuery ? `/makaleler?search=${encodeURIComponent(searchQuery)}` : '/makaleler';
     const [article, setArticle] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -344,7 +346,16 @@ function ArticleContent({ params }) {
                                     wordSpacing: '0.1em',
                                     letterSpacing: '0.01em'
                                 }}
-                                dangerouslySetInnerHTML={{ __html: highlightSearchTerm(article.content, searchQuery) }}
+                                dangerouslySetInnerHTML={{ 
+                                    __html: highlightMode ? 
+                                        // Highlight modunda ek vurgulama
+                                        `<div class="bg-yellow-100 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg">
+                                            <p class="text-yellow-800 font-semibold text-sm mb-2">📍 Kaynak Alıntısı${targetPage ? ` - Sayfa ${targetPage}` : ''}</p>
+                                            <p class="text-yellow-700 text-sm">Bu içerik sohbet asistanı tarafından referans gösterilmiştir.</p>
+                                        </div>` + 
+                                        highlightSearchTerm(article.content, searchQuery) :
+                                        highlightSearchTerm(article.content, searchQuery)
+                                }}
                             />
                         </div>
                         

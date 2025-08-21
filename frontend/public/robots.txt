@@ -1,0 +1,22 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://mihmandar.org/sitemap.xml
+
+# Disallow admin and API routes
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/
+
+# Allow important pages
+Allow: /
+Allow: /sohbet
+Allow: /kitaplar
+Allow: /makaleler
+Allow: /ses-kayitlari
+Allow: /video-analizleri
+Allow: /namaz
+
+# Crawl delay
+Crawl-delay: 1

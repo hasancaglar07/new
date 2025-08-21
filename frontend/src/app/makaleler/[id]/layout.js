@@ -20,7 +20,8 @@ async function getArticle(id) {
 }
 
 export async function generateMetadata({ params }) {
-  const article = await getArticle(params.id);
+  const { id } = await params;
+  const article = await getArticle(id);
   
   if (!article) {
     return {
@@ -39,7 +40,7 @@ export async function generateMetadata({ params }) {
     ? cleanContent.substring(0, 157) + '...'
     : cleanContent || `${articleTitle} - ${authorName} tarafından yazılan bu değerli makaleyi Mihmandar.org E-Kütüphanesi'nde okuyabilirsiniz.`;
   
-  const pageUrl = `https://mihmandar.org/makaleler/${params.id}`;
+  const pageUrl = `https://mihmandar.org/makaleler/${id}`;
   const publishDate = article.tarih || article.created_at || new Date().toISOString();
   
   return {
@@ -76,7 +77,7 @@ export async function generateMetadata({ params }) {
       images: ['/mihmandar-logo.svg'],
     },
     alternates: {
-      canonical: `/makaleler/${params.id}`,
+      canonical: `/makaleler/${id}`,
     },
     other: {
       'article:author': authorName,

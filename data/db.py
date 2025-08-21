@@ -223,6 +223,180 @@ def get_article_by_id(article_id: int):
         row = conn.execute("SELECT * FROM articles WHERE id = ?", (article_id,)).fetchone()
         return dict(row) if row else None
 
+# --- AI History CRUD (Supabase > SQLite) ---
+
+def _generate_seo_slug(question: str) -> str:
+    """Sorudan SEO uyumlu slug oluştur"""
+    import re
+    # Türkçe karakterleri değiştir
+    replacements = {
+        'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u',
+        'Ç': 'C', 'Ğ': 'G', 'İ': 'I', 'Ö': 'O', 'Ş': 'S', 'Ü': 'U'
+    }
+    slug = question.lower()
+    for tr_char, en_char in replacements.items():
+        slug = slug.replace(tr_char, en_char)
+    
+    # Sadece harf, rakam ve boşluk bırak
+    slug = re.sub(r'[^a-z0-9\s]', '', slug)
+    # Boşlukları tire ile değiştir
+    slug = re.sub(r'\s+', '-', slug.strip())
+    # Çoklu tireleri tek tire yap
+    slug = re.sub(r'-+', '-', slug)
+    # Başta ve sonda tire varsa kaldır
+    slug = slug.strip('-')
+    
+    return slug[:100]  # Maksimum 100 karakter
+
+def _upsert_ai_history_supabase(chat_id: str, question: str, answer: str, slug: str, sources: list = None):
+    client = get_supabase_connection()
+    if not isinstance(client, httpx.Client):
+        return False
+    try:
+        payload = {
+            "chat_id": chat_id,
+            "question": question,
+            "answer": answer,
+            "slug": slug,
+            "sources": sources or [],
+            "created_at": "now()"
+        }
+        headers = {"Prefer": "resolution=merge-duplicates,return=representation"}
+        try:
+            resp = client.post(
+                "/ai_history",
+                params={"on_conflict": "chat_id"},
+                json=payload,
+                headers=headers,
+            )
+        except Exception as e:
+            logging.error(f"Supabase AI history UPSERT isteği gönderilemedi: {e}")
+            return False
+        if resp.status_code in (200, 201, 204):
+            return True
+        logging.error(f"Supabase AI history UPSERT hatası: {resp.status_code} {resp.text}")
+        return False
+    except Exception as e:
+        logging.error(f"Supabase AI history UPSERT genel hata: {e}")
+        return False
+
+def _upsert_ai_history_sqlite(chat_id: str, question: str, answer: str, slug: str, sources_json: str = None):
+    conn = get_sqlite_connection()
+    if not conn:
+        logging.warning(f"SQLite bağlantısı yok, AI geçmişi kaydedilemedi: {chat_id}")
+        return
+    try:
+        # SQLite için tablo oluştur
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ai_history (
+                chat_id TEXT PRIMARY KEY,
+                question TEXT NOT NULL,
+                answer TEXT NOT NULL,
+                slug TEXT NOT NULL,
+                sources TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        
+        sql = (
+            "INSERT OR REPLACE INTO ai_history "
+            "(chat_id, question, answer, slug, sources, created_at) "
+            "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
+        )
+        conn.execute(sql, (chat_id, question, answer, slug, sources_json))
+        conn.commit()
+    except Exception as e:
+        logging.error(f"SQLite AI history UPSERT sırasında hata: {e}")
+    finally:
+        conn.close()
+
+def save_ai_chat(question: str, answer: str, sources: list = None) -> str:
+    """AI sohbet geçmişini kaydet ve SEO uyumlu slug döndür"""
+    import uuid
+    
+    chat_id = str(uuid.uuid4())
+    slug = _generate_seo_slug(question)
+    
+    # 1) Supabase'e kaydet
+    supa_ok = _upsert_ai_history_supabase(chat_id, question, answer, slug, sources)
+    if not supa_ok:
+        # 2) SQLite fallback
+        sources_json = json.dumps(sources, ensure_ascii=False) if sources else None
+        _upsert_ai_history_sqlite(chat_id, question, answer, slug, sources_json)
+    
+    logging.info(f"AI sohbet kaydedildi: {slug} (ID: {chat_id})")
+    return slug
+
+def get_ai_chat_by_slug(slug: str) -> Optional[Dict[str, Any]]:
+    """Slug ile AI sohbet geçmişini getir"""
+    # 1) Supabase'den dene
+    client = get_supabase_connection()
+    if isinstance(client, httpx.Client):
+        try:
+            resp = client.get("/ai_history", params={"slug": f"eq.{slug}", "select": "*"})
+            if resp.status_code == 200:
+                data = resp.json()
+                if data:
+                    return data[0]
+        except Exception as e:
+            logging.error(f"Supabase AI history getirme hatası: {e}")
+    
+    # 2) SQLite fallback
+    conn = get_sqlite_connection()
+    if conn:
+        try:
+            conn.row_factory = sqlite3.Row
+            row = conn.execute("SELECT * FROM ai_history WHERE slug = ?", (slug,)).fetchone()
+            if row:
+                result = dict(row)
+                if result.get('sources'):
+                    try:
+                        result['sources'] = json.loads(result['sources'])
+                    except:
+                        result['sources'] = []
+                return result
+        except Exception as e:
+            logging.error(f"SQLite AI history getirme hatası: {e}")
+        finally:
+            conn.close()
+    
+    return None
+
+def get_recent_ai_chats(limit: int = 20) -> list:
+    """Son AI sohbetlerini getir"""
+    # 1) Supabase'den dene
+    client = get_supabase_connection()
+    if isinstance(client, httpx.Client):
+        try:
+            resp = client.get("/ai_history", params={
+                "select": "chat_id,question,slug,created_at",
+                "order": "created_at.desc",
+                "limit": limit
+            })
+            if resp.status_code == 200:
+                return resp.json()
+        except Exception as e:
+            logging.error(f"Supabase AI history listesi getirme hatası: {e}")
+    
+    # 2) SQLite fallback
+    conn = get_sqlite_connection()
+    if conn:
+        try:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                "SELECT chat_id, question, slug, created_at FROM ai_history ORDER BY created_at DESC LIMIT ?",
+                (limit,)
+            ).fetchall()
+            return [dict(row) for row in rows]
+        except Exception as e:
+            logging.error(f"SQLite AI history listesi getirme hatası: {e}")
+        finally:
+            conn.close()
+    
+    return []
+
 # --- Video Task CRUD (Supabase > SQLite) ---
 
 def _upsert_supabase(task_id: str, status: str, message: Optional[str], result: Optional[Dict[str, Any]]):

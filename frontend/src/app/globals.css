@@ -309,14 +309,56 @@
     }
   }
   
-  /* Fast click optimization */
+  /* Fast click optimization - Enhanced */
   * {
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
   
-  /* Prevent 300ms delay on mobile */
+  /* Prevent 300ms delay on mobile - Enhanced */
   html {
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+  }
+  
+  /* Immediate touch response */
+  body {
+    touch-action: manipulation;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Enhanced button touch optimization */
+  button, 
+  [role="button"], 
+  input[type="button"], 
+  input[type="submit"], 
+  .btn,
+  .clickable {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(16, 185, 129, 0.2);
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: pointer;
+    
+    /* Immediate visual feedback */
+    transition: transform 0.05s ease, background-color 0.05s ease;
+  }
+  
+  /* Active state for immediate feedback */
+  button:active,
+  [role="button"]:active,
+  .btn:active,
+  .clickable:active {
+    transform: scale(0.98);
+    transition: transform 0.05s ease;
+  }
+  
+  /* Prevent double-tap zoom */
+  input, textarea, select {
     touch-action: manipulation;
   }
 }

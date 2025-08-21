@@ -80,7 +80,7 @@ def get_all_articles_by_category():
     conn = get_connection()
     conn.row_factory = sqlite3.Row 
     cursor = conn.cursor()
-    cursor.execute("SELECT id, title, category, author, url FROM articles ORDER BY category, title")
+    cursor.execute("SELECT id, title, content, category, author, url FROM articles ORDER BY category, title")
     rows = cursor.fetchall()
     articles_by_category = {}
     for row in rows:

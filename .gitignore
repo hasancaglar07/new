@@ -35,10 +35,81 @@ yarn-error.log*
 /data/audio
 /data/processed_audio
 
+# ### DATABASE DOSYALARI ###
+# SQLite veritabanları - çok büyük olabilir
+*.db
+*.sqlite
+*.sqlite3
+/data/articles_database.db
+/data/audio_database.db
+/data/qa_database.db
+/data/video_analyses.db
+
+# ### VECTOR DATABASE ###
+# FAISS indeks dosyaları - çok büyük
+/data/vector_db/
+/vector_db/
+faiss.index
+vector_metadata.db
+
+# ### TEMP VE CACHE DOSYALARI ###
+# Geçici ses dosyaları
+/data/temp_audio/
+*.webm
+*.mp3
+*.wav
+*.m4a
+
+# ### PDF DOSYALARI ###
+# PDF kitaplar - telif hakkı nedeniyle
+/data/pdfler/*.pdf
+
 # ### İNDEKS PAKETLERİ ###
 # Backblaze'e yüklenecek indeks paketleri
 whoosh_index_package_*.zip
 
+# ### LOG DOSYALARI ###
+*.log
+logs/
+
+# ### BACKUP DOSYALARI ###
+*.backup
+*.bak
+*.old
+
+# ### GOOGLE CLOUD CREDENTIALS ###
+# Google Cloud servis hesabı anahtarları
+*.json
+!package.json
+!package-lock.json
+!components.json
+!tsconfig.json
+!jsconfig.json
+
+# ### YOUTUBE COOKIES ###
+# YouTube bot koruması için cookies
+youtube-cookies.txt
+
 # ### İşletim Sistemi Dosyaları ###
 .DS_Store
 Thumbs.db
+
+# ### IDE DOSYALARI ###
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ### PYTHON ÖZEL ###
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+
+# ### NODE.JS ÖZEL ###
+.npm
+.eslintcache
+
+# ### RAILWAY DEPLOYMENT ###
+.railway/

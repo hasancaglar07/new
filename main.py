@@ -21,13 +21,14 @@ from fastapi.responses import StreamingResponse
 from data.audio_db import get_all_audio_by_source, search_audio_chapters
 from data.audio_db import get_audio_path_by_id
 from data.audio_db import init_db as init_audio_db
+from data.vector_db import get_vector_db, init_vector_db
 from fastapi import FastAPI, HTTPException, Query, Depends, BackgroundTasks, Response
 # CORS middleware import removed
 from fastapi.responses import JSONResponse
 from whoosh.index import open_dir, Index
 from whoosh.qparser import MultifieldParser, AndGroup, QueryParser
 from whoosh.searching import Searcher
-from data.db import init_db, update_task, get_task, get_all_completed_analyses
+from data.db import init_db, update_task, get_task, get_all_completed_analyses, save_ai_chat, get_ai_chat_by_slug, get_recent_ai_chats
 from data.articles_db import get_all_articles_by_category, get_article_by_id
 from data.articles_db import init_db as init_articles_db
 from contextlib import asynccontextmanager
@@ -137,6 +138,10 @@ try:
     init_audio_db()  # audio_database.db
 except Exception:
     logger.exception("Audio veritabanı init başarısız oldu")
+try:
+    init_vector_db()  # FAISS vector database
+except Exception:
+    logger.exception("Vector veritabanı init başarısız oldu")
 
 # --- Yardımcı Fonksiyonlar ---
 def get_whoosh_index():
@@ -1420,3 +1425,591 @@ async def get_qibla_direction(latitude: float, longitude: float):
     except Exception as e:
         logger.error(f"Kıble yönü hesaplanırken hata: {e}")
         raise HTTPException(status_code=500, detail="Kıble yönü hesaplanamadı")
+
+# === SOHBET (CHAT) ENDPOINTS ===
+
+from pydantic import BaseModel
+from typing import Dict, Any
+
+class ChatMessage(BaseModel):
+    message: str
+    session_id: str = "default"
+    context: Dict[str, Any] = {}
+
+class ChatResponse(BaseModel):
+    response: str
+    sources: List[Dict[str, Any]] = []
+    session_id: str
+    confidence: float = 0.0
+    processing_time: float = 0.0
+
+@app.post("/chat/message", response_model=ChatResponse)
+async def chat_message(chat_request: ChatMessage):
+    """
+    Ana sohbet endpoint'i - DeepSeek API ile RAG sistemi
+    """
+    start_time = time.time()
+    
+    try:
+        if not deepseek_client:
+            raise HTTPException(status_code=500, detail="DeepSeek API yapılandırılmamış")
+        
+        # Kullanıcı mesajını temizle ve hazırla
+        user_message = chat_request.message.strip()
+        if not user_message:
+            raise HTTPException(status_code=400, detail="Mesaj boş olamaz")
+        
+        # RAG sistemi ile ilgili kaynakları ara
+        relevant_sources = await search_relevant_content(user_message)
+        
+        # DeepSeek için context oluştur
+        context_text = build_context_from_sources(relevant_sources)
+        
+        # DeepSeek API çağrısı
+        system_prompt = """
+Sen Mihmandar Asistanı'sın. Tasavvuf, İslami ilimler ve manevi konularda uzman bir danışmansın.
+
+Görevin:
+1. Kullanıcının sorularını anlayıp, verilen kaynaklardan yararlanarak kapsamlı cevaplar vermek
+2. Cevaplarını Türkçe, saygılı ve bilge bir üslupla sunmak
+3. Kaynaklara atıf yapmak ve güvenilir bilgiler vermek
+4. Manevi rehberlik yaparken İslami değerlere uygun davranmak
+
+Kurallar:
+- Sadece verilen kaynaklardaki bilgileri kullan
+- Kaynak belirtmeden bilgi verme
+- Kısa ve öz cevaplar yerine, doyurucu açıklamalar yap
+- Konuyu aydınlatan, öğretici bir yaklaşım benimse
+"""
+        
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Kaynak bilgiler:\n{context_text}\n\nSoru: {user_message}"}
+        ]
+        
+        # DeepSeek API çağrısı
+        response = await deepseek_client.chat.completions.create(
+            model="deepseek-chat",
+            messages=messages,
+            max_tokens=2000,
+            temperature=0.7,
+            top_p=0.9,
+            stream=False
+        )
+        
+        assistant_response = response.choices[0].message.content
+        processing_time = time.time() - start_time
+        
+        # Confidence score hesapla (basit heuristik)
+        confidence = calculate_response_confidence(assistant_response, relevant_sources)
+        
+        # AI sohbet geçmişini Supabase'e kaydet
+        try:
+            sources_for_save = [{
+                "id": src.get("id"),
+                "title": src.get("title"),
+                "type": src.get("type"),
+                "author": src.get("author"),
+                "score": src.get("score")
+            } for src in relevant_sources]
+            
+            slug = save_ai_chat(user_message, assistant_response, sources_for_save)
+            logger.info(f"AI sohbet kaydedildi: {slug}")
+        except Exception as e:
+            logger.error(f"AI sohbet kaydetme hatası: {e}")
+        
+        return ChatResponse(
+            response=assistant_response,
+            sources=relevant_sources,
+            session_id=chat_request.session_id,
+            confidence=confidence,
+            processing_time=processing_time
+        )
+        
+    except Exception as e:
+        logger.error(f"Chat endpoint error: {e}")
+        processing_time = time.time() - start_time
+        
+        # Fallback response
+        return ChatResponse(
+            response="Üzgünüm, şu anda size yardımcı olamıyorum. Lütfen daha sonra tekrar deneyin.",
+            sources=[],
+            session_id=chat_request.session_id,
+            confidence=0.0,
+            processing_time=processing_time
+        )
+
+async def search_relevant_content(query: str, max_results: int = 10) -> List[Dict[str, Any]]:
+    """
+    FAISS vektör veritabanı ve diğer kaynaklarda anlamsal arama
+    """
+    sources = []
+    
+    try:
+        # FAISS vektör veritabanında anlamsal arama (birincil)
+        try:
+            vector_db = get_vector_db()
+            vector_results = vector_db.search(query, k=max_results)
+            
+            for result in vector_results:
+                # Vektör sonuçlarını standart formata çevir
+                source = {
+                    "id": result.get("source_id", ""),
+                    "type": result.get("source_type", ""),
+                    "title": result.get("title", ""),
+                    "author": result.get("author", ""),
+                    "content": result.get("content", ""),
+                    "page": result.get("page_number"),
+                    "url": result.get("url"),
+                    "timestamp": result.get("timestamp"),
+                    "score": result.get("similarity", 0.0),
+                    "search_method": "vector_semantic"
+                }
+                sources.append(source)
+            
+            logger.info(f"Vector search returned {len(vector_results)} results")
+            
+        except Exception as e:
+            logger.warning(f"Vector search error: {e}")
+            
+            # Fallback: Whoosh ile geleneksel arama
+            try:
+                ix = get_whoosh_index()
+                with ix.searcher() as searcher:
+                    parser = MultifieldParser(["content", "title", "author"], ix.schema)
+                    query_obj = parser.parse(query)
+                    results = searcher.search(query_obj, limit=max_results)
+                    
+                    for result in results:
+                        source = {
+                            "id": result.get("id", ""),
+                            "type": "book" if result.get("type") == "book" else "article",
+                            "title": result.get("title", ""),
+                            "author": result.get("author", ""),
+                            "content": result.get("content", "")[:500] + "...",
+                            "page": result.get("page"),
+                            "score": result.score * 0.8,  # Vektör aramadan düşük skor
+                            "search_method": "whoosh_fallback"
+                        }
+                        sources.append(source)
+                
+                logger.info(f"Whoosh fallback returned {len(results)} results")
+                
+            except Exception as whoosh_error:
+                logger.error(f"Whoosh fallback also failed: {whoosh_error}")
+        
+        # Ek aramalar (vektör aramayı tamamlamak için)
+        if len(sources) < max_results:
+            # Audio veritabanında ara
+            try:
+                audio_results = search_audio_chapters(query)
+                for audio in audio_results[:3]:  # En fazla 3 ses kaydı
+                    # Duplicate check
+                    if not any(s.get("id") == str(audio.get("id")) and s.get("type") == "audio" for s in sources):
+                        source = {
+                            "id": str(audio.get("id")),
+                            "type": "audio",
+                            "title": audio.get("title", ""),
+                            "author": audio.get("speaker", ""),
+                            "content": audio.get("description", "")[:300] + "...",
+                            "timestamp": audio.get("timestamp"),
+                            "score": 0.6,  # Düşük skor (keyword match)
+                            "search_method": "audio_keyword"
+                        }
+                        sources.append(source)
+            except Exception as e:
+                logger.warning(f"Audio search error: {e}")
+            
+            # Video analizlerinde ara
+            try:
+                analyses = get_all_completed_analyses()
+                for analysis in analyses[:2]:  # En fazla 2 video analizi
+                    if query.lower() in analysis.get("summary", "").lower():
+                        # Duplicate check
+                        if not any(s.get("id") == analysis.get("task_id") and s.get("type") == "video" for s in sources):
+                            source = {
+                                "id": analysis.get("task_id"),
+                                "type": "video",
+                                "title": analysis.get("title", "Video Analizi"),
+                                "content": analysis.get("summary", "")[:400] + "...",
+                                "url": analysis.get("url"),
+                                "score": 0.5,  # Düşük skor (keyword match)
+                                "search_method": "video_keyword"
+                            }
+                            sources.append(source)
+            except Exception as e:
+                logger.warning(f"Video analysis search error: {e}")
+    
+    except Exception as e:
+        logger.error(f"Search error: {e}")
+    
+    # Score'a göre sırala ve en iyi sonuçları döndür
+    sources.sort(key=lambda x: x.get("score", 0), reverse=True)
+    return sources[:max_results]
+
+def build_context_from_sources(sources: List[Dict[str, Any]]) -> str:
+    """
+    Kaynaklardan context metni oluştur
+    """
+    if not sources:
+        return "İlgili kaynak bulunamadı."
+    
+    context_parts = []
+    
+    for i, source in enumerate(sources[:5], 1):  # En fazla 5 kaynak
+        source_type = source.get("type", "unknown")
+        title = source.get("title", "Başlıksız")
+        author = source.get("author", "Bilinmeyen Yazar")
+        content = source.get("content", "")
+        
+        if source_type == "book":
+            page_info = f" (Sayfa {source.get('page')})" if source.get('page') else ""
+            context_parts.append(f"[{i}] Kitap: {title} - {author}{page_info}\n{content}")
+        elif source_type == "article":
+            context_parts.append(f"[{i}] Makale: {title} - {author}\n{content}")
+        elif source_type == "audio":
+            timestamp_info = f" ({source.get('timestamp')})" if source.get('timestamp') else ""
+            context_parts.append(f"[{i}] Ses Kaydı: {title} - {author}{timestamp_info}\n{content}")
+        elif source_type == "video":
+            context_parts.append(f"[{i}] Video Analizi: {title}\n{content}")
+    
+    return "\n\n".join(context_parts)
+
+def calculate_response_confidence(response: str, sources: List[Dict[str, Any]]) -> float:
+    """
+    Cevabın güvenilirlik skorunu hesapla
+    """
+    if not response or not sources:
+        return 0.0
+    
+    # Basit heuristikler
+    confidence = 0.5  # Base confidence
+    
+    # Kaynak sayısına göre artır
+    confidence += min(len(sources) * 0.1, 0.3)
+    
+    # Cevap uzunluğuna göre artır
+    if len(response) > 200:
+        confidence += 0.1
+    if len(response) > 500:
+        confidence += 0.1
+    
+    # Kaynak referansları varsa artır
+    if "[" in response and "]" in response:
+        confidence += 0.1
+    
+    return min(confidence, 1.0)
+
+# --- AI History Endpoints ---
+
+@app.get("/ai-history/recent")
+async def get_recent_ai_history(limit: int = Query(20, ge=1, le=100)):
+    """Son AI sohbetlerini getir"""
+    try:
+        chats = get_recent_ai_chats(limit)
+        return {
+            "status": "success",
+            "data": chats,
+            "count": len(chats)
+        }
+    except Exception as e:
+        logger.error(f"AI geçmişi getirme hatası: {e}")
+        raise HTTPException(status_code=500, detail="AI geçmişi getirilemedi")
+
+@app.get("/ai-history/{slug}")
+async def get_ai_chat_by_slug_endpoint(slug: str):
+    """Slug ile AI sohbet geçmişini getir"""
+    try:
+        chat = get_ai_chat_by_slug(slug)
+        if not chat:
+            raise HTTPException(status_code=404, detail="Sohbet bulunamadı")
+        
+        return {
+            "status": "success",
+            "data": chat
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"AI sohbet getirme hatası: {e}")
+        raise HTTPException(status_code=500, detail="Sohbet getirilemedi")
+
+@app.get("/sohbet/{slug}")
+async def get_chat_page_by_slug(slug: str):
+    """SEO uyumlu sohbet sayfası için endpoint"""
+    try:
+        chat = get_ai_chat_by_slug(slug)
+        if not chat:
+            raise HTTPException(status_code=404, detail="Sohbet bulunamadı")
+        
+        # SEO için meta bilgiler ekle
+        meta_description = chat['question'][:150] + "..." if len(chat['question']) > 150 else chat['question']
+        
+        return {
+            "status": "success",
+            "data": {
+                "chat": chat,
+                "meta": {
+                    "title": f"{chat['question']} - Mihmandar AI",
+                    "description": meta_description,
+                    "keywords": "mihmandar, ai, sohbet, tasavvuf, islam",
+                    "canonical_url": f"/sohbet/{slug}"
+                }
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Sohbet sayfası getirme hatası: {e}")
+        raise HTTPException(status_code=500, detail="Sohbet sayfası getirilemedi")
+
+@app.get("/chat/history/{session_id}")
+async def get_chat_history(session_id: str):
+    """
+    Sohbet geçmişini getir (gelecekte implement edilecek)
+    """
+    # TODO: Veritabanından sohbet geçmişini getir
+    return {"session_id": session_id, "messages": [], "message": "Sohbet geçmişi henüz implement edilmedi"}
+
+@app.delete("/chat/history/{session_id}")
+async def clear_chat_history(session_id: str):
+    """
+    Sohbet geçmişini temizle (gelecekte implement edilecek)
+    """
+    # TODO: Veritabanından sohbet geçmişini sil
+    return {"session_id": session_id, "message": "Sohbet geçmişi temizlendi"}
+
+@app.get("/chat/vector-stats")
+async def get_vector_database_stats():
+    """
+    Vektör veritabanı istatistikleri
+    """
+    try:
+        vector_db = get_vector_db()
+        stats = vector_db.get_stats()
+        return {
+            "status": "success",
+            "stats": stats
+        }
+    except Exception as e:
+        logger.error(f"Vector stats error: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+@app.post("/chat/vector-search")
+async def vector_search_endpoint(request: dict):
+    """
+    Doğrudan vektör arama endpoint'i
+    """
+    try:
+        query = request.get("query", "")
+        k = request.get("k", 10)
+        source_types = request.get("source_types")
+        
+        if not query:
+            raise HTTPException(status_code=400, detail="Query is required")
+        
+        vector_db = get_vector_db()
+        results = vector_db.search(query, k=k, source_types=source_types)
+        
+        return {
+            "status": "success",
+            "query": query,
+            "results": results,
+            "count": len(results)
+        }
+        
+    except Exception as e:
+        logger.error(f"Vector search endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/chat/add-to-vector-db")
+async def add_documents_to_vector_db(request: dict):
+    """
+    Vektör veritabanına yeni belgeler ekle
+    """
+    try:
+        documents = request.get("documents", [])
+        
+        if not documents:
+            raise HTTPException(status_code=400, detail="Documents are required")
+        
+        vector_db = get_vector_db()
+        vector_ids = vector_db.add_documents(documents)
+        
+        return {
+            "status": "success",
+            "added_count": len(vector_ids),
+            "vector_ids": vector_ids
+        }
+        
+    except Exception as e:
+        logger.error(f"Add documents error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+class AdvancedChatRequest(BaseModel):
+    message: str
+    session_id: str = "default"
+    context: Dict[str, Any] = {}
+    use_vector_search: bool = True
+    max_sources: int = 5
+    source_types: Optional[List[str]] = None
+    temperature: float = 0.7
+    max_tokens: int = 2000
+
+@app.post("/chat/advanced", response_model=ChatResponse)
+async def advanced_chat_message(chat_request: AdvancedChatRequest):
+    """
+    Gelişmiş sohbet endpoint'i - daha fazla kontrol seçeneği
+    """
+    start_time = time.time()
+    
+    try:
+        if not deepseek_client:
+            raise HTTPException(status_code=500, detail="DeepSeek API yapılandırılmamış")
+        
+        user_message = chat_request.message.strip()
+        if not user_message:
+            raise HTTPException(status_code=400, detail="Mesaj boş olamaz")
+        
+        # RAG sistemi ile ilgili kaynakları ara
+        if chat_request.use_vector_search:
+            relevant_sources = await search_relevant_content(
+                user_message, 
+                max_results=chat_request.max_sources
+            )
+            
+            # Kaynak türü filtresi uygula
+            if chat_request.source_types:
+                relevant_sources = [
+                    source for source in relevant_sources 
+                    if source.get("type") in chat_request.source_types
+                ]
+        else:
+            relevant_sources = []
+        
+        # Context oluştur
+        context_text = build_context_from_sources(relevant_sources)
+        
+        # Gelişmiş system prompt
+        system_prompt = f"""
+Sen Mihmandar Asistanı'sın. Tasavvuf, İslami ilimler ve manevi konularda uzman bir danışmansın.
+
+Görevin:
+1. Kullanıcının sorularını derinlemesine anlayıp, verilen kaynaklardan yararlanarak kapsamlı cevaplar vermek
+2. Cevaplarını Türkçe, saygılı ve bilge bir üslupla sunmak
+3. Kaynaklara net atıflar yapmak ([1], [2] şeklinde)
+4. Manevi rehberlik yaparken İslami değerlere uygun davranmak
+5. Kullanıcıyı daha derin araştırmaya teşvik etmek
+
+Kurallar:
+- Sadece verilen kaynaklardaki bilgileri kullan
+- Her bilgi için kaynak numarası belirt
+- Kısa cevaplar yerine, konuyu aydınlatan detaylı açıklamalar yap
+- Eğer kaynaklarda yeterli bilgi yoksa, bunu açıkça belirt
+- Kullanıcıyı ilgili sayfalara yönlendir
+
+Kaynak sayısı: {len(relevant_sources)}
+Arama yöntemi: {'Vektör tabanlı anlamsal arama' if chat_request.use_vector_search else 'Geleneksel arama'}
+"""
+        
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Kaynak bilgiler:\n{context_text}\n\nSoru: {user_message}"}
+        ]
+        
+        # DeepSeek API çağrısı
+        response = await deepseek_client.chat.completions.create(
+            model="deepseek-chat",
+            messages=messages,
+            max_tokens=chat_request.max_tokens,
+            temperature=chat_request.temperature,
+            top_p=0.9,
+            stream=False
+        )
+        
+        assistant_response = response.choices[0].message.content
+        processing_time = time.time() - start_time
+        
+        # Gelişmiş confidence hesaplama
+        confidence = calculate_advanced_confidence(
+            assistant_response, 
+            relevant_sources, 
+            user_message,
+            chat_request.use_vector_search
+        )
+        
+        # AI sohbet geçmişini Supabase'e kaydet
+        try:
+            sources_for_save = [{
+                "id": src.get("id"),
+                "title": src.get("title"),
+                "type": src.get("type"),
+                "author": src.get("author"),
+                "score": src.get("score")
+            } for src in relevant_sources]
+            
+            slug = save_ai_chat(user_message, assistant_response, sources_for_save)
+            logger.info(f"AI sohbet kaydedildi (advanced): {slug}")
+        except Exception as e:
+            logger.error(f"AI sohbet kaydetme hatası (advanced): {e}")
+        
+        return ChatResponse(
+            response=assistant_response,
+            sources=relevant_sources,
+            session_id=chat_request.session_id,
+            confidence=confidence,
+            processing_time=processing_time
+        )
+        
+    except Exception as e:
+        logger.error(f"Advanced chat endpoint error: {e}")
+        processing_time = time.time() - start_time
+        
+        return ChatResponse(
+            response="Üzgünüm, şu anda size yardımcı olamıyorum. Lütfen daha sonra tekrar deneyin.",
+            sources=[],
+            session_id=chat_request.session_id,
+            confidence=0.0,
+            processing_time=processing_time
+        )
+
+def calculate_advanced_confidence(response: str, sources: List[Dict[str, Any]], query: str, used_vector_search: bool) -> float:
+    """
+    Gelişmiş güvenilirlik skorunu hesapla
+    """
+    if not response or not sources:
+        return 0.1
+    
+    confidence = 0.3  # Base confidence
+    
+    # Vektör arama kullanıldıysa bonus
+    if used_vector_search:
+        confidence += 0.2
+    
+    # Kaynak sayısına göre artır
+    confidence += min(len(sources) * 0.08, 0.25)
+    
+    # Yüksek similarity skorlu kaynaklar varsa artır
+    high_similarity_sources = [s for s in sources if s.get("score", 0) > 0.8]
+    if high_similarity_sources:
+        confidence += len(high_similarity_sources) * 0.05
+    
+    # Cevap kalitesi göstergeleri
+    if len(response) > 300:
+        confidence += 0.1
+    if len(response) > 600:
+        confidence += 0.1
+    
+    # Kaynak referansları varsa artır
+    reference_count = response.count("[")
+    confidence += min(reference_count * 0.03, 0.15)
+    
+    # Farklı kaynak türleri varsa artır
+    source_types = set(s.get("type") for s in sources)
+    if len(source_types) > 1:
+        confidence += 0.1
+    
+    return min(confidence, 1.0)

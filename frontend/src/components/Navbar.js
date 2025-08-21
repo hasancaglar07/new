@@ -5,7 +5,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 // ★★★ Newspaper ve diğer ikonlar yerinde duruyor ★★★
-import { Menu, X, LayoutGrid, Library, Youtube, Clapperboard, Newspaper, Mic, Clock } from 'lucide-react';
+import { Menu, X, LayoutGrid, Library, Youtube, Clapperboard, Newspaper, Mic, Clock, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // ★★★ Next.js'in Image bileşenini import ediyoruz ★★★
 import Image from 'next/image';
@@ -14,11 +14,11 @@ import NamazWidget from '@/components/NamazWidget';
 
 const navLinks = [
   { name: 'Ana Sayfa', href: '/', icon: <LayoutGrid className="h-5 w-5" /> },
+  { name: 'AI Sohbet', href: '/sohbet', icon: <MessageSquare className="h-5 w-5" /> },
   { name: 'Kitaplık', href: '/kitaplar', icon: <Library className="h-5 w-5" /> },
   { name: 'Makaleler', href: '/makaleler', icon: <Newspaper className="h-5 w-5" /> },
   { name: 'Ses Kayıtları', href: '/ses-kayitlari', icon: <Mic className="h-5 w-5" /> },
   { name: 'YouTube Arama', href: '/youtube-arama', icon: <Youtube className="h-5 w-5" /> },
-
   { name: 'Video Analizi', href: '/video-analizi', icon: <Clapperboard className="h-5 w-5" /> }, 
 ];
 

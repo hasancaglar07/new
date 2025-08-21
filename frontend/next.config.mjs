@@ -9,6 +9,18 @@ const nextConfig = {
   },
   poweredByHeader: false,
   compress: true,
+  
+  // Development cache settings - Geliştirme ortamında cache sorunlarını önlemek için
+  ...(process.env.NODE_ENV === 'development' && {
+    onDemandEntries: {
+      // Sayfaları bellekte tutma süresi (ms) - daha kısa tutma
+      maxInactiveAge: 10 * 1000,
+      // Aynı anda bellekte tutulacak sayfa sayısı - daha az sayfa
+      pagesBufferLength: 1,
+    },
+    // Fast refresh ayarları
+    reactStrictMode: false,
+  }),
   images: {
     remotePatterns: [
       // --- YENİ VE EN ÖNEMLİ EKLEME ---

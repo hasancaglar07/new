@@ -11,7 +11,11 @@ import logging
 DATABASE_URLS = {
     "articles_database.db": "https://cdn.mihmandar.org/file/yediulya-databases/articles_database.db",
     "audio_database.db": "https://cdn.mihmandar.org/file/yediulya-databases/audio_database.db", 
-    "qa_database.db": "https://cdn.mihmandar.org/file/yediulya-databases/qa_database.db"
+    "qa_database.db": "https://cdn.mihmandar.org/file/yediulya-databases/qa_database.db",
+    "book_metadata.json": "https://cdn.mihmandar.org/file/yediulya-databases/book_metadata.json",
+    "authors.json": "https://cdn.mihmandar.org/file/yediulya-databases/authors.json",
+    "vector_db/faiss.index": "https://cdn.mihmandar.org/file/yediulya-databases/vector_db/faiss.index",
+    "vector_db/vector_metadata.db": "https://cdn.mihmandar.org/file/yediulya-databases/vector_db/vector_metadata.db"
 }
 
 def download_file(url, local_path):

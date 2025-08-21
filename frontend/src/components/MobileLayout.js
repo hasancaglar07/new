@@ -119,15 +119,54 @@ const MobileLayout = ({ children, hideNavbar = false, isNativeApp, setIsNativeAp
       // Smooth scrolling for better mobile experience
       document.documentElement.style.scrollBehavior = 'smooth';
 
-      // Prevent accidental zoom on double tap
+      // Enhanced mobile touch optimization
       let lastTouchEnd = 0;
+      let touchStartTime = 0;
+      
+      // Prevent accidental zoom on double tap
       document.addEventListener('touchend', function(event) {
         const now = new Date().getTime();
         if (now - lastTouchEnd <= 300) {
           event.preventDefault();
         }
         lastTouchEnd = now;
-      }, false);
+      }, { passive: false });
+      
+      // Optimize touch response time
+      document.addEventListener('touchstart', function(event) {
+        touchStartTime = Date.now();
+        
+        // Add immediate visual feedback for buttons
+        const target = event.target.closest('button, [role="button"], .btn, .clickable');
+        if (target && !target.disabled) {
+          target.style.transform = 'scale(0.98)';
+          target.style.transition = 'transform 0.05s ease';
+        }
+      }, { passive: false });
+      
+      // Reset visual feedback
+      document.addEventListener('touchend', function(event) {
+        const target = event.target.closest('button, [role="button"], .btn, .clickable');
+        if (target) {
+          setTimeout(() => {
+            target.style.transform = 'scale(1)';
+          }, 50);
+        }
+      }, { passive: false });
+      
+      // Prevent iOS bounce scroll
+      document.addEventListener('touchmove', function(event) {
+        if (event.scale !== 1) {
+          event.preventDefault();
+        }
+      }, { passive: false });
+      
+      // Fast tap detection
+      document.addEventListener('touchstart', function(event) {
+        if (event.touches.length > 1) {
+          event.preventDefault();
+        }
+      }, { passive: false });
     }
   }, [hideNavbar]);
 

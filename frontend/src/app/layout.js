@@ -91,6 +91,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="tr">
       <head>
+        {/* Critical viewport meta tag for mobile touch optimization */}
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+        
         <link rel="icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.json" />
@@ -101,6 +104,11 @@ export default function RootLayout({ children }) {
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="msapplication-TileColor" content="#10b981" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
+        
+        {/* Mobile touch optimization */}
+        <meta name="format-detection" content="telephone=no, date=no, email=no, address=no" />
+        <meta name="HandheldFriendly" content="true" />
+        <meta name="MobileOptimized" content="width" />
       </head>
       <body className={inter.className}>
         <a href="#main-content" className="skip-link">
