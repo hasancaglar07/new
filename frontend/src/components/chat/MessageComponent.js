@@ -350,11 +350,11 @@ export default function MessageComponent({ message, onSourceClick, onFeedback })
           }}
           className="relative"
         >
-          {/* Message Container - Grok Style */}
+          {/* Modern Message Container */}
           <div className={`relative ${
              isUser 
-               ? 'bg-white border border-gray-200 rounded-xl shadow-sm text-gray-900 p-3' 
-               : ''
+               ? 'bg-emerald-50 border border-emerald-200 rounded-2xl shadow-sm text-gray-900 p-4' 
+               : 'bg-white border border-gray-100 rounded-2xl shadow-sm p-4'
            }`}
         >
           {/* Message Content */}
@@ -366,7 +366,7 @@ export default function MessageComponent({ message, onSourceClick, onFeedback })
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.2, type: "spring" }}
-                  className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-white border-2 border-gray-200 shadow-sm"
+                  className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-emerald-100 border-2 border-emerald-200 shadow-sm"
                 >
                   <img 
                     src="/logo-top.svg" 
@@ -382,9 +382,9 @@ export default function MessageComponent({ message, onSourceClick, onFeedback })
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.2, type: "spring" }}
-                  className="flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"
+                  className="flex-shrink-0 w-10 h-10 bg-emerald-200 rounded-full flex items-center justify-center"
                 >
-                  <User className="w-4 h-4 text-gray-600" />
+                  <User className="w-5 h-5 text-emerald-700" />
                 </motion.div>
               )}
               

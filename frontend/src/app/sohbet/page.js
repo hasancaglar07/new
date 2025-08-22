@@ -247,97 +247,34 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30">
-      {/* Modern Header */}
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200/60 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo/Brand */}
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-gradient-to-r from-emerald-700 to-green-800 rounded-lg flex items-center justify-center shadow-lg">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold bg-gradient-to-r from-emerald-700 to-green-800 bg-clip-text text-transparent">
-                    Mihmandar AI
-                  </h1>
-                  <p className="text-xs text-gray-500 hidden sm:block">Akıllı Sohbet Asistanı</p>
-                </div>
-              </div>
-            </div>
-            
-            {/* Action Buttons */}
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-2"
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClearChat}
-                className="h-10 px-4 text-gray-600 hover:text-emerald-800 hover:bg-emerald-50/70 rounded-xl transition-all duration-200 flex items-center gap-2 group"
-              >
-                <RotateCcw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-300" />
-                <span className="text-sm font-medium hidden sm:inline">Temizle</span>
-              </Button>
-              
-              {isMobile && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowChatHistory(true)}
-                  className="h-10 px-4 text-gray-600 hover:text-emerald-800 hover:bg-emerald-50/70 rounded-xl transition-all duration-200 flex items-center gap-2"
-                >
-                  <History className="w-4 h-4" />
-                  <span className="text-sm font-medium hidden sm:inline">Geçmiş</span>
-                </Button>
-              )}
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowSettings(true)}
-                className="h-10 px-4 text-gray-600 hover:text-emerald-800 hover:bg-emerald-50/70 rounded-xl transition-all duration-200 flex items-center gap-2"
-              >
-                <Settings className="w-4 h-4" />
-                <span className="text-sm font-medium hidden sm:inline">Ayarlar</span>
-              </Button>
-            </motion.div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Layout */}
-      <div className="flex h-[calc(100vh-4rem)]">
-        {/* Modern Sidebar - Desktop Only */}
+      {/* Main Layout - Full Height */}
+      <div className="flex h-screen">
+        {/* Professional Sidebar - Desktop Only */}
         {!isMobile && (
-          <aside className="w-80 bg-white/80 backdrop-blur-sm border-r border-gray-200/60 shadow-lg flex flex-col">
+          <aside className="w-80 bg-white/95 backdrop-blur-lg border-r border-slate-200/80 shadow-sm flex flex-col">
             {/* Sidebar Header */}
-            <div className="p-6 border-b border-gray-200/60">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-r from-emerald-700 to-green-800 rounded-xl flex items-center justify-center shadow-lg">
+            <div className="p-6 border-b border-slate-200/60">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-xl flex items-center justify-center shadow-md ring-1 ring-emerald-200">
                   <History className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900">Sohbet Geçmişi</h2>
-                  <p className="text-sm text-gray-500">Önceki konuşmalarınız</p>
+                  <h2 className="text-lg font-semibold text-slate-900">Sohbet Geçmişi</h2>
+                  <p className="text-sm text-slate-500 font-medium">Önceki konuşmalarınız</p>
                 </div>
               </div>
               
-              {/* Modern Search */}
+              {/* Professional Search */}
               <div className="relative">
                 <input
                   type="text"
                   placeholder="Geçmişte ara..."
                   value={historySearchQuery}
                   onChange={(e) => setHistorySearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 text-sm bg-gray-50/80 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all duration-200 placeholder-gray-400"
+                  className="w-full pl-10 pr-4 py-2.5 text-sm bg-emerald-50/50 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-200 placeholder-emerald-400 font-medium"
                 />
                 <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
@@ -345,7 +282,7 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
             </div>
             
             {/* Chat History Content */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden bg-slate-50/30">
               <ChatHistory 
                 isOpen={true}
                 onClose={() => {}}
@@ -360,46 +297,90 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
           </aside>
         )}
         
-        {/* Main Chat Area - Grok Style */}
-        <main className="flex-1 flex flex-col bg-gradient-to-br from-white via-emerald-50/20 to-green-50/30 relative">
+        {/* Professional Main Chat Area */}
+        <main className="flex-1 flex flex-col bg-gradient-to-br from-white via-slate-50/30 to-emerald-50/20 relative">
         {messages.length === 0 ? (
-          // Grok Style Centered Layout
-          <div className="flex-1 flex flex-col justify-end items-center px-4 pb-16 pt-8">
-            <div className="w-full max-w-3xl mx-auto text-center space-y-12">
-              {/* Large Centered Welcome */}
+          // Modern 2025 Welcome Layout
+           <div className="flex-1 flex flex-col justify-center items-center px-6 py-8 min-h-[85vh]">
+             <div className="w-full max-w-5xl mx-auto text-center space-y-10">
+              {/* Modern Welcome Header */}
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8 }}
-                className="space-y-6"
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className="space-y-8"
               >
-                <div className="w-24 h-24 mx-auto bg-gradient-to-r from-emerald-700 to-green-800 rounded-full flex items-center justify-center shadow-2xl">
-                  <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
+                <div className="w-24 h-24 mx-auto bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-3xl flex items-center justify-center shadow-2xl">
+                  <Image 
+                    src="/logo-top.svg" 
+                    alt="Mihmandar" 
+                    width={48}
+                    height={48}
+                    className="w-12 h-12"
+                  />
                 </div>
                 
-                <h1 className="text-5xl md:text-6xl font-bold text-gray-900 leading-tight">
-                  Selamün Aleyküm! 🌹
-                </h1>
-                
-                <p className="text-2xl md:text-3xl text-gray-600 font-light leading-relaxed">
-                  Ben Mihmandar, akıllı asistanınızım.
-                </p>
-                
-                <p className="text-xl text-gray-500 leading-relaxed max-w-2xl mx-auto">
-                  İslami ve tasavvufi konularda sorularınızı sorabilirsiniz.
-                </p>
+                <div className="space-y-6">
+                  <h1 className="text-5xl md:text-6xl font-bold text-gray-900 leading-tight tracking-tight">
+                    Selamün Aleyküm! 🌹
+                  </h1>
+                  
+                  <p className="text-2xl md:text-3xl text-gray-600 font-normal leading-relaxed">
+                    Ben Mihmandar, akıllı asistanınızım.
+                  </p>
+                  
+                  <p className="text-xl text-gray-500 leading-relaxed max-w-3xl mx-auto">
+                    İslami ve tasavvufi konularda sorularınızı sorabilirsiniz.
+                  </p>
+                </div>
               </motion.div>
               
-              {/* Large Centered Input */}
+              {/* Google-style Smart Suggestions for Welcome - Hidden on Mobile */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-                className="w-full max-w-4xl mx-auto"
+                transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+                className="w-full max-w-4xl mx-auto mb-6 hidden sm:block"
               >
-                <div className="bg-white rounded-3xl border border-gray-200 shadow-2xl p-6">
+                <div className="bg-white rounded-2xl border border-emerald-200 shadow-sm p-4">
+                  <h3 className="text-sm font-semibold text-emerald-800 mb-3 flex items-center gap-2 justify-center">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    Akıllı Soru Önerileri
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {[
+                      "Rabıta nedir ve nasıl yapılır?",
+                      "Nefis terbiyesi nasıl olur?",
+                      "Zikir çeşitleri nelerdir?",
+                      "Mürşit-mürit ilişkisi nasıl olmalı?",
+                      "Fena ve beka kavramları nedir?",
+                      "Manevi makamlar nelerdir?"
+                    ].map((suggestion, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleSendMessage(suggestion)}
+                        className="text-left p-3 text-sm text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border border-emerald-200 hover:border-emerald-300 rounded-lg transition-all duration-200 font-medium flex items-center gap-2"
+                      >
+                        <svg className="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+              
+              {/* Modern Input Container */}
+               <motion.div
+                 initial={{ opacity: 0, y: 30 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
+                 className="w-full max-w-4xl mx-auto"
+               >
+                 <div className="bg-white rounded-3xl border-2 border-emerald-200 shadow-xl p-6 hover:shadow-2xl hover:border-emerald-300 transition-all duration-300">
                   <ChatInput 
                     onSendMessage={handleSendMessage}
                     disabled={isLoading}
@@ -409,8 +390,41 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
             </div>
           </div>
         ) : (
-          // Traditional Chat Layout
-          <div className="max-w-4xl mx-auto w-full flex-1 flex flex-col px-4 sm:px-6 lg:px-8 py-1">
+          // Modern Chat Layout
+          <div className="max-w-4xl mx-auto w-full flex-1 flex flex-col px-4 sm:px-6 py-4">
+          
+            {/* Google-style Smart Suggestions - Hidden on Mobile */}
+            <div className="mb-6 hidden sm:block">
+              <div className="bg-white rounded-2xl border border-emerald-200 shadow-sm p-4">
+                <h3 className="text-sm font-semibold text-emerald-800 mb-3 flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  Akıllı Soru Önerileri
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {[
+                    "Rabıta nedir ve nasıl yapılır?",
+                    "Nefis terbiyesi nasıl olur?",
+                    "Zikir çeşitleri nelerdir?",
+                    "Mürşit-mürit ilişkisi nasıl olmalı?",
+                    "Fena ve beka kavramları nedir?",
+                    "Manevi makamlar nelerdir?"
+                  ].map((suggestion, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleSendMessage(suggestion)}
+                      className="text-left p-3 text-sm text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border border-emerald-200 hover:border-emerald-300 rounded-lg transition-all duration-200 font-medium flex items-center gap-2"
+                    >
+                      <svg className="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           
             {/* Messages Area */}
             <div 
@@ -418,7 +432,7 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
               role="log"
               aria-live="polite"
               aria-label="Sohbet mesajları"
-              className="space-y-4 mb-2 overflow-y-auto flex-1"
+              className="space-y-4 mb-6 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-emerald-300 scrollbar-track-transparent pr-2"
             >
             <AnimatePresence mode="popLayout">
               {messages.map((message) => (
@@ -431,62 +445,75 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
               ))}
             </AnimatePresence>
             
-            {/* Loading indicator */}
+            {/* Modern 2025 Loading indicator */}
             {isLoading && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="flex flex-col items-center justify-center py-12"
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="flex flex-col items-center justify-center py-20"
               >
-                <div className="relative mb-6">
+                <div className="relative mb-10">
                   <motion.div
                     animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 20, ease: 'linear' }}
-                    className="relative w-16 h-16 flex items-center justify-center"
+                    transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
+                    className="relative w-20 h-20 flex items-center justify-center"
                   >
-                    <Image 
-                      src="/logo-top.svg" 
-                      alt="Mihmandar" 
-                      width={64}
-                      height={64}
-                      className="w-16 h-16"
-                    />
+                    <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-3xl flex items-center justify-center shadow-2xl">
+                      <Image 
+                        src="/logo-top.svg" 
+                        alt="Mihmandar" 
+                        width={40}
+                        height={40}
+                        className="w-10 h-10"
+                      />
+                    </div>
                   </motion.div>
+                  
+                  {/* Pulse rings */}
+                  <motion.div
+                    animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+                    className="absolute inset-0 bg-emerald-500 rounded-3xl"
+                  />
+                  <motion.div
+                    animate={{ scale: [1, 1.3], opacity: [0.3, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeOut", delay: 0.5 }}
+                    className="absolute inset-0 bg-emerald-400 rounded-3xl"
+                  />
                 </div>
                 
-                <div className="text-center space-y-4 max-w-2xl mx-auto">
+                <div className="text-center space-y-8 max-w-2xl mx-auto">
                   <motion.p
-                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    animate={{ opacity: [0.7, 1, 0.7] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    className="text-emerald-800 font-medium text-lg"
+                    className="text-gray-800 font-semibold text-xl"
                   >
                     Düşünüyor ve araştırıyor...
                   </motion.p>
                   
                   <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: "100%" }}
-                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                    className="h-1 bg-gradient-to-r from-emerald-700 to-green-800 rounded-full mx-auto max-w-xs"
+                    animate={{ width: ["30%", "100%", "30%"] }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                    className="h-1.5 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full mx-auto max-w-sm"
                   />
                   
                   <motion.div
-                    animate={{ opacity: [0.6, 1, 0.6] }}
+                    animate={{ opacity: [0.8, 1, 0.8] }}
                     transition={{ duration: 3, repeat: Infinity }}
-                    className="bg-emerald-50/80 backdrop-blur-sm rounded-xl p-4 border border-emerald-200/50"
+                    className="bg-white rounded-2xl p-6 border-2 border-gray-200 shadow-lg"
                   >
-                    <div className="text-emerald-800 text-sm font-medium mb-2">Bilgi Hazırlanıyor...</div>
-                    <div className="text-emerald-700 text-xs italic leading-relaxed">
+                    <div className="text-gray-800 text-base font-semibold mb-3">Bilgi Hazırlanıyor...</div>
+                    <div className="text-gray-600 text-base leading-relaxed">
                       &ldquo;İlim öğrenmek her Müslüman erkek ve kadına farzdır.&rdquo; 
-                      <span className="block mt-1 text-emerald-600 font-medium">- Hz. Muhammed (s.a.v)</span>
+                      <span className="block mt-3 text-gray-500 font-semibold">- Hz. Muhammed (s.a.v)</span>
                     </div>
                   </motion.div>
                   
                   <motion.p
-                    animate={{ opacity: [0.3, 0.7, 0.3] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                    className="text-emerald-700 text-sm"
+                    animate={{ opacity: [0.5, 0.9, 0.5] }}
+                    transition={{ duration: 1.8, repeat: Infinity }}
+                    className="text-gray-600 text-base font-medium"
                   >
                     Kaynaklardan bilgi topluyorum...
                   </motion.p>
@@ -597,15 +624,52 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
             )}
           </AnimatePresence>
           
-            {/* Input Area for Chat Mode */}
-            <div className="sticky bottom-0 bg-white border-t border-gray-200 pt-2 pb-2">
-              <ChatInput 
-                onSendMessage={handleSendMessage}
-                disabled={isLoading}
-              />
+            {/* Modern Chat Input - Sticky Bottom */}
+            <div className="sticky bottom-0 bg-white/98 backdrop-blur-xl border-t border-emerald-200/60 p-4 sm:p-6">
+              <div className="max-w-4xl mx-auto">
+                <ChatInput 
+                  onSendMessage={handleSendMessage}
+                  disabled={isLoading}
+                />
+              </div>
             </div>
           </div>
         )}
+        
+        {/* Floating Action Buttons */}
+        <div className="fixed top-20 sm:top-16 right-4 z-40 flex flex-col gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClearChat}
+            className="h-10 w-10 bg-emerald-50/90 backdrop-blur-lg border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 rounded-full shadow-lg transition-all duration-200 flex items-center justify-center"
+            title="Sohbeti Temizle"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </Button>
+          
+          {isMobile && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowChatHistory(true)}
+              className="h-10 w-10 bg-emerald-50/90 backdrop-blur-lg border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 rounded-full shadow-lg transition-all duration-200 flex items-center justify-center"
+              title="Sohbet Geçmişi"
+            >
+              <History className="w-4 h-4" />
+            </Button>
+          )}
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowSettings(true)}
+            className="h-10 w-10 bg-emerald-50/90 backdrop-blur-lg border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 rounded-full shadow-lg transition-all duration-200 flex items-center justify-center"
+            title="Ayarlar"
+          >
+            <Settings className="w-4 h-4" />
+          </Button>
+        </div>
         </main>
       </div>
       

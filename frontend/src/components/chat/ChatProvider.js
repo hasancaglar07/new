@@ -36,17 +36,7 @@ export const SOURCE_TYPES = {
 
 // İlk durum
 const initialState = {
-  messages: [
-    {
-      id: 'welcome-1',
-      type: MESSAGE_TYPES.ASSISTANT,
-      content: "Selamın Aleyküm Gönül Dostum🌹ben mihmandar akıllı asistanım, Sana nasıl yardımcı olabilirim ?",
-      timestamp: new Date(),
-      sources: [],
-      isWelcome: true,
-      isTypewriter: true
-    }
-  ],
+  messages: [],
   isLoading: false,
   isRecording: false,
   isSpeaking: false,
