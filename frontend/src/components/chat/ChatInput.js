@@ -15,12 +15,8 @@ const QUESTION_SUGGESTIONS = [
   "Manevi makamlar nelerdir?"
 ];
 
-export default function ChatInput({ onSendMessage, disabled = false }) {
-  const { 
-    isLoading, 
-    addMessage,
-    MESSAGE_TYPES 
-  } = useChat();
+function ChatInput({ onSendMessage, disabled = false }) {
+  const { isLoading } = useChat();
   
   const [inputText, setInputText] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -31,7 +27,7 @@ export default function ChatInput({ onSendMessage, disabled = false }) {
     const textarea = textareaRef.current;
     if (textarea) {
       textarea.style.height = 'auto';
-      const newHeight = Math.min(textarea.scrollHeight, 120); // Max 120px
+      const newHeight = Math.min(textarea.scrollHeight, 120);
       textarea.style.height = `${newHeight}px`;
     }
   }, []);
@@ -46,8 +42,6 @@ export default function ChatInput({ onSendMessage, disabled = false }) {
     
     const messageText = inputText.trim();
     setInputText('');
-    
-    // Sadece parent component'e bildir - duplicate mesaj önlemek için
     onSendMessage?.(messageText);
   }, [inputText, isLoading, disabled, onSendMessage]);
 
@@ -59,7 +53,6 @@ export default function ChatInput({ onSendMessage, disabled = false }) {
   const handleSuggestionClick = useCallback((suggestion) => {
     setInputText(suggestion);
     setShowSuggestions(false);
-    // Direkt gönder
     setTimeout(() => {
       handleSendMessage();
     }, 100);
@@ -76,16 +69,16 @@ export default function ChatInput({ onSendMessage, disabled = false }) {
   }, [handleSendMessage]);
   
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Soru Önerileri */}
       {showSuggestions && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           {QUESTION_SUGGESTIONS.map((suggestion, index) => (
             <Button
               key={index}
               variant="outline"
               onClick={() => handleSuggestionClick(suggestion)}
-              className="text-left justify-start h-auto p-3 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 border-gray-200"
+              className="text-left justify-start h-auto p-4 text-sm text-gray-700 hover:text-emerald-800 hover:bg-emerald-50/70 border-gray-200 hover:border-emerald-300 rounded-xl transition-all duration-200"
             >
               {suggestion}
             </Button>
@@ -103,11 +96,8 @@ export default function ChatInput({ onSendMessage, disabled = false }) {
             onKeyDown={handleKeyDown}
             placeholder="Mihmandar size nasıl yardımcı olabilir?"
             disabled={isLoading || disabled}
-            className="w-full min-h-[50px] max-h-[120px] px-4 py-3 bg-white border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-400 disabled:opacity-50 text-gray-900 placeholder-gray-500 text-base leading-relaxed transition-all duration-200"
+            className="w-full min-h-[60px] max-h-[120px] px-6 py-4 bg-white border border-gray-300 rounded-3xl resize-none focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 disabled:opacity-50 text-gray-900 placeholder-gray-500 text-lg leading-relaxed transition-all duration-200 shadow-sm"
             rows={1}
-            style={{
-              fontSize: typeof window !== 'undefined' && window.innerWidth < 640 ? '16px' : undefined
-            }}
           />
         </div>
         
@@ -116,9 +106,9 @@ export default function ChatInput({ onSendMessage, disabled = false }) {
           onClick={() => setShowSuggestions(!showSuggestions)}
           variant="outline"
           size="icon"
-          className="w-10 h-10 border-gray-300 text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+          className="w-14 h-14 border-gray-300 text-gray-600 hover:text-emerald-800 hover:bg-emerald-50/70 hover:border-emerald-300 rounded-2xl transition-all duration-200"
         >
-          <Lightbulb className="w-4 h-4" />
+          <Lightbulb className="w-6 h-6" />
         </Button>
         
         {/* Gönder butonu */}
@@ -126,15 +116,17 @@ export default function ChatInput({ onSendMessage, disabled = false }) {
           onClick={handleSendMessage}
           disabled={!canSend}
           size="icon"
-          className="w-10 h-10 bg-gray-900 hover:bg-gray-800 text-white rounded-full transition-colors disabled:opacity-50"
+          className="w-14 h-14 bg-gradient-to-r from-emerald-700 to-green-800 hover:from-emerald-800 hover:to-green-900 text-white rounded-2xl transition-all duration-200 disabled:opacity-50 shadow-lg disabled:shadow-none"
         >
           {isLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 className="w-6 h-6 animate-spin" />
           ) : (
-            <Send className="w-4 h-4" />
+            <Send className="w-6 h-6" />
           )}
         </Button>
       </div>
     </div>
   );
 }
+
+export default ChatInput;

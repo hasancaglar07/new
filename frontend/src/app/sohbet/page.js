@@ -101,9 +101,14 @@ function ChatInterface() {
       // Set loading state
       setLoading(true);
       
-      // Call backend API
-      const response = await fetch('http://localhost:8000/chat/advanced', {
+      // Call backend API with timeout
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes timeout
+      
+      const response = await fetch(`${API_BASE_URL}/chat/advanced`, {
         method: 'POST',
+        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -111,9 +116,9 @@ function ChatInterface() {
           message: content,
           session_id: `session_${Date.now()}`,
           use_vector_search: true,
-          max_sources: 12,
+          max_sources: 6,
           temperature: 0.4,
-          max_tokens: 4000,
+          max_tokens: 2000,
           top_p: 0.9,
           frequency_penalty: 0.1,
           presence_penalty: 0.1,
@@ -180,6 +185,8 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
         })
       });
       
+      clearTimeout(timeoutId);
+      
       if (response.ok) {
         const data = await response.json();
         
@@ -193,17 +200,26 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
         // Add error message
         addMessage({
           type: 'assistant',
-          content: 'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.',
+          content: `Üzgünüm, bir hata oluştu (${response.status}). Lütfen tekrar deneyin.`,
           sources: []
         });
       }
     } catch (error) {
+      clearTimeout(timeoutId);
       console.error('Error sending message:', error);
+      
+      let errorMessage = 'Bağlantı hatası. Lütfen tekrar deneyin.';
+      
+      if (error.name === 'AbortError') {
+        errorMessage = 'İstek zaman aşımına uğradı. Lütfen tekrar deneyin.';
+      } else if (error.message.includes('fetch')) {
+        errorMessage = 'Sunucuya bağlanılamıyor. İnternet bağlantınızı kontrol edin.';
+      }
       
       // Add error message
       addMessage({
         type: 'assistant',
-        content: 'Bağlantı hatası. Lütfen internet bağlantınızı kontrol edin.',
+        content: errorMessage,
         sources: []
       });
     } finally {
@@ -229,45 +245,61 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
   }, [clearChat]);
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-12">
-            <div className="flex items-center">
-              {/* Logo area removed for cleaner design */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30">
+      {/* Modern Header */}
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200/60 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo/Brand */}
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gradient-to-r from-emerald-700 to-green-800 rounded-lg flex items-center justify-center shadow-lg">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold bg-gradient-to-r from-emerald-700 to-green-800 bg-clip-text text-transparent">
+                    Mihmandar AI
+                  </h1>
+                  <p className="text-xs text-gray-500 hidden sm:block">Akıllı Sohbet Asistanı</p>
+                </div>
+              </div>
             </div>
             
+            {/* Action Buttons */}
             <motion.div 
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-1"
+              className="flex items-center gap-2"
             >
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleClearChat}
-                className="h-9 px-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
+                className="h-10 px-4 text-gray-600 hover:text-emerald-800 hover:bg-emerald-50/70 rounded-xl transition-all duration-200 flex items-center gap-2 group"
               >
-                <RotateCcw className="w-4 h-4" />
+                <RotateCcw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-300" />
                 <span className="text-sm font-medium hidden sm:inline">Temizle</span>
               </Button>
               
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowChatHistory(true)}
-                className="h-9 px-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
-              >
-                <History className="w-4 h-4" />
-                <span className="text-sm font-medium hidden sm:inline">Geçmiş</span>
-              </Button>
+              {isMobile && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowChatHistory(true)}
+                  className="h-10 px-4 text-gray-600 hover:text-emerald-800 hover:bg-emerald-50/70 rounded-xl transition-all duration-200 flex items-center gap-2"
+                >
+                  <History className="w-4 h-4" />
+                  <span className="text-sm font-medium hidden sm:inline">Geçmiş</span>
+                </Button>
+              )}
               
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowSettings(true)}
-                className="h-9 px-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
+                className="h-10 px-4 text-gray-600 hover:text-emerald-800 hover:bg-emerald-50/70 rounded-xl transition-all duration-200 flex items-center gap-2"
               >
                 <Settings className="w-4 h-4" />
                 <span className="text-sm font-medium hidden sm:inline">Ayarlar</span>
@@ -277,17 +309,116 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
         </div>
       </header>
 
-      {/* Main Chat Area */}
-      <main className={`flex-1 flex flex-col h-screen bg-gradient-to-br from-emerald-50/30 via-teal-50/20 to-green-50/30 ${typeof window !== 'undefined' && !isMobile ? 'ml-80' : ''}`}>
-        <div className="max-w-4xl mx-auto w-full flex-1 flex flex-col px-4 sm:px-6 lg:px-8 py-2">
-          {/* Messages Area */}
-          <div 
-            ref={messagesContainerRef}
-            role="log"
-            aria-live="polite"
-            aria-label="Sohbet mesajları"
-            className="flex-1 space-y-6 mb-6 overflow-y-auto"
-          >
+      {/* Main Layout */}
+      <div className="flex h-[calc(100vh-4rem)]">
+        {/* Modern Sidebar - Desktop Only */}
+        {!isMobile && (
+          <aside className="w-80 bg-white/80 backdrop-blur-sm border-r border-gray-200/60 shadow-lg flex flex-col">
+            {/* Sidebar Header */}
+            <div className="p-6 border-b border-gray-200/60">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-gradient-to-r from-emerald-700 to-green-800 rounded-xl flex items-center justify-center shadow-lg">
+                  <History className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Sohbet Geçmişi</h2>
+                  <p className="text-sm text-gray-500">Önceki konuşmalarınız</p>
+                </div>
+              </div>
+              
+              {/* Modern Search */}
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Geçmişte ara..."
+                  value={historySearchQuery}
+                  onChange={(e) => setHistorySearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 text-sm bg-gray-50/80 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all duration-200 placeholder-gray-400"
+                />
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            
+            {/* Chat History Content */}
+            <div className="flex-1 overflow-hidden">
+              <ChatHistory 
+                isOpen={true}
+                onClose={() => {}}
+                searchQuery={historySearchQuery}
+                onSelectChat={(chat) => {
+                  if (chat.slug) {
+                    window.open(`/sohbet/${chat.slug}`, '_blank');
+                  }
+                }}
+              />
+            </div>
+          </aside>
+        )}
+        
+        {/* Main Chat Area - Grok Style */}
+        <main className="flex-1 flex flex-col bg-gradient-to-br from-white via-emerald-50/20 to-green-50/30 relative">
+        {messages.length === 0 ? (
+          // Grok Style Centered Layout
+          <div className="flex-1 flex flex-col justify-end items-center px-4 pb-16 pt-8">
+            <div className="w-full max-w-3xl mx-auto text-center space-y-12">
+              {/* Large Centered Welcome */}
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8 }}
+                className="space-y-6"
+              >
+                <div className="w-24 h-24 mx-auto bg-gradient-to-r from-emerald-700 to-green-800 rounded-full flex items-center justify-center shadow-2xl">
+                  <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                
+                <h1 className="text-5xl md:text-6xl font-bold text-gray-900 leading-tight">
+                  Selamün Aleyküm! 🌹
+                </h1>
+                
+                <p className="text-2xl md:text-3xl text-gray-600 font-light leading-relaxed">
+                  Ben Mihmandar, akıllı asistanınızım.
+                </p>
+                
+                <p className="text-xl text-gray-500 leading-relaxed max-w-2xl mx-auto">
+                  İslami ve tasavvufi konularda sorularınızı sorabilirsiniz.
+                </p>
+              </motion.div>
+              
+              {/* Large Centered Input */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+                className="w-full max-w-4xl mx-auto"
+              >
+                <div className="bg-white rounded-3xl border border-gray-200 shadow-2xl p-6">
+                  <ChatInput 
+                    onSendMessage={handleSendMessage}
+                    disabled={isLoading}
+                  />
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        ) : (
+          // Traditional Chat Layout
+          <div className="max-w-4xl mx-auto w-full flex-1 flex flex-col px-4 sm:px-6 lg:px-8 py-1">
+          
+            {/* Messages Area */}
+            <div 
+              ref={messagesContainerRef}
+              role="log"
+              aria-live="polite"
+              aria-label="Sohbet mesajları"
+              className="space-y-4 mb-2 overflow-y-auto flex-1"
+            >
             <AnimatePresence mode="popLayout">
               {messages.map((message) => (
                 <MessageComponent
@@ -341,7 +472,7 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
                   <motion.p
                     animate={{ opacity: [0.5, 1, 0.5] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    className="text-emerald-700 font-medium text-lg"
+                    className="text-emerald-800 font-medium text-lg"
                   >
                     Düşünüyor ve araştırıyor...
                   </motion.p>
@@ -350,13 +481,13 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
                     initial={{ width: 0 }}
                     animate={{ width: "100%" }}
                     transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                    className="h-1 bg-gradient-to-r from-emerald-400 to-green-500 rounded-full mx-auto max-w-xs"
+                    className="h-1 bg-gradient-to-r from-emerald-700 to-green-800 rounded-full mx-auto max-w-xs"
                   />
                   
                   <motion.p
                     animate={{ opacity: [0.3, 0.7, 0.3] }}
                     transition={{ duration: 1.5, repeat: Infinity }}
-                    className="text-emerald-600 text-sm"
+                    className="text-emerald-700 text-sm"
                   >
                     Kaynaklardan bilgi topluyorum...
                   </motion.p>
@@ -367,87 +498,80 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
             {/* Chat History Sidebar */}
             {typeof window !== 'undefined' && (
               <React.Fragment>
-                {!isMobile && (
-                  <div className="fixed left-0 top-12 h-[calc(100vh-3rem)] w-80 bg-white border-r border-gray-200 shadow-lg z-40">
-                    <div className="p-4 border-b border-gray-200">
-                      <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-3">
-                        <History className="w-5 h-5" />
-                        Sohbet Geçmişi
-                      </h2>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder="Geçmişte ara..."
-                          value={historySearchQuery}
-                          onChange={(e) => setHistorySearchQuery(e.target.value)}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        <div className="absolute right-3 top-2.5">
-                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-                    <ChatHistory 
-                      isOpen={true}
-                      onClose={() => {}}
-                      searchQuery={historySearchQuery}
-                      onSelectChat={(chat) => {
-                        if (chat.slug) {
-                          window.open(`/sohbet/${chat.slug}`, '_blank');
-                        }
-                      }}
-                    />
-                  </div>
-                )}
+                {/* Desktop sidebar is now handled above */}
                 
+                {/* Modern Mobile Sidebar */}
                 {isMobile && showChatHistory && (
-                  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" onClick={() => setShowChatHistory(false)}>
-                    <div className="fixed left-0 top-0 h-full w-80 max-w-[85vw] bg-white shadow-xl transform transition-transform duration-300" onClick={(e) => e.stopPropagation()}>
-                      <div className="p-4 border-b border-gray-200">
-                        <div className="flex items-center justify-between mb-3">
-                          <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                            <History className="w-5 h-5" />
-                            Sohbet Geçmişi
-                          </h2>
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" 
+                    onClick={() => setShowChatHistory(false)}
+                  >
+                    <motion.div 
+                      initial={{ x: -320, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      exit={{ x: -320, opacity: 0 }}
+                      transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                      className="fixed left-0 top-0 h-full w-80 max-w-[85vw] bg-white/95 backdrop-blur-md shadow-2xl" 
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* Mobile Sidebar Header */}
+                      <div className="p-6 border-b border-gray-200/60 bg-gradient-to-r from-emerald-50 to-green-50">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gradient-to-r from-emerald-700 to-green-800 rounded-xl flex items-center justify-center shadow-lg">
+                              <History className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                              <h2 className="text-lg font-bold text-gray-900">Sohbet Geçmişi</h2>
+                              <p className="text-sm text-gray-500">Önceki konuşmalarınız</p>
+                            </div>
+                          </div>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setShowChatHistory(false)}
-                            className="text-gray-500 hover:text-gray-700"
+                            className="text-gray-500 hover:text-gray-700 hover:bg-white/60 rounded-xl p-2"
                           >
                             <X className="w-5 h-5" />
                           </Button>
                         </div>
+                        
+                        {/* Mobile Search */}
                         <div className="relative">
                           <input
                             type="text"
                             placeholder="Geçmişte ara..."
                             value={historySearchQuery}
                             onChange={(e) => setHistorySearchQuery(e.target.value)}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full pl-10 pr-4 py-3 text-sm bg-white/80 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all duration-200 placeholder-gray-400"
                           />
-                          <div className="absolute right-3 top-2.5">
+                          <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
                             <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                           </div>
                         </div>
                       </div>
-                      <ChatHistory 
-                        isOpen={true}
-                        onClose={() => setShowChatHistory(false)}
-                        searchQuery={historySearchQuery}
-                        onSelectChat={(chat) => {
-                          if (chat.slug) {
-                            window.open(`/sohbet/${chat.slug}`, '_blank');
-                          }
-                          setShowChatHistory(false);
-                        }}
-                      />
-                    </div>
-                  </div>
+                      
+                      {/* Mobile Chat History Content */}
+                      <div className="flex-1 overflow-hidden">
+                        <ChatHistory 
+                          isOpen={true}
+                          onClose={() => setShowChatHistory(false)}
+                          searchQuery={historySearchQuery}
+                          onSelectChat={(chat) => {
+                            if (chat.slug) {
+                              window.open(`/sohbet/${chat.slug}`, '_blank');
+                            }
+                            setShowChatHistory(false);
+                          }}
+                        />
+                      </div>
+                    </motion.div>
+                  </motion.div>
                 )}
               </React.Fragment>
             )}
@@ -462,7 +586,7 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
-                className="fixed bottom-20 right-6 z-30"
+                className="fixed bottom-16 right-6 z-30"
               >
                 <Button
                   onClick={scrollToTop}
@@ -474,15 +598,17 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
             )}
           </AnimatePresence>
           
-          {/* Input Area */}
-          <div className="sticky bottom-0 bg-white border-t border-gray-200 pt-4 pb-4">
-            <ChatInput 
-              onSendMessage={handleSendMessage}
-              disabled={isLoading}
-            />
+            {/* Input Area for Chat Mode */}
+            <div className="sticky bottom-0 bg-white border-t border-gray-200 pt-2 pb-2">
+              <ChatInput 
+                onSendMessage={handleSendMessage}
+                disabled={isLoading}
+              />
+            </div>
           </div>
-        </div>
-      </main>
+        )}
+        </main>
+      </div>
       
       {/* Settings Dialog */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
