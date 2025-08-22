@@ -105,44 +105,47 @@ const SourceCard = ({ source, index, onSourceClick }) => {
       className="group cursor-pointer"
       onClick={handleClick}
     >
-      <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all duration-200">
-        {/* Kaynak numarası */}
-        <div className="flex-shrink-0 w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
-          <span className="text-xs font-medium text-gray-600">{index}</span>
-        </div>
-        
-        {/* Kaynak ikonu */}
-        <div className="flex-shrink-0 text-gray-500">
-          {getSourceIcon(source.type)}
-        </div>
-        
-        {/* Kaynak bilgileri */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h4 className="font-medium text-gray-900 text-sm truncate group-hover:text-gray-700 transition-colors">
-              {source.title || 'Başlıksız Kaynak'}
-            </h4>
-            <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${badge.color} flex-shrink-0`}>
-              {badge.label}
-            </span>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all duration-200">
+        {/* Üst satır - Mobilde tek satır */}
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          {/* Kaynak numarası */}
+          <div className="flex-shrink-0 w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
+            <span className="text-xs font-medium text-gray-600">{index}</span>
           </div>
           
-          {source.author && (
-            <p className="text-xs text-gray-500 truncate">
-              {source.author}
-              {source.relevance && (
-                <span className="ml-2 text-gray-400">• {source.relevance}</span>
-              )}
-            </p>
+          {/* Kaynak ikonu */}
+          <div className="flex-shrink-0 text-gray-500">
+            {getSourceIcon(source.type)}
+          </div>
+          
+          {/* Kaynak bilgileri */}
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+              <h4 className="font-medium text-gray-900 text-sm line-clamp-2 sm:truncate group-hover:text-gray-700 transition-colors">
+                {source.title || 'Başlıksız Kaynak'}
+              </h4>
+              <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${badge.color} flex-shrink-0 self-start sm:self-center`}>
+                {badge.label}
+              </span>
+            </div>
+            
+            {source.author && (
+              <p className="text-xs text-gray-500 mt-1 sm:mt-0 line-clamp-1">
+                {source.author}
+                {source.relevance && (
+                  <span className="hidden sm:inline ml-2 text-gray-400">• {source.relevance}</span>
+                )}
+              </p>
+            )}
+          </div>
+          
+          {/* Açma ikonu */}
+          {source.url && (
+            <div className="flex-shrink-0">
+              <ExternalLink className="w-3 h-3 text-gray-400 group-hover:text-gray-600 transition-colors" />
+            </div>
           )}
         </div>
-        
-        {/* Açma ikonu */}
-        {source.url && (
-          <div className="flex-shrink-0">
-            <ExternalLink className="w-3 h-3 text-gray-400 group-hover:text-gray-600 transition-colors" />
-          </div>
-        )}
       </div>
     </motion.div>
   );
@@ -412,8 +415,8 @@ export default function MessageComponent({ message, onSourceClick, onFeedback })
                          </h3>
                        </div>
                        
-                       {/* Kaynak listesi */}
-                       <div className="space-y-2">
+                       {/* Kaynak listesi - Mobil uyumlu grid */}
+                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3">
                          {message.sources.map((source, index) => {
                            const uniqueKey = `source-${message.id || Date.now()}-${index}-${source.id || source.title?.slice(0, 10) || source.url?.slice(-10) || Math.random().toString(36).substr(2, 9)}`;
                            return (
@@ -422,6 +425,7 @@ export default function MessageComponent({ message, onSourceClick, onFeedback })
                                initial={{ opacity: 0, x: -10 }}
                                animate={{ opacity: 1, x: 0 }}
                                transition={{ delay: 0.5 + index * 0.05 }}
+                               className="w-full"
                              >
                                <SourceCard 
                                  source={source} 

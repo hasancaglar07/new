@@ -438,37 +438,21 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
                 exit={{ opacity: 0, scale: 0.8 }}
                 className="flex flex-col items-center justify-center py-12"
               >
-                <div className="relative mb-4">
+                <div className="relative mb-6">
                   <motion.div
                     animate={{ rotate: 360 }}
-                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                    className="w-16 h-16 relative"
+                    transition={{ repeat: Infinity, duration: 20, ease: 'linear' }}
+                    className="relative w-16 h-16 flex items-center justify-center"
                   >
-                    {[...Array(8)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        animate={{
-                          scale: [1, 1.2, 1],
-                          opacity: [0.4, 1, 0.4],
-                        }}
-                        transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                          delay: i * 0.2,
-                          ease: "easeInOut"
-                        }}
-                        className="absolute w-3 h-3 bg-gradient-to-r from-emerald-400 to-green-500 rounded-full"
-                        style={{
-                          left: `${50 + 35 * Math.cos((i * Math.PI) / 4)}%`,
-                          top: `${50 + 35 * Math.sin((i * Math.PI) / 4)}%`,
-                          transform: 'translate(-50%, -50%)'
-                        }}
-                      />
-                    ))}
+                    <img 
+                      src="/logo-top.svg" 
+                      alt="Mihmandar" 
+                      className="w-16 h-16"
+                    />
                   </motion.div>
                 </div>
                 
-                <div className="text-center space-y-3">
+                <div className="text-center space-y-4 max-w-2xl mx-auto">
                   <motion.p
                     animate={{ opacity: [0.5, 1, 0.5] }}
                     transition={{ duration: 2, repeat: Infinity }}
@@ -483,6 +467,18 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
                     transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                     className="h-1 bg-gradient-to-r from-emerald-700 to-green-800 rounded-full mx-auto max-w-xs"
                   />
+                  
+                  <motion.div
+                    animate={{ opacity: [0.6, 1, 0.6] }}
+                    transition={{ duration: 3, repeat: Infinity }}
+                    className="bg-emerald-50/80 backdrop-blur-sm rounded-xl p-4 border border-emerald-200/50"
+                  >
+                    <div className="text-emerald-800 text-sm font-medium mb-2">Bilgi Hazırlanıyor...</div>
+                    <div className="text-emerald-700 text-xs italic leading-relaxed">
+                      "İlim öğrenmek her Müslüman erkek ve kadına farzdır." 
+                      <span className="block mt-1 text-emerald-600 font-medium">- Hz. Muhammed (s.a.v)</span>
+                    </div>
+                  </motion.div>
                   
                   <motion.p
                     animate={{ opacity: [0.3, 0.7, 0.3] }}
