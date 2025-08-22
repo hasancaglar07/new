@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -444,9 +445,11 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
                     transition={{ repeat: Infinity, duration: 20, ease: 'linear' }}
                     className="relative w-16 h-16 flex items-center justify-center"
                   >
-                    <img 
+                    <Image 
                       src="/logo-top.svg" 
                       alt="Mihmandar" 
+                      width={64}
+                      height={64}
                       className="w-16 h-16"
                     />
                   </motion.div>
@@ -475,7 +478,7 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
                   >
                     <div className="text-emerald-800 text-sm font-medium mb-2">Bilgi Hazırlanıyor...</div>
                     <div className="text-emerald-700 text-xs italic leading-relaxed">
-                      "İlim öğrenmek her Müslüman erkek ve kadına farzdır." 
+                      &ldquo;İlim öğrenmek her Müslüman erkek ve kadına farzdır.&rdquo; 
                       <span className="block mt-1 text-emerald-600 font-medium">- Hz. Muhammed (s.a.v)</span>
                     </div>
                   </motion.div>
