@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAudio } from '@/components/audio/AudioProvider';
 import MobileOptimizedButton from '@/components/MobileOptimizedButton';
+import { turkishIncludes, highlightTurkishText } from '@/utils/turkishSearch';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 function AudioPlayer({ source, title, chapters, mp3Filename, onReadyToPlay, onClose, searchQuery }) {
     const audioRef = useRef(null);
@@ -242,17 +243,7 @@ function AudioPlayer({ source, title, chapters, mp3Filename, onReadyToPlay, onCl
 }
 // Arama kelimelerini vurgulama fonksiyonu
 function highlightSearchTerm(text, searchTerm) {
-    if (!searchTerm || searchTerm.trim() === '') return text;
-    
-    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    const parts = text.split(regex);
-    
-    return parts.map((part, index) => {
-        if (regex.test(part)) {
-            return <strong key={index} className="bg-yellow-200 text-yellow-900 px-0.5 rounded">{part}</strong>;
-        }
-        return part;
-    });
+    return highlightTurkishText(text, searchTerm);
 }
 
 function AudioCard({ audio, source, onPlay, searchQuery }) {
@@ -396,9 +387,9 @@ export default function AudioLibraryPage() {
     const filteredAudios = useMemo(() => {
         let items = allAudios.filter(audio => {
             const matchesSearch = searchQuery === '' ||
-                audio.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                turkishIncludes(audio.title, searchQuery) ||
                 audio.chapters.some(chapter =>
-                    chapter.title.toLowerCase().includes(searchQuery.toLowerCase())
+                    turkishIncludes(chapter.title, searchQuery)
                 );
          
             return matchesSearch;

@@ -25,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { turkishIncludes, highlightTurkishText } from '@/utils/turkishSearch';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -1077,9 +1078,9 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
 
 function Highlight({ text, query }) {
     if (!query || !text) return text;
-    const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-    const parts = text.split(new RegExp(`(${escapedQuery})`, 'gi'));
-    return <span>{parts.map((part, i) => part.toLowerCase() === query.toLowerCase() ? <mark key={i} className="bg-emerald-200/70 text-emerald-900 px-2 py-0.5 rounded-md font-medium">{part}</mark> : part)}</span>;
+    // Türkçe karakter uyumlu vurgulama için HTML string döndür
+    const highlightedHtml = highlightTurkishText(text, query);
+    return <span dangerouslySetInnerHTML={{ __html: highlightedHtml }} />;
 }
 
 function BookCard({ book, onReadClick, searchTerm, colors }) {
@@ -1332,7 +1333,7 @@ function LibraryContent() {
                 const key = `${book.kitap_adi}-${book.pdf_dosyasi}`;
                 if (seen.has(key)) return false;
                 seen.add(key);
-                return book.kitap_adi.toLowerCase().includes(searchTerm.toLowerCase());
+                return turkishIncludes(book.kitap_adi, searchTerm);
             });
             if (filteredBooks.length === 0) return null;
             return { ...authorData, kitaplar: filteredBooks };
@@ -1347,7 +1348,7 @@ function LibraryContent() {
                 const foundBook = authorData.kitaplar.find(book => 
                     book.pdf_dosyasi === openBook || 
                     book.pdf_dosyasi === `${openBook}.pdf` ||
-                    book.kitap_adi.toLowerCase().includes(openBook.toLowerCase())
+                    turkishIncludes(book.kitap_adi, openBook)
                 );
                 if (foundBook) {
                     setSelectedBook(foundBook);

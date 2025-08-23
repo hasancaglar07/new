@@ -14,6 +14,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { turkishIncludes, calculateTurkishWordFrequency, highlightTurkishText } from '@/utils/turkishSearch';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -131,17 +132,12 @@ function ArticleCard({ article, index, query }) {
 
     // Arama kelimesi vurgulaması
     const highlightText = (text, searchTerm) => {
-        if (!text || !searchTerm) return text;
-        const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-        return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-800 px-1 rounded font-bold">$1</mark>');
+        return highlightTurkishText(text, searchTerm);
     };
 
     // Kelime sıklığı hesaplama
     const calculateWordFrequency = (content, searchTerm) => {
-        if (!content || !searchTerm) return 0;
-        const regex = new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-        const matches = content.match(regex);
-        return matches ? matches.length : 0;
+        return calculateTurkishWordFrequency(content, searchTerm);
     };
 
     // Makale özeti oluştur (farklı API endpoint'lerinden gelen farklı field adları)
@@ -432,8 +428,8 @@ function ArticlesContent() {
                         ? allArticles.filter(article => {
                             const author = article.author || article.yazar || '';
                             console.log('Makale yazarı:', author, 'Seçilen yazar:', selectedAuthor);
-                            return author.toLowerCase().includes(selectedAuthor.toLowerCase()) || 
-                                   selectedAuthor.toLowerCase().includes(author.toLowerCase());
+                            return turkishIncludes(author, selectedAuthor) || 
+                                   turkishIncludes(selectedAuthor, author);
                         })
                         : allArticles;
                     
@@ -466,8 +462,8 @@ function ArticlesContent() {
                         allArticles = allArticles.filter(article => {
                             const author = article.author || article.yazar || '';
                             console.log('Makale yazarı:', author, 'Seçilen yazar:', selectedAuthor);
-                            return author.toLowerCase().includes(selectedAuthor.toLowerCase()) || 
-                                   selectedAuthor.toLowerCase().includes(author.toLowerCase());
+                            return turkishIncludes(author, selectedAuthor) || 
+                                   turkishIncludes(selectedAuthor, author);
                         });
                         
                         // Pagination uygula
@@ -547,15 +543,8 @@ function ArticlesContent() {
         if (searchTerm) {
             // Arama yapılıyorsa kelime sıklığına göre sırala
             return [...articles].sort((a, b) => {
-                const calculateWordFrequency = (content, searchTerm) => {
-                    if (!content || !searchTerm) return 0;
-                    const regex = new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-                    const matches = content.match(regex);
-                    return matches ? matches.length : 0;
-                };
-                
-                const freqA = calculateWordFrequency((a.content || a.icerik || '') + ' ' + (a.title || a.baslik || ''), searchTerm);
-                const freqB = calculateWordFrequency((b.content || b.icerik || '') + ' ' + (b.title || b.baslik || ''), searchTerm);
+                const freqA = calculateTurkishWordFrequency((a.content || a.icerik || '') + ' ' + (a.title || a.baslik || ''), searchTerm);
+                const freqB = calculateTurkishWordFrequency((b.content || b.icerik || '') + ' ' + (b.title || b.baslik || ''), searchTerm);
                 
                 return freqB - freqA; // Büyükten küçüğe sıralama
             });

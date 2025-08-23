@@ -30,6 +30,7 @@ import ChapterNavigationModal from "@/components/ChapterNavigationModal";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { turkishIncludes, highlightTurkishText, normalizeTurkishText } from '@/utils/turkishSearch';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 // --- YARDIMCI FONKSİYONLAR VE BİLEŞENLER ---
 function TapButton({ children, className, ...props }) {
@@ -45,9 +46,9 @@ function Highlight({ text, query }) {
     let sanitizedHtml = text.replace(/<b\b[^>]*>/gi, '<b class="font-bold text-primary bg-primary/10 px-0.5 rounded-sm">');
     sanitizedHtml = sanitizedHtml.replace(/\*\*(.*?)\*\*/g, '<strong class="text-primary font-bold">$1</strong>');
     if (!query) return <span dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />;
-    const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-    const parts = sanitizedHtml.split(new RegExp(`(${escapedQuery})`, 'gi'));
-    const highlightedHtml = parts.map((part, i) => part.toLowerCase() === query.toLowerCase() ? `<mark class="bg-secondary/30 text-secondary-foreground px-1 rounded-md">${part.replace(/<b\b[^>]*>|<\/b>|\*\*|\*/gi, "")}</mark>` : part).join('');
+    
+    // Türkçe karakter uyumlu vurgulama
+    const highlightedHtml = highlightTurkishText(sanitizedHtml, query);
     return <span dangerouslySetInnerHTML={{ __html: highlightedHtml }} />;
 }
 // Dialoglar ve Kartlar

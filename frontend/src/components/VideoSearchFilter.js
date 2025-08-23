@@ -7,13 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { turkishIncludes, highlightTurkishText } from '@/utils/turkishSearch';
 
 // Highlight search terms in text
 function highlightSearchTerm(text, searchTerm) {
-    if (!text || !searchTerm) return text;
-    
-    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-800 px-1 rounded font-bold">$1</mark>');
+    return highlightTurkishText(text, searchTerm);
 }
 
 const VideoSearchFilter = ({ 
@@ -36,11 +34,11 @@ const VideoSearchFilter = ({
             filtered = filtered.filter(({ data }) => {
                 if (!data || typeof data !== 'object') return false;
                 
-                const title = data.title?.toLowerCase() || '';
+                const title = data.title || '';
                 const chapters = data.chapters || [];
-                const chaptersText = chapters.join(' ').toLowerCase();
+                const chaptersText = chapters.join(' ');
                 
-                return title.includes(query) || chaptersText.includes(query);
+                return turkishIncludes(title, searchQuery) || turkishIncludes(chaptersText, searchQuery);
             });
         }
 
