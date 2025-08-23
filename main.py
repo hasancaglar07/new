@@ -67,10 +67,23 @@ _sanitize_proxy_env()
 from contextlib import asynccontextmanager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # trust_env=False => sistem proxy env değişkenlerini dikkate alma
+    # Startup
     app.state.httpx_client = httpx.AsyncClient(trust_env=False)
     logger.info("httpx client başlatıldı.")
+    
+    # Veritabanlarını başlat
+    try:
+        init_db()
+        init_articles_db()
+        init_audio_db()
+        init_vector_db() 
+        logger.info("Tüm veritabanları başarıyla başlatıldı.")
+    except Exception as e:
+        logger.error(f"Veritabanı başlatma sırasında hata: {e}")
+
     yield
+    
+    # Shutdown
     await app.state.httpx_client.aclose()
     logger.info("httpx client kapatıldı.")
 
