@@ -41,7 +41,7 @@ COPY . .
 # --- ANA DEĞİŞİKLİK ---
 # Bellek sorunlarını aşmak için minimal paket listesi kullanıyoruz
 RUN pip install --upgrade pip setuptools wheel
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements-micro.txt
 
 # YouTube bot koruması için ek paketler
 RUN pip install --no-cache-dir \
