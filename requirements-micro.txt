@@ -12,24 +12,14 @@ requests==2.32.4
 # Database
 Whoosh==2.7.4
 
-# Turkish Search Optimization
-TurkishStemmer==1.0.2
-thefuzz==0.22.1
-python-Levenshtein==0.25.1
-
 # PDF processing (minimal)
 PyMuPDF==1.26.3
-pdf2image==1.17.0
-pillow==11.3.0
 
 # Video processing
 yt-dlp==2025.7.21
 
 # AI/ML (minimal)
 openai==1.35.0
-numpy==1.26.4
-faiss-cpu==1.11.0.post1
-sentence-transformers==3.0.1
 
 # Web scraping
 beautifulsoup4==4.13.4
