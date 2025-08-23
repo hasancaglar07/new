@@ -22,7 +22,7 @@ def download_and_extract_index():
     # Not: Bu dosyayı manuel olarak yükleyin ve URL'yi güncelleyin; ortam değişkeni ile de geçilebilir
     index_package_url = os.getenv(
         "INDEX_PACKAGE_URL",
-        "https://cdn.mihmandar.org/file/yediulya-index/whoosh_index_package_20250810_032102.zip",
+        "https://cdn.mihmandar.org/file/yediulya-index/whoosh_index_package_20250823_143753.zip",
     )
     
     print(f"🔗 İndeks paketi indiriliyor: {index_package_url}")
