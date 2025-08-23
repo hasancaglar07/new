@@ -1700,6 +1700,12 @@ def calculate_response_confidence(response: str, sources: List[Dict[str, Any]]) 
     
     return min(confidence, 1.0)
 
+# Railway deployment için
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
+
 # --- AI History Endpoints ---
 
 @app.get("/ai-history/recent")
