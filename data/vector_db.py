@@ -110,37 +110,37 @@ class VectorDatabase:
             raise
     
     def _download_from_backblaze(self):
-        """Backblaze'den FAISS index ve metadata dosyalarını indir"""
+        """Backblaze'den Vector DB ZIP dosyasını indir ve çıkar"""
         try:
             import requests
+            import zipfile
             
-            # FAISS index dosyasını indir
-            index_url = "https://cdn.mihmandar.org/file/yediulya-databases/vector_db/faiss.index"
-            metadata_url = "https://cdn.mihmandar.org/file/yediulya-databases/vector_db/vector_metadata.db"
+            # Vector DB ZIP dosyasını indir
+            zip_url = "https://cdn.mihmandar.org/file/yediulya-databases/vector_db.zip"
+            zip_path = self.db_path / "vector_db.zip"
             
-            logger.info("Downloading FAISS index from Backblaze...")
+            logger.info("Downloading Vector DB ZIP from Backblaze...")
             
-            # FAISS index indir
-            response = requests.get(index_url, timeout=60)
+            # ZIP dosyasını indir
+            response = requests.get(zip_url, timeout=120)
             if response.status_code == 200:
-                with open(self.index_file, 'wb') as f:
+                with open(zip_path, 'wb') as f:
                     f.write(response.content)
-                logger.info(f"Downloaded FAISS index: {self.index_file}")
+                logger.info(f"Downloaded Vector DB ZIP: {zip_path}")
+                
+                # ZIP dosyasını çıkar
+                logger.info("Extracting Vector DB ZIP...")
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    zip_ref.extractall(self.db_path)
+                
+                # ZIP dosyasını sil
+                zip_path.unlink()
+                logger.info("Vector DB ZIP extracted and cleaned up")
+                
+                return True
             else:
-                logger.warning(f"Failed to download FAISS index: {response.status_code}")
+                logger.warning(f"Failed to download Vector DB ZIP: {response.status_code}")
                 return False
-            
-            # Metadata DB indir
-            response = requests.get(metadata_url, timeout=60)
-            if response.status_code == 200:
-                with open(self.sqlite_db, 'wb') as f:
-                    f.write(response.content)
-                logger.info(f"Downloaded metadata DB: {self.sqlite_db}")
-            else:
-                logger.warning(f"Failed to download metadata DB: {response.status_code}")
-                return False
-            
-            return True
             
         except Exception as e:
             logger.error(f"Failed to download from Backblaze: {e}")
