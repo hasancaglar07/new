@@ -1685,20 +1685,21 @@ async def search_relevant_content(query: str, max_results: int = 10) -> List[Dic
             # Video analizlerinde ara
             try:
                 analyses = get_all_completed_analyses()
-                for analysis in analyses[:2]:  # En fazla 2 video analizi
-                    if query.lower() in analysis.get("summary", "").lower():
-                        # Duplicate check
-                        if not any(s.get("id") == analysis.get("task_id") and s.get("type") == "video" for s in sources):
-                            source = {
-                                "id": analysis.get("task_id"),
-                                "type": "video",
-                                "title": analysis.get("title", "Video Analizi"),
-                                "content": analysis.get("summary", "")[:400] + "...",
-                                "url": analysis.get("url"),
-                                "score": 0.5,  # Düşük skor (keyword match)
-                                "search_method": "video_keyword"
-                            }
-                            sources.append(source)
+                if analyses and isinstance(analyses, (list, tuple)):
+                    for analysis in analyses[:2]:  # En fazla 2 video analizi
+                        if query.lower() in analysis.get("summary", "").lower():
+                            # Duplicate check
+                            if not any(s.get("id") == analysis.get("task_id") and s.get("type") == "video" for s in sources):
+                                source = {
+                                    "id": analysis.get("task_id"),
+                                    "type": "video",
+                                    "title": analysis.get("title", "Video Analizi"),
+                                    "content": analysis.get("summary", "")[:400] + "...",
+                                    "url": analysis.get("url"),
+                                    "score": 0.5,  # Düşük skor (keyword match)
+                                    "search_method": "video_keyword"
+                                }
+                                sources.append(source)
             except Exception as e:
                 logger.warning(f"Video analysis search error: {e}")
     

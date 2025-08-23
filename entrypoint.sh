@@ -21,6 +21,11 @@ echo "Starting server immediately for Railway health checks..."
     else
         echo "Background: Using pre-built index from Backblaze."
     fi
+    
+    # Vector DB'yi populate et
+    echo "Background: Populating vector database..."
+    python populate_vector_db.py
+    echo "Background: Vector database population finished."
 ) &
 
 # Sunucuyu hemen başlat
