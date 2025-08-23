@@ -42,4 +42,4 @@ requests[socks]==2.32.4
 # Turkish Search (Core)
 TurkishStemmer==1.0.2
 thefuzz==0.22.1
-python-Levenshtein==0.25.1
+rapidfuzz==3.9.1
