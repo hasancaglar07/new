@@ -31,6 +31,11 @@ export default function Navbar() {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [coords, setCoords] = useState(null);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
     // Tek sefer: localStorage'tan oku
@@ -89,9 +94,9 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Menü linkleri ve diğer kısımlar aynı kalıyor */}
+          {/* Menü linkleri - hydration sonrası render */}
           <div className="hidden md:flex md:items-center md:space-x-2">
-            {navLinks.map((link) => {
+            {isHydrated && navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
                 <Link
@@ -143,7 +148,7 @@ export default function Navbar() {
                 className="md:hidden absolute top-full left-0 right-0 mt-3 mx-4"
               >
                 <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-lg border border-slate-200/80 p-2 space-y-1">
-                  {navLinks.map((link) => {
+                  {isHydrated && navLinks.map((link) => {
                     const isActive = pathname === link.href;
                     return (
                       <Link

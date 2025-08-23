@@ -31,6 +31,11 @@ export const metadata = {
   alternates: {
     canonical: '/',
   },
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/apple-touch-icon.png',
+  },
   openGraph: {
     title: 'Mihmandar.org - E-Kütüphane | İlim ve Maneviyat Merkezi',
     description: 'İslami kitaplar, ses kayıtları, makaleler ve daha fazlası. İlim ve maneviyat dünyasına açılan kapınız.',

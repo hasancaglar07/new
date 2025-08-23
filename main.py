@@ -925,14 +925,9 @@ async def search_videos(q: str):
     if not all_videos or api_quota_exceeded or not YOUTUBE_API_KEYS:
         logger.info("yt-dlp fallback sistemi kullanılıyor")
         try:
-            # Her kanal için ayrı arama yap
+            # Sadece belirtilen kanallardan arama yap
             for channel_id in channels:
                 fallback_videos = search_channel_videos(channel_id, q, max_results=6)
-                all_videos.extend(fallback_videos)
-            
-            # Eğer kanal spesifik arama sonuç vermezse genel arama yap
-            if not all_videos:
-                fallback_videos = search_youtube_videos(q, max_results=18)  # 3 kanal x 6 video
                 all_videos.extend(fallback_videos)
                 
         except Exception as e:

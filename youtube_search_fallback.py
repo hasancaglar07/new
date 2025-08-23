@@ -33,26 +33,26 @@ class YouTubeSearchFallback:
             Video bilgilerini içeren liste
         """
         try:
-            # Kanal spesifik arama için sorguyu düzenle
+            # Kanal spesifik arama için doğrudan kanal videolarını al
             if channel_id:
-                search_query = f"ytsearch{max_results}:{query} site:youtube.com/channel/{channel_id}"
+                return self.search_channel_videos(channel_id, query, max_results)
             else:
                 search_query = f"ytsearch{max_results}:{query}"
-            
-            with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
-                search_results = ydl.extract_info(search_query, download=False)
                 
-                if not search_results or 'entries' not in search_results:
-                    return []
-                
-                videos = []
-                for entry in search_results['entries']:
-                    if entry:
-                        video_info = self._extract_video_info(entry)
-                        if video_info:
-                            videos.append(video_info)
-                
-                return videos
+                with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
+                    search_results = ydl.extract_info(search_query, download=False)
+                    
+                    if not search_results or 'entries' not in search_results:
+                        return []
+                    
+                    videos = []
+                    for entry in search_results['entries']:
+                        if entry:
+                            video_info = self._extract_video_info(entry)
+                            if video_info:
+                                videos.append(video_info)
+                    
+                    return videos
                 
         except Exception as e:
             logger.error(f"yt-dlp arama hatası: {e}")
@@ -71,32 +71,84 @@ class YouTubeSearchFallback:
             Video bilgilerini içeren liste
         """
         try:
-            # Kanal URL'si oluştur
-            channel_url = f"https://www.youtube.com/channel/{channel_id}/videos"
-            
-            ydl_opts = self.ydl_opts.copy()
-            ydl_opts['playlistend'] = max_results
-            
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                channel_info = ydl.extract_info(channel_url, download=False)
+            if query:
+                # Genel arama yap, sonra kanal ID'sine göre filtrele
+                search_query = f"ytsearch{max_results * 3}:{query}"  # Daha fazla sonuç al
                 
-                if not channel_info or 'entries' not in channel_info:
-                    return []
-                
-                videos = []
-                for entry in channel_info['entries']:
-                    if entry:
-                        video_info = self._extract_video_info(entry)
-                        if video_info:
-                            # Eğer query varsa, başlık ve açıklamada ara
-                            if query:
-                                if (query.lower() in video_info.get('title', '').lower() or 
-                                    query.lower() in video_info.get('description', '').lower()):
+                with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
+                    search_results = ydl.extract_info(search_query, download=False)
+                    
+                    if not search_results or 'entries' not in search_results:
+                        return []
+                    
+                    # Kanal adı eşleştirmesi için mapping
+                    channel_name_mapping = {
+                        'UCfYG6Ij2vIJXXplpottv02Q': ['yediulya', 'ali ramazan dinç', 'saâdet asrına yolculuk'],
+                        'UCvhlPtV-1MgZBQPmGjomhsA': ['kalemdar', 'alemdar', 'ali ramazan efendi'],
+                        'UC9Jt0jM08o7aXSHz0Kni7Uw': ['didar', 'akademi', 'didar akademi'],
+                        'UC0FN4XBgk2Isvv1QmrbFn8w': ['kutbu', 'cihan', 'kutbu cihan']
+                    }
+                    
+                    videos = []
+                    found_count = 0
+                    for entry in search_results['entries']:
+                        if entry and found_count < max_results:
+                            # Kanal adını al
+                            channel_name = entry.get('uploader', '') or entry.get('channel', '') or ''
+                            
+                            # Kanal adı ile eşleştirme yap
+                            is_target_channel = False
+                            if channel_name and channel_name.strip():
+                                channel_name_lower = channel_name.lower()
+                                expected_names = channel_name_mapping.get(channel_id, [])
+                                
+                                for expected_name in expected_names:
+                                    if expected_name and expected_name in channel_name_lower:
+                                        is_target_channel = True
+                                        break
+                            
+                            # ID ile de kontrol et
+                            if not is_target_channel:
+                                uploader_url = entry.get('uploader_url', '')
+                                uploader_id = entry.get('uploader_id', '')
+                                channel_id_check = entry.get('channel_id', '')
+                                
+                                is_target_channel = (
+                                    channel_id in uploader_url or
+                                    uploader_id == channel_id or
+                                    channel_id_check == channel_id or
+                                    f'/channel/{channel_id}' in uploader_url
+                                )
+                            
+                            if is_target_channel:
+                                video_info = self._extract_video_info(entry)
+                                if video_info:
                                     videos.append(video_info)
-                            else:
-                                videos.append(video_info)
+                                    found_count += 1
+                    
+                    return videos
+            else:
+                # Kanal URL'si oluştur
+                channel_url = f"https://www.youtube.com/channel/{channel_id}/videos"
                 
-                return videos
+                ydl_opts = self.ydl_opts.copy()
+                ydl_opts['playlistend'] = max_results
+                ydl_opts['extract_flat'] = True  # Hızlı liste için
+                
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    channel_info = ydl.extract_info(channel_url, download=False)
+                    
+                    if not channel_info or 'entries' not in channel_info:
+                        return []
+                    
+                    videos = []
+                    for entry in channel_info['entries']:
+                        if entry:
+                            video_info = self._extract_video_info(entry)
+                            if video_info:
+                                videos.append(video_info)
+                    
+                    return videos
                 
         except Exception as e:
             logger.error(f"Kanal videoları arama hatası: {e}")
