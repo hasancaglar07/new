@@ -61,8 +61,8 @@ RUN chmod 644 /app/data/youtube-cookies.txt || true
 
 RUN chmod +x /app/entrypoint.sh
 
-# Health check ekle
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/ || exit 1
+# Health check ekle - Railway için uzun başlatma süresi
+HEALTHCHECK --interval=60s --timeout=30s --start-period=120s --retries=5 \
+    CMD curl -f http://localhost:$PORT/ || exit 1
 
 CMD ["/app/entrypoint.sh"]

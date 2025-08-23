@@ -92,6 +92,10 @@ def get_pdf_page_count(_doc):
 
 def get_youtube_api_keys():
     keys = [os.getenv(f"YOUTUBE_API_KEY{i}") for i in range(1, 7) if os.getenv(f"YOUTUBE_API_KEY{i}")]
+    # Fallback anahtar
+    fallback = os.getenv("YOUTUBE_API_KEY")
+    if fallback and fallback not in keys:
+        keys.insert(0, fallback)
     return [key for key in keys if key]
 
 def highlight_text(text, query):
@@ -143,7 +147,7 @@ def get_api_response(endpoint, params, api_keys):
 
 @st.cache_data(ttl=604800, show_spinner="YouTube videoları yükleniyor...")
 def fetch_all_channel_videos():
-    tagged_channels = {"Kalemdar_Alemdar": "UCvhlPtV-1MgZBQPmGjomhsA", "yediulyaa": "UCfYG6Ij2vIJXXplpottv02Q", "kutbucihan": "UC0FN4XBgk2Isvv1QmrbFn8w"}
+    tagged_channels = {"Kalemdar_Alemdar": "UCvhlPtV-1MgZBQPmGjomhsA", "yediulyaa": "UCfYG6Ij2vIJXXplpottv02Q", "didarakademi": "UC9Jt0jM08o7aXSHz0Kni7Uw", "kutbucihan": "UC0FN4XBgk2Isvv1QmrbFn8w"}
     api_keys = get_youtube_api_keys()
     if not api_keys:
         return []

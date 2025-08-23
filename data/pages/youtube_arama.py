@@ -8,6 +8,9 @@ import tempfile
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
+import sys
+sys.path.append('..')
+from youtube_search_fallback import search_youtube_videos, search_channel_videos
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -40,6 +43,7 @@ if not YOUTUBE_API_KEYS:
 tagged_channels = {
     "Kalemdar_Alemdar": "UCvhlPtV-1MgZBQPmGjomhsA",
     "yediulyaa": "UCfYG6Ij2vIJXXplpottv02Q",
+    "didarakademi": "UC9Jt0jM08o7aXSHz0Kni7Uw",
     "kutbucihan": "UC0FN4XBgk2Isvv1QmrbFn8w",
 }
 
@@ -75,46 +79,85 @@ if search_button:
             all_items = {}
             total_found = 0
             used_key = None
+            api_quota_exceeded = False
 
             if selected_channel == "Tüm Kanallar":
                 channels_to_search = tagged_channels.items()
             else:
                 channels_to_search = [(selected_channel, tagged_channels[selected_channel])]
 
-            for api_key in YOUTUBE_API_KEYS:
+            # Önce YouTube API'yi dene
+            if YOUTUBE_API_KEYS:
+                for api_key in YOUTUBE_API_KEYS:
+                    try:
+                        for channel_name, channel_id in channels_to_search:
+                            if channel_name in all_items:
+                                continue
+                            url = "https://www.googleapis.com/youtube/v3/search"
+                            params = {
+                                "part": "snippet",
+                                "q": query,
+                                "type": "video",
+                                "maxResults": 8,
+                                "key": api_key,
+                                "channelId": channel_id
+                            }
+                            response = requests.get(url, params=params, timeout=10)
+                            if response.status_code == 200:
+                                data = response.json()
+                                videos = data.get("items", [])
+                                all_items[channel_name] = videos
+                                total_found += len(videos)
+                                used_key = api_key
+                            elif response.status_code == 403:
+                                error = response.json().get("error", {}).get("errors", [{}])[0].get("reason", "")
+                                if error == "quotaExceeded":
+                                    api_quota_exceeded = True
+                                    break
+                        if used_key or api_quota_exceeded:
+                            break
+                    except Exception as e:
+                        continue
+                    if api_quota_exceeded:
+                        break
+
+            # API kota dolmuşsa veya sonuç yoksa yt-dlp fallback kullan
+            if total_found == 0 or api_quota_exceeded:
+                if api_quota_exceeded:
+                    st.warning("⚠️ YouTube API kota limiti doldu. Alternatif arama sistemi kullanılıyor...")
+                
                 try:
+                    # yt-dlp fallback sistemi
                     for channel_name, channel_id in channels_to_search:
                         if channel_name in all_items:
                             continue
-                        url = "https://www.googleapis.com/youtube/v3/search"
-                        params = {
-                            "part": "snippet",
-                            "q": query,
-                            "type": "video",
-                            "maxResults": 8,
-                            "key": api_key,
-                            "channelId": channel_id
-                        }
-                        response = requests.get(url, params=params, timeout=10)
-                        if response.status_code == 200:
-                            data = response.json()
-                            videos = data.get("items", [])
-                            all_items[channel_name] = videos
-                            total_found += len(videos)
-                            used_key = api_key
-                        elif response.status_code == 403:
-                            error = response.json().get("error", {}).get("errors", [{}])[0].get("reason", "")
-                            if error == "quotaExceeded":
-                                break
-                    if used_key:
-                        break
+                        
+                        fallback_videos = search_channel_videos(channel_id, query, max_results=8)
+                        
+                        # yt-dlp formatını YouTube API formatına çevir
+                        api_format_videos = []
+                        for video in fallback_videos:
+                            api_format_videos.append({
+                                "id": {"videoId": video["id"]},
+                                "snippet": {
+                                    "title": video["title"],
+                                    "description": video["description"],
+                                    "thumbnails": {"high": {"url": video["thumbnail"]}},
+                                    "channelTitle": video["channel"],
+                                    "publishedAt": video["upload_date"]
+                                }
+                            })
+                        
+                        all_items[channel_name] = api_format_videos
+                        total_found += len(api_format_videos)
+                        
                 except Exception as e:
-                    continue
+                    logger.error(f"yt-dlp fallback hatası: {e}")
 
             if total_found == 0:
                 st.error("""
                     ❌ Hiçbir video bulunamadı.  
-                    Tüm API anahtarlarının kotası dolmuş olabilir.  
+                    Lütfen arama teriminizi değiştirip tekrar deneyin.  
                     Lütfen birkaç saat sonra tekrar deneyin.
                 """)
             else:

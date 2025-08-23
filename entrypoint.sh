@@ -1,24 +1,28 @@
 #!/bin/sh
 
-# Adım 1: Database dosyalarını indir (eğer yoksa)
-echo "Downloading databases..."
-python download_databases.py
-echo "Database download finished."
+# Railway için hızlı başlatma - veritabanı indirme işlemlerini arka plana al
+echo "Starting server immediately for Railway health checks..."
 
-# Adım 2: Hazır indeksi Backblaze'den indir (eğer yoksa)
-echo "Downloading pre-built index from Backblaze..."
-python download_index_from_backblaze.py
-echo "Index download finished."
+# Arka planda veritabanı ve indeks indirme
+(
+    echo "Background: Downloading databases..."
+    python download_databases.py
+    echo "Background: Database download finished."
+    
+    echo "Background: Downloading pre-built index from Backblaze..."
+    python download_index_from_backblaze.py
+    echo "Background: Index download finished."
+    
+    # Eğer indeks indirilemezse, yeni indeks oluştur
+    if [ ! -f "data/whoosh_index/_MAIN_1.toc" ]; then
+        echo "Background: Pre-built index not found, creating new index..."
+        python create_index.py
+        echo "Background: New index creation finished."
+    else
+        echo "Background: Using pre-built index from Backblaze."
+    fi
+) &
 
-# Adım 3: Eğer indeks indirilemezse, yeni indeks oluştur
-if [ ! -f "data/whoosh_index/_MAIN_1.toc" ]; then
-    echo "Pre-built index not found, creating new index..."
-    python create_index.py
-    echo "New index creation finished."
-else
-    echo "Using pre-built index from Backblaze."
-fi
-
-# Adım 2: Gunicorn sunucusunu başlat.
+# Sunucuyu hemen başlat
 echo "Starting Gunicorn server..."
-gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 300
+gunicorn main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 300 --preload

@@ -35,6 +35,8 @@ from contextlib import asynccontextmanager
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound, CouldNotRetrieveTranscript
 # Deepgram SDK (birincil transkripsiyon)
 from deepgram import DeepgramClient, PrerecordedOptions
+# YouTube arama fallback sistemi
+from youtube_search_fallback import search_youtube_videos, search_channel_videos
 
 # --- Kurulum ve Global Yapılandırma ---
 # .env dosyasını proje kökünden açıkça yükle (lokal çalışmada CWD farklarını engellemek için)
@@ -140,6 +142,21 @@ async def force_cors_headers(request, call_next):
 deepseek_client = AsyncOpenAI(base_url="https://api.deepseek.com", api_key=DEEPSEEK_API_KEY) if DEEPSEEK_API_KEY else None
 # Deepgram client'ı oluştur (birincil)
 deepgram_client = DeepgramClient(DEEPGRAM_API_KEY) if DEEPGRAM_API_KEY else None
+
+# YouTube API anahtarlarını al
+def get_youtube_api_keys():
+    keys = []
+    for i in range(1, 7):  # 6 anahtar için
+        key = os.getenv(f"YOUTUBE_API_KEY{i}")
+        if key:
+            keys.append(key)
+    # Fallback anahtar
+    fallback = os.getenv("YOUTUBE_API_KEY")
+    if fallback and fallback not in keys:
+        keys.insert(0, fallback)
+    return keys
+
+YOUTUBE_API_KEYS = get_youtube_api_keys()
 
 # Database'leri başlat
 init_db()  # qa_database.db + video_analyses (Supabase/SQLite)
@@ -868,23 +885,60 @@ def get_page_text(pdf_file: str, page_num: int = Query(..., gt=0)):
         raise HTTPException(status_code=500, detail="PDF sayfa metni alınamadı.")
 @app.get("/search/videos")
 async def search_videos(q: str):
-    if not YOUTUBE_API_KEYS:
-        # YouTube API anahtarları yoksa boş sonuç döndür (503 yerine graceful degrade)
-        return {"sonuclar": []}
-    all_videos, channels = [], ["UCvhlPtV-1MgZBQPmGjomhsA", "UCfYG6Ij2vIJXXplpottv02Q", "UC0FN4XBgk2Isvv1QmrbFn8w"]
-    for channel_id in channels:
-        for api_key in YOUTUBE_API_KEYS:
-            params = {"part": "snippet", "q": q, "type": "video", "maxResults": 6, "key": api_key, "channelId": channel_id}
-            try:
-                response = requests.get("https://www.googleapis.com/youtube/v3/search", params=params, timeout=5)
-                if response.status_code == 200:
-                    for item in response.json().get("items", []):
-                        snippet, video_id = item.get("snippet", {}), item.get("id", {}).get("videoId")
-                        if snippet and video_id: all_videos.append({"id": video_id, "title": snippet.get("title"), "thumbnail": snippet.get("thumbnails", {}).get("high", {}).get("url"), "channel": snippet.get("channelTitle"), "publishedTime": snippet.get("publishedAt")})
+    """YouTube video arama - API kota dolduğunda yt-dlp fallback kullanır"""
+    all_videos = []
+    channels = ["UCvhlPtV-1MgZBQPmGjomhsA", "UCfYG6Ij2vIJXXplpottv02Q", "UC9Jt0jM08o7aXSHz0Kni7Uw", "UC0FN4XBgk2Isvv1QmrbFn8w"]
+    api_quota_exceeded = False
+    
+    # Önce YouTube API'yi dene
+    if YOUTUBE_API_KEYS:
+        for channel_id in channels:
+            for api_key in YOUTUBE_API_KEYS:
+                params = {"part": "snippet", "q": q, "type": "video", "maxResults": 6, "key": api_key, "channelId": channel_id}
+                try:
+                    response = requests.get("https://www.googleapis.com/youtube/v3/search", params=params, timeout=5)
+                    if response.status_code == 200:
+                        for item in response.json().get("items", []):
+                            snippet, video_id = item.get("snippet", {}), item.get("id", {}).get("videoId")
+                            if snippet and video_id: 
+                                all_videos.append({
+                                    "id": video_id, 
+                                    "title": snippet.get("title"), 
+                                    "thumbnail": snippet.get("thumbnails", {}).get("high", {}).get("url"), 
+                                    "channel": snippet.get("channelTitle"), 
+                                    "publishedTime": snippet.get("publishedAt")
+                                })
+                        break
+                    elif response.status_code == 403:
+                        error = response.json().get("error", {}).get("errors", [{}])[0].get("reason", "")
+                        if error == "quotaExceeded":
+                            api_quota_exceeded = True
+                            logger.warning(f"YouTube API kota doldu, yt-dlp fallback'e geçiliyor")
+                            break
+                        continue
+                except requests.RequestException:
                     break
-                elif response.status_code == 403: continue
-            except requests.RequestException: break
-    return {"sonuclar": all_videos}
+            if api_quota_exceeded:
+                break
+    
+    # API kota dolmuşsa veya API anahtarı yoksa yt-dlp fallback kullan
+    if not all_videos or api_quota_exceeded or not YOUTUBE_API_KEYS:
+        logger.info("yt-dlp fallback sistemi kullanılıyor")
+        try:
+            # Her kanal için ayrı arama yap
+            for channel_id in channels:
+                fallback_videos = search_channel_videos(channel_id, q, max_results=6)
+                all_videos.extend(fallback_videos)
+            
+            # Eğer kanal spesifik arama sonuç vermezse genel arama yap
+            if not all_videos:
+                fallback_videos = search_youtube_videos(q, max_results=18)  # 3 kanal x 6 video
+                all_videos.extend(fallback_videos)
+                
+        except Exception as e:
+            logger.error(f"yt-dlp fallback hatası: {e}")
+    
+    return {"sonuclar": all_videos[:18]}  # Maksimum 18 video döndür
 @app.get("/analyze/status/{task_id}")
 async def get_analysis_status(task_id: str):
     task = get_task(task_id)
