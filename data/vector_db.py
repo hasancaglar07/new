@@ -5,13 +5,22 @@ import os
 import json
 import pickle
 import logging
-import numpy as np
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
-import faiss
-from sentence_transformers import SentenceTransformer
 import sqlite3
 from datetime import datetime
+
+# Optional imports for vector functionality
+try:
+    import numpy as np
+    import faiss
+    from sentence_transformers import SentenceTransformer
+    VECTOR_DEPS_AVAILABLE = True
+except ImportError:
+    np = None
+    faiss = None
+    SentenceTransformer = None
+    VECTOR_DEPS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +30,10 @@ class VectorDatabase:
     """
     
     def __init__(self, db_path: str = "data/vector_db", model_name: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"):
+        if not VECTOR_DEPS_AVAILABLE:
+            logger.warning("Vector dependencies not available. Vector functionality disabled.")
+            return
+            
         self.db_path = Path(db_path)
         self.db_path.mkdir(exist_ok=True)
         
@@ -502,8 +515,10 @@ class VectorDatabase:
 # Global instance
 _vector_db = None
 
-def get_vector_db() -> VectorDatabase:
+def get_vector_db() -> Optional[VectorDatabase]:
     """Global vektör veritabanı instance'ını getir"""
+    if not VECTOR_DEPS_AVAILABLE:
+        return None
     global _vector_db
     if _vector_db is None:
         _vector_db = VectorDatabase()
@@ -511,11 +526,15 @@ def get_vector_db() -> VectorDatabase:
 
 def init_vector_db():
     """Vektör veritabanını başlat"""
+    if not VECTOR_DEPS_AVAILABLE:
+        logger.warning("Vector dependencies not available. Skipping vector database initialization.")
+        return
     try:
         db = get_vector_db()
-        logger.info("Vector database initialized successfully")
-        stats = db.get_stats()
-        logger.info(f"Vector DB stats: {stats}")
+        if db:
+            logger.info("Vector database initialized successfully")
+            stats = db.get_stats()
+            logger.info(f"Vector DB stats: {stats}")
         return db
     except Exception as e:
         logger.error(f"Failed to initialize vector database: {e}")
