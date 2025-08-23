@@ -7,6 +7,7 @@ import logging
 import re
 from whoosh.index import open_dir
 from whoosh.qparser import MultifieldParser, AndGroup
+from turkish_search_utils import TurkishQueryExpander
 import fitz # PyMuPDF
 from streamlit_mic_recorder import speech_to_text
 from concurrent.futures import ThreadPoolExecutor
@@ -325,14 +326,65 @@ if search_button and query.strip():
     def search_books(q, authors):
         ix = open_dir("whoosh_index")
         with ix.searcher() as searcher:
-            parser = MultifieldParser(["content", "author"], schema=ix.schema, group=AndGroup)
-            query_parts = [f"content:({q.lower()})"]
+            # Türkçe query expander kullan
+            query_expander = TurkishQueryExpander()
+            
+            # Ana sorgu için expanded query oluştur
+            if q and q.strip():
+                content_query = query_expander.create_expanded_query(q.strip(), "content")
+            else:
+                from whoosh.query import Every
+                content_query = Every()
+            
+            # Yazar filtresi için query oluştur
             if authors:
-                author_queries = ' OR '.join([f'author:"{a.lower()}"' for a in authors])
-                query_parts.append(f"({author_queries})")
-            parsed_q = parser.parse(" AND ".join(query_parts))
-            results = searcher.search(parsed_q, limit=980)
-            data = [{"Kitap": h["book"].title(), "Yazar/Şahsiyet": h["author"].title(), "Sayfa": h["page"], "Tam Metin (Alıntı)": h.highlights("content"), "PDF File": h["pdf_file"]} for h in results]
+                author_terms = []
+                for author in authors:
+                    author_expanded = query_expander.create_expanded_query(author, "author")
+                    author_terms.append(author_expanded)
+                
+                if len(author_terms) > 1:
+                    from whoosh.query import Or, And
+                    author_query = Or(author_terms)
+                    final_query = And([content_query, author_query])
+                else:
+                    from whoosh.query import And
+                    final_query = And([content_query, author_terms[0]])
+            else:
+                final_query = content_query
+            
+            # Arama yap
+            results = searcher.search(final_query, limit=980)
+            
+            # Eğer sonuç az ise fuzzy search dene
+            if len(results) < 50 and q and q.strip():
+                fuzzy_query = query_expander.create_fuzzy_query(q.strip(), "content")
+                if authors:
+                    from whoosh.query import And
+                    fuzzy_final = And([fuzzy_query, author_query]) if 'author_query' in locals() else fuzzy_query
+                else:
+                    fuzzy_final = fuzzy_query
+                
+                fuzzy_results = searcher.search(fuzzy_final, limit=500)
+                # Sonuçları birleştir
+                combined_results = list(results) + [r for r in fuzzy_results if r not in results]
+                results = combined_results[:980]
+            
+            # Sonuçları formatla
+            data = []
+            for h in results:
+                try:
+                    data.append({
+                        "Kitap": h["book"].title() if h.get("book") else "Bilinmeyen",
+                        "Yazar/Şahsiyet": h["author"].title() if h.get("author") else "Bilinmeyen",
+                        "Sayfa": h["page"] if h.get("page") else 0,
+                        "Tam Metin (Alıntı)": h.highlights("content") if hasattr(h, 'highlights') else h.get("content", "")[:200] + "...",
+                        "PDF File": h["pdf_file"] if h.get("pdf_file") else ""
+                    })
+                except Exception as e:
+                    # Hatalı kayıtları atla
+                    continue
+            
             return data
 
     def search_videos(q, max_results_per_channel=50):

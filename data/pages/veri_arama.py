@@ -18,6 +18,7 @@ from whoosh.index import open_dir, EmptyIndexError
 from whoosh.fields import Schema, TEXT, NUMERIC
 from whoosh.analysis import StandardAnalyzer
 from whoosh.qparser import MultifieldParser, AndGroup
+from turkish_search_utils import create_turkish_analyzer, TurkishQueryExpander
 
 # Encoding fix
 sys.stdout.reconfigure(encoding='utf-8')
@@ -41,12 +42,13 @@ ORNEK_SORULAR = [
     "Rabıta nedir?", "Zikrullahın önemi?", "Mürşid-i Kamil özellikleri?",
     "Tevekkülün anlamı?", "İhlas nedir?"
 ]
-# Whoosh şemasını burada tanımla
+# Whoosh şemasını burada tanımla - Türkçe Analyzer ile
+turkish_analyzer = create_turkish_analyzer()
 schema = Schema(
-    book=TEXT(stored=True),
-    author=TEXT(stored=True),
+    book=TEXT(stored=True, analyzer=turkish_analyzer),
+    author=TEXT(stored=True, analyzer=turkish_analyzer),
     page=NUMERIC(stored=True),
-    content=TEXT(stored=True, analyzer=StandardAnalyzer()),
+    content=TEXT(stored=True, analyzer=turkish_analyzer),
     pdf_file=TEXT(stored=True)
 )
 
@@ -163,17 +165,58 @@ def ask_data_havuzu(question: str, selected_authors, result_type):
             if result_type == "Veri Arama":
                 data = []
                 with ix.searcher() as searcher:
-                    parser = MultifieldParser(["author", "content"], schema=ix.schema, group=AndGroup)
-                    query_parts = []
-                    if selected_authors:
-                        author_query = " OR ".join([f'author:"{a.lower()}"' for a in selected_authors])
-                        query_parts.append(f"({author_query})")
-                    if question:
-                        query_parts.append(f'content:{question.lower()}')
+                    # Türkçe query expander oluştur
+                    query_expander = TurkishQueryExpander()
                     
-                    full_query_str = " AND ".join(query_parts) if query_parts else "*"
-                    q = parser.parse(full_query_str)
-                    results = searcher.search(q, limit=100)
+                    # Yazar filtresi için query oluştur
+                    author_query = None
+                    if selected_authors:
+                        author_terms = []
+                        for author in selected_authors:
+                            # Her yazar için de varyasyonlar oluştur
+                            author_expanded = query_expander.create_expanded_query(author, "author")
+                            author_terms.append(author_expanded)
+                        if len(author_terms) > 1:
+                            from whoosh.query import Or
+                            author_query = Or(author_terms)
+                        else:
+                            author_query = author_terms[0] if author_terms else None
+                    
+                    # Ana sorgu için expanded query oluştur
+                    if question and question.strip():
+                        content_query = query_expander.create_expanded_query(question.strip(), "content")
+                        
+                        # Yazar ve içerik sorgularını birleştir
+                        if author_query:
+                            from whoosh.query import And
+                            final_query = And([author_query, content_query])
+                        else:
+                            final_query = content_query
+                    elif author_query:
+                        final_query = author_query
+                    else:
+                        # Fallback: tüm dökümanları getir
+                        from whoosh.query import Every
+                        final_query = Every()
+                    
+                    # Arama yap
+                    results = searcher.search(final_query, limit=200)
+                    
+                    # Eğer sonuç az ise fuzzy search dene
+                    if len(results) < 10 and question and question.strip():
+                        fuzzy_query = query_expander.create_fuzzy_query(question.strip(), "content")
+                        if author_query:
+                            from whoosh.query import And
+                            fuzzy_final = And([author_query, fuzzy_query])
+                        else:
+                            fuzzy_final = fuzzy_query
+                        
+                        fuzzy_results = searcher.search(fuzzy_final, limit=100)
+                        # Sonuçları birleştir (tekrarları önlemek için set kullan)
+                        combined_results = list(results) + [r for r in fuzzy_results if r not in results]
+                        results = combined_results[:200]
+                    
+                    # Sonuçları işle
                     seen = set()
                     for hit in results:
                         unique_key = f"{hit['book']}_{hit['page']}_{hit['content'][:50]}"
@@ -186,9 +229,26 @@ def ask_data_havuzu(question: str, selected_authors, result_type):
                                 "Tam Metin (Alıntı)": hit["content"],
                                 "PDF File": hit["pdf_file"]
                             })
-                if question:
-                    query_lower = question.lower()
-                    data = sorted(data, key=lambda x: x["Tam Metin (Alıntı)"].lower().count(query_lower), reverse=True)
+                
+                # Sonuçları relevance'a göre sırala
+                if question and data:
+                    # Türkçe benzerlik skoruna göre sırala
+                    def calculate_relevance(item):
+                        content = item["Tam Metin (Alıntı)"].lower()
+                        title = item["Kitap"].lower()
+                        
+                        # Basit kelime eşleşme skoru
+                        question_words = question.lower().split()
+                        content_score = sum(content.count(word) for word in question_words)
+                        title_score = sum(title.count(word) * 2 for word in question_words)  # Başlık eşleşmeleri daha önemli
+                        
+                        # Türkçe benzerlik skoru
+                        similarity_score = query_expander.calculate_similarity(question, content) / 100.0
+                        
+                        return content_score + title_score + similarity_score
+                    
+                    data = sorted(data, key=calculate_relevance, reverse=True)
+                
                 assistant_message["data"] = data
             elif result_type == "AI Sentezi":
                 # AI Sentezi mantığı burada kalabilir

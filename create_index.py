@@ -14,6 +14,7 @@ import tempfile
 
 from whoosh.index import create_in
 from whoosh.fields import Schema, TEXT, ID
+from turkish_search_utils import create_turkish_analyzer
 
 # Temel yapılandırma
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -99,15 +100,16 @@ def create_search_index():
         os.makedirs(INDEX_DIR)
         logger.info(f"İndeks klasörü oluşturuldu: {INDEX_DIR}")
 
-    # Evrensel Şema
+    # Evrensel Şema - Türkçe Analyzer ile
+    turkish_analyzer = create_turkish_analyzer()
     schema = Schema(
         type=ID(stored=True),
-        title=TEXT(stored=True),
-        author=TEXT(stored=True),
-        content=TEXT(stored=True),
+        title=TEXT(stored=True, analyzer=turkish_analyzer),
+        author=TEXT(stored=True, analyzer=turkish_analyzer),
+        content=TEXT(stored=True, analyzer=turkish_analyzer),
         source=ID(stored=True),
         page_or_id=ID(stored=True),
-        category=TEXT(stored=True)
+        category=TEXT(stored=True, analyzer=turkish_analyzer)
     )
 
     try:

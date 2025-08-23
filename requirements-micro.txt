@@ -12,6 +12,11 @@ requests==2.32.4
 # Database
 Whoosh==2.7.4
 
+# Turkish Search Optimization
+TurkishStemmer==1.0.2
+thefuzz==0.22.1
+python-Levenshtein==0.25.1
+
 # PDF processing (minimal)
 PyMuPDF==1.26.3
 pdf2image==1.17.0

@@ -538,5 +538,275 @@
     "book": "Yansimalar",
     "pdf_file": "yansimalar-ali_ramazan_dinc_efendi.pdf",
     "total_pages": 107
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Ashab I Kiram 1",
+    "pdf_file": "ashab_i_kiram_1-m.sami_ramazanoğlu.pdf",
+    "total_pages": 219
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Ashab I Kiram 2",
+    "pdf_file": "ashab_i_kiram_2-m.sami_ramazanoğlu.pdf",
+    "total_pages": 217
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Bakara Suresi",
+    "pdf_file": "bakara_suresi-m.sami_ramazanoğlu.pdf",
+    "total_pages": 426
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Bedir Gazvesi Ve Enfal Suresi",
+    "pdf_file": "bedir_gazvesi_ve_enfal_suresi-m.sami_ramazanoğlu.pdf",
+    "total_pages": 199
+  },
+  {
+    "author": "Haci Hasan Efendi",
+    "book": "Dergahtan Dürdaneler",
+    "pdf_file": "dergahtan_dürdaneler-haci_hasan_efendi.pdf",
+    "total_pages": 102
+  },
+  {
+    "author": "M.Esad Erbili  Efendi",
+    "book": "Divan I Esad",
+    "pdf_file": "divan_i_esad-m.esad_erbili _efendi.pdf",
+    "total_pages": 271
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Fatiha Suresi",
+    "pdf_file": "fatiha_suresi-m.sami_ramazanoğlu.pdf",
+    "total_pages": 53
+  },
+  {
+    "author": "Haci Hasan Efendi",
+    "book": "Gönül Aleminden",
+    "pdf_file": "gönül_aleminden-haci_hasan_efendi.pdf",
+    "total_pages": 105
+  },
+  {
+    "author": "Ali Ramazan Dinc Efendi",
+    "book": "Gönül Beytullahtır",
+    "pdf_file": "gönül_beytullahtır-ali_ramazan_dinc_efendi.pdf",
+    "total_pages": 141
+  },
+  {
+    "author": "Ali Ramazan Dinc Efendi",
+    "book": "Gönül Gözüyle Hac Ve Umre",
+    "pdf_file": "gönül_gözüyle_hac_ve_umre-ali_ramazan_dinc_efendi.pdf",
+    "total_pages": 84
+  },
+  {
+    "author": "Ali Ramazan Dinc Efendi",
+    "book": "Hakkı Seven Aşıklar",
+    "pdf_file": "hakkı_seven_aşıklar-ali_ramazan_dinc_efendi.pdf",
+    "total_pages": 75
+  },
+  {
+    "author": "Şeyh Mustafa Hulusi Efendi",
+    "book": "Hulusi Divanı",
+    "pdf_file": "hulusi_divanı-şeyh_mustafa_hulusi_efendi.pdf",
+    "total_pages": 178
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Hz.Ali",
+    "pdf_file": "hz.ali-m.sami_ramazanoğlu.pdf",
+    "total_pages": 173
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Hz.Ebubekir",
+    "pdf_file": "hz.ebubekir-m.sami_ramazanoğlu.pdf",
+    "total_pages": 202
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Hz.Halid B.Velid",
+    "pdf_file": "hz.halid_b.velid-m.sami_ramazanoğlu.pdf",
+    "total_pages": 212
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Hz.Ibrahim",
+    "pdf_file": "hz.ibrahim-m.sami_ramazanoğlu.pdf",
+    "total_pages": 193
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Hz.Omer",
+    "pdf_file": "hz.omer-m.sami_ramazanoğlu.pdf",
+    "total_pages": 171
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Hz.Osman",
+    "pdf_file": "hz.osman-m.sami_ramazanoğlu.pdf",
+    "total_pages": 175
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Hz.Yunus Hud",
+    "pdf_file": "hz.yunus_hud-m.sami_ramazanoğlu.pdf",
+    "total_pages": 191
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Hz.Yusuf",
+    "pdf_file": "hz.yusuf-m.sami_ramazanoğlu.pdf",
+    "total_pages": 181
+  },
+  {
+    "author": "Ali Ramazan Dinc Efendi",
+    "book": "Iman Neşvesi",
+    "pdf_file": "iman_neşvesi-ali_ramazan_dinc_efendi.pdf",
+    "total_pages": 75
+  },
+  {
+    "author": "Haci Hasan Efendi",
+    "book": "Kalemdarın Not Defteri Tashihli",
+    "pdf_file": "kalemdarın_not_defteri_tashihli-haci_hasan_efendi.pdf",
+    "total_pages": 94
+  },
+  {
+    "author": "Ali Ramazan Dinc Efendi",
+    "book": "Kemalat",
+    "pdf_file": "kemalat-ali_ramazan_dinc_efendi.pdf",
+    "total_pages": 259
+  },
+  {
+    "author": "Ali Ramazan Dinc Efendi",
+    "book": "Kemâle Dair Sohbetler",
+    "pdf_file": "kemâle_dair_sohbetler-ali_ramazan_dinc_efendi.pdf",
+    "total_pages": 116
+  },
+  {
+    "author": "M.Esad Erbili  Efendi",
+    "book": "Kenzul Irfan",
+    "pdf_file": "kenzul_irfan-m.esad_erbili _efendi.pdf",
+    "total_pages": 119
+  },
+  {
+    "author": "Ali Ramazan Dinc Efendi",
+    "book": "Manevi Yolculuğun Esasları",
+    "pdf_file": "manevi_yolculuğun_esasları-ali_ramazan_dinc_efendi.pdf",
+    "total_pages": 137
+  },
+  {
+    "author": "M.Esad Erbili  Efendi",
+    "book": "Mektubat",
+    "pdf_file": "mektubat-m.esad_erbili _efendi.pdf",
+    "total_pages": 409
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Musahabe 1",
+    "pdf_file": "musahabe_1-m.sami_ramazanoğlu.pdf",
+    "total_pages": 157
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Musahabe 2",
+    "pdf_file": "musahabe_2-m.sami_ramazanoğlu.pdf",
+    "total_pages": 169
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Musahabe 3",
+    "pdf_file": "musahabe_3-m.sami_ramazanoğlu.pdf",
+    "total_pages": 269
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Musahabe 4",
+    "pdf_file": "musahabe_4-m.sami_ramazanoğlu.pdf",
+    "total_pages": 189
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Musahabe 5",
+    "pdf_file": "musahabe_5-m.sami_ramazanoğlu.pdf",
+    "total_pages": 277
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Musahabe 6",
+    "pdf_file": "musahabe_6-m.sami_ramazanoğlu.pdf",
+    "total_pages": 220
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Mükerrem Insan",
+    "pdf_file": "mükerrem_insan-m.sami_ramazanoğlu.pdf",
+    "total_pages": 74
+  },
+  {
+    "author": "M.Esad Erbili  Efendi",
+    "book": "Nefsini Bilen Rabbini Bilir",
+    "pdf_file": "nefsini_bilen_rabbini_bilir-m.esad_erbili _efendi.pdf",
+    "total_pages": 115
+  },
+  {
+    "author": "M.Esad Erbili  Efendi",
+    "book": "Risale I Esadiyye",
+    "pdf_file": "risale_i_esadiyye-m.esad_erbili _efendi.pdf",
+    "total_pages": 48
+  },
+  {
+    "author": "Ali Ramazan Dinc Efendi",
+    "book": "Seyrsuluk",
+    "pdf_file": "seyrsuluk-ali_ramazan_dinc_efendi.pdf",
+    "total_pages": 162
+  },
+  {
+    "author": "Haci Hasan Efendi",
+    "book": "Sifa Tarifesi",
+    "pdf_file": "sifa_tarifesi-haci_hasan_efendi.pdf",
+    "total_pages": 117
+  },
+  {
+    "author": "Haci Hasan Efendi",
+    "book": "Sohbetler 1",
+    "pdf_file": "sohbetler_1-haci_hasan_efendi.pdf",
+    "total_pages": 90
+  },
+  {
+    "author": "Haci Hasan Efendi",
+    "book": "Sohbetler 2",
+    "pdf_file": "sohbetler_2-haci_hasan_efendi.pdf",
+    "total_pages": 104
+  },
+  {
+    "author": "Haci Hasan Efendi",
+    "book": "Sohbetler 3",
+    "pdf_file": "sohbetler_3-haci_hasan_efendi.pdf",
+    "total_pages": 85
+  },
+  {
+    "author": "Haci Hasan Efendi",
+    "book": "Sohbetler 4",
+    "pdf_file": "sohbetler_4-haci_hasan_efendi.pdf",
+    "total_pages": 94
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Tebuk Gazvesi",
+    "pdf_file": "tebuk_gazvesi-m.sami_ramazanoğlu.pdf",
+    "total_pages": 131
+  },
+  {
+    "author": "M.Sami Ramazanoğlu",
+    "book": "Uhud Gazvesi",
+    "pdf_file": "uhud_gazvesi-m.sami_ramazanoğlu.pdf",
+    "total_pages": 137
+  },
+  {
+    "author": "Ali Ramazan Dinc Efendi",
+    "book": "Yansimalar",
+    "pdf_file": "yansimalar-ali_ramazan_dinc_efendi.pdf",
+    "total_pages": 107
   }
 ]
