@@ -25,6 +25,11 @@ openai==1.35.0
 beautifulsoup4==4.13.4
 lxml==6.0.0
 
+# Turkish search support
+TurkishStemmer==1.0.2
+thefuzz==0.22.1
+rapidfuzz==3.9.1
+
 # Transcript & Speech
 youtube-transcript-api==1.2.2
 deepgram-sdk==4.8.1

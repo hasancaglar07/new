@@ -29,7 +29,7 @@ ENV HTTPS_PROXY=""
 WORKDIR /app
 
 # Önce micro requirements dosyasını kopyalayarak Docker katman önbelleğinden faydalanalım
-COPY requirements-core.txt ./requirements.txt
+COPY requirements-micro.txt ./requirements.txt
 
 # LFS sorunu çözüldüğü için artık klonlamaya gerek yok, dosyaları doğrudan kopyalayabiliriz
 # Bu, build sürecini hızlandırır.
