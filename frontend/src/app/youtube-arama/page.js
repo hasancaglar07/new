@@ -2,9 +2,9 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Loader2, Youtube, FileQuestion, ServerCrash } from "lucide-react";
+import { Search, Loader2, Youtube, FileQuestion, ServerCrash, Database } from "lucide-react";
 
 // ShadCN UI Bileşenleri
 import { Button } from "@/components/ui/button";
@@ -83,10 +83,36 @@ function InfoState({ title, message, icon: Icon }) {
 // --- ★★★ ANA YOUTUBE ARAMA SAYFASI ★★★ ---
 export default function YouTubeSearchPage() {
     const [query, setQuery] = useState("");
+    const [selectedChannel, setSelectedChannel] = useState("Tüm Kanallar");
     const [videoResults, setVideoResults] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [searched, setSearched] = useState(false);
     const [error, setError] = useState(null);
+    const [cacheStats, setCacheStats] = useState(null);
+    
+    const channels = [
+        "Tüm Kanallar",
+        "Yediulya", 
+        "Kalemdar Alemdar",
+        "Didar Akademi",
+        "Kutbu Cihan"
+    ];
+
+    // Cache istatistiklerini yükle
+    useEffect(() => {
+        const fetchCacheStats = async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/youtube/cache/stats`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setCacheStats(data.stats);
+                }
+            } catch (err) {
+                console.error('Cache stats yüklenemedi:', err);
+            }
+        };
+        fetchCacheStats();
+    }, []);
 
     const handleSearch = async (e) => {
         e.preventDefault();
@@ -99,6 +125,9 @@ export default function YouTubeSearchPage() {
 
         const videoSearchUrl = new URL(`${API_BASE_URL}/search/videos`);
         videoSearchUrl.searchParams.append('q', query);
+        if (selectedChannel !== "Tüm Kanallar") {
+            videoSearchUrl.searchParams.append('channel', selectedChannel);
+        }
 
         try {
             const response = await fetch(videoSearchUrl);
@@ -125,6 +154,22 @@ export default function YouTubeSearchPage() {
                 >
                     <h1 className="text-4xl md:text-5xl font-bold text-[#177267]">YouTube Video Arama</h1>
                     <p className="mt-3 text-base md:text-lg text-slate-600">Belirtilen kanallardaki videolarda arama yapın</p>
+                    
+                    {cacheStats && (
+                        <div className="mt-6 flex flex-wrap justify-center gap-4 text-sm">
+                            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm">
+                                <Database className="h-4 w-4 text-[#177267]" />
+                                <span className="font-semibold">{cacheStats.total_videos}</span>
+                                <span className="text-slate-600">video hazır</span>
+                            </div>
+                            {cacheStats.channels?.slice(0, 4).map((channel, index) => (
+                                <div key={index} className="bg-white px-3 py-2 rounded-full shadow-sm">
+                                    <span className="font-medium text-slate-700">{channel.channel_name}</span>
+                                    <span className="text-slate-500 ml-1">({channel.video_count})</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </motion.header>
 
                 <motion.section 
@@ -133,18 +178,29 @@ export default function YouTubeSearchPage() {
                     transition={{ duration: 0.5, delay: 0.1 }} 
                     className="max-w-3xl mx-auto"
                 >
-                    <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
-                        <div className="relative flex-grow">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#177267]" />
-                            <Input
-                                type="text"
-                                value={query}
-                                onChange={e => setQuery(e.target.value)}
-                                placeholder="Video konusu girin (ör: rabıta)..."
-                                className="w-full h-11 text-base pl-9 border-slate-300 focus:border-[#177267] focus:ring-0"
-                            />
+                    <form onSubmit={handleSearch} className="flex flex-col gap-3">
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <div className="relative flex-grow">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#177267]" />
+                                <Input
+                                    type="text"
+                                    value={query}
+                                    onChange={e => setQuery(e.target.value)}
+                                    placeholder="Video konusu girin (ör: rabıta)..."
+                                    className="w-full h-11 text-base pl-9 border-slate-300 focus:border-[#177267] focus:ring-0"
+                                />
+                            </div>
+                            <select 
+                                value={selectedChannel}
+                                onChange={e => setSelectedChannel(e.target.value)}
+                                className="h-11 px-3 border border-slate-300 rounded-md focus:border-[#177267] focus:ring-0 bg-white text-base"
+                            >
+                                {channels.map(channel => (
+                                    <option key={channel} value={channel}>{channel}</option>
+                                ))}
+                            </select>
                         </div>
-                        <Button type="submit" disabled={isLoading} className="w-full sm:w-auto h-11 text-base px-6 bg-[#177267] hover:bg-[#116358] text-white">
+                        <Button type="submit" disabled={isLoading} className="w-full h-11 text-base px-6 bg-[#177267] hover:bg-[#116358] text-white">
                             {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Ara'}
                         </Button>
                     </form>

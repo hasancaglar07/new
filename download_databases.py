@@ -15,7 +15,8 @@ DATABASE_URLS = {
     "book_metadata.json": "https://cdn.mihmandar.org/file/yediulya-databases/book_metadata.json",
     "authors.json": "https://cdn.mihmandar.org/file/yediulya-databases/authors.json",
     "vector_db/faiss.index": "https://cdn.mihmandar.org/file/yediulya-databases/vector_db/faiss.index",
-    "vector_db/vector_metadata.db": "https://cdn.mihmandar.org/file/yediulya-databases/vector_db/vector_metadata.db"
+    "vector_db/vector_metadata.db": "https://cdn.mihmandar.org/file/yediulya-databases/vector_db/vector_metadata.db",
+    "youtube_cache.db": "https://cdn.mihmandar.org/file/yediulya-databases/youtube_cache.db"
 }
 
 def download_file(url, local_path):

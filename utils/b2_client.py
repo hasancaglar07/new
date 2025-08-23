@@ -70,6 +70,34 @@ class B2Client:
         resp.raise_for_status()
         return key
 
+    def upload_file(self, bucket_name: str, local_file_path: str, remote_file_name: str) -> bool:
+        """Upload a file to B2"""
+        try:
+            self._ensure_auth()
+            bucket_id = self.get_bucket_id(bucket_name)
+            up = self.get_upload_url(bucket_id)
+            
+            # Read file and calculate SHA1
+            with open(local_file_path, 'rb') as f:
+                content = f.read()
+            
+            sha1 = hashlib.sha1(content).hexdigest()
+            
+            headers = {
+                "Authorization": up["authorizationToken"],
+                "X-Bz-File-Name": remote_file_name,
+                "Content-Type": "application/octet-stream",
+                "X-Bz-Content-Sha1": sha1,
+            }
+            
+            resp = requests.post(up["uploadUrl"], headers=headers, data=content, timeout=60)
+            resp.raise_for_status()
+            return True
+            
+        except Exception as e:
+            print(f"Upload error: {e}")
+            return False
+
     def list_json_keys(self, bucket_name: str, prefix: str, max_count: int = 100) -> List[str]:
         self._ensure_auth()
         bucket_id = self.get_bucket_id(bucket_name)

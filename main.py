@@ -172,6 +172,11 @@ try:
     init_vector_db()  # FAISS vector database
 except Exception:
     logger.exception("Vector veritabanı init başarısız oldu")
+try:
+    from data.youtube_cache_db import init_youtube_cache_db
+    init_youtube_cache_db()  # YouTube cache database
+except Exception:
+    logger.exception("YouTube cache veritabanı init başarısız oldu")
 
 # --- Yardımcı Fonksiyonlar ---
 def get_whoosh_index():
@@ -884,56 +889,70 @@ def get_page_text(pdf_file: str, page_num: int = Query(..., gt=0)):
         logger.error(f"PDF sayfa metni alınamadı {pdf_file}: {e}")
         raise HTTPException(status_code=500, detail="PDF sayfa metni alınamadı.")
 @app.get("/search/videos")
-async def search_videos(q: str):
-    """YouTube video arama - API kota dolduğunda yt-dlp fallback kullanır"""
-    all_videos = []
-    channels = ["UCvhlPtV-1MgZBQPmGjomhsA", "UCfYG6Ij2vIJXXplpottv02Q", "UC9Jt0jM08o7aXSHz0Kni7Uw", "UC0FN4XBgk2Isvv1QmrbFn8w"]
-    api_quota_exceeded = False
-    
-    # Önce YouTube API'yi dene
-    if YOUTUBE_API_KEYS:
-        for channel_id in channels:
-            for api_key in YOUTUBE_API_KEYS:
-                params = {"part": "snippet", "q": q, "type": "video", "maxResults": 6, "key": api_key, "channelId": channel_id}
-                try:
-                    response = requests.get("https://www.googleapis.com/youtube/v3/search", params=params, timeout=5)
-                    if response.status_code == 200:
-                        for item in response.json().get("items", []):
-                            snippet, video_id = item.get("snippet", {}), item.get("id", {}).get("videoId")
-                            if snippet and video_id: 
-                                all_videos.append({
-                                    "id": video_id, 
-                                    "title": snippet.get("title"), 
-                                    "thumbnail": snippet.get("thumbnails", {}).get("high", {}).get("url"), 
-                                    "channel": snippet.get("channelTitle"), 
-                                    "publishedTime": snippet.get("publishedAt")
-                                })
-                        break
-                    elif response.status_code == 403:
-                        error = response.json().get("error", {}).get("errors", [{}])[0].get("reason", "")
-                        if error == "quotaExceeded":
-                            api_quota_exceeded = True
-                            logger.warning(f"YouTube API kota doldu, yt-dlp fallback'e geçiliyor")
-                            break
-                        continue
-                except requests.RequestException:
-                    break
-            if api_quota_exceeded:
-                break
-    
-    # API kota dolmuşsa veya API anahtarı yoksa yt-dlp fallback kullan
-    if not all_videos or api_quota_exceeded or not YOUTUBE_API_KEYS:
-        logger.info("yt-dlp fallback sistemi kullanılıyor")
+async def search_videos(q: str, channel: str = ""):
+    """YouTube video arama - Cache'den hızlı arama"""
+    try:
+        from data.youtube_cache_db import search_videos as search_cache_videos
+        
+        # Cache'den arama yap
+        channel_id = ""
+        if channel and channel != "Tüm Kanallar":
+            channel_mapping = {
+                "Yediulya": "UCfYG6Ij2vIJXXplpottv02Q",
+                "Kalemdar Alemdar": "UCvhlPtV-1MgZBQPmGjomhsA", 
+                "Didar Akademi": "UC9Jt0jM08o7aXSHz0Kni7Uw",
+                "Kutbu Cihan": "UC0FN4XBgk2Isvv1QmrbFn8w"
+            }
+            channel_id = channel_mapping.get(channel, "")
+        
+        # Cache'den video ara
+        cached_videos = search_cache_videos(query=q, channel_id=channel_id, limit=18)
+        
+        if cached_videos:
+            logger.info(f"Cache'den {len(cached_videos)} video bulundu")
+            return {"sonuclar": cached_videos}
+        
+        # Cache'de video yoksa fallback sistemleri kullan
+        logger.info("Cache'de video bulunamadı, fallback sistemleri kullanılıyor")
+        
+        all_videos = []
+        channels = ["UCvhlPtV-1MgZBQPmGjomhsA", "UCfYG6Ij2vIJXXplpottv02Q", "UC9Jt0jM08o7aXSHz0Kni7Uw", "UC0FN4XBgk2Isvv1QmrbFn8w"]
+        
+        # Belirli kanal seçilmişse sadece o kanaldan ara
+        if channel_id:
+            channels = [channel_id]
+        
+        # yt-dlp fallback kullan
         try:
-            # Sadece belirtilen kanallardan arama yap
             for channel_id in channels:
                 fallback_videos = search_channel_videos(channel_id, q, max_results=6)
                 all_videos.extend(fallback_videos)
-                
         except Exception as e:
             logger.error(f"yt-dlp fallback hatası: {e}")
-    
-    return {"sonuclar": all_videos[:18]}  # Maksimum 18 video döndür
+        
+        return {"sonuclar": all_videos[:18]}
+        
+    except Exception as e:
+        logger.error(f"Video arama hatası: {e}")
+        return {"sonuclar": []}
+
+@app.get("/youtube/cache/stats")
+async def get_youtube_cache_stats():
+    """YouTube cache istatistiklerini getir"""
+    try:
+        from data.youtube_cache_db import get_channel_stats
+        stats = get_channel_stats()
+        return {
+            "success": True,
+            "stats": stats
+        }
+    except Exception as e:
+        logger.error(f"Cache istatistik hatası: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "stats": {"total_videos": 0, "channels": []}
+        }
 @app.get("/analyze/status/{task_id}")
 async def get_analysis_status(task_id: str):
     task = get_task(task_id)
