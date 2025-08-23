@@ -1,0 +1,31 @@
+# Core requirements for Railway - Sadece temel paketler
+fastapi==0.116.1
+uvicorn==0.35.0
+httpx==0.27.2
+python-dotenv==1.1.1
+pydantic==2.11.7
+requests==2.32.4
+
+# Database
+Whoosh==2.7.4
+
+# Turkish Search (Core)
+TurkishStemmer==1.0.2
+thefuzz==0.22.1
+python-Levenshtein==0.25.1
+
+# PDF processing
+PyMuPDF==1.26.3
+
+# Video processing
+yt-dlp==2025.7.21
+
+# AI
+openai==1.35.0
+numpy==1.26.4
+
+# Web scraping
+beautifulsoup4==4.13.4
+
+# Transcript
+youtube-transcript-api==1.2.2

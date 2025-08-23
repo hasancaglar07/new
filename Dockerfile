@@ -39,9 +39,9 @@ COPY . .
 # RUN git lfs pull
 
 # --- ANA DEĞİŞİKLİK ---
-# Bellek sorunlarını aşmak için minimal paket listesi kullanıyoruz
+# Bellek sorunlarını aşmak için core paket listesi kullanıyoruz
 RUN pip install --upgrade pip setuptools wheel
-RUN pip install --no-cache-dir -r requirements-minimal.txt
+RUN pip install --no-cache-dir -r requirements-core.txt
 
 # YouTube bot koruması için ek paketler
 RUN pip install --no-cache-dir \
