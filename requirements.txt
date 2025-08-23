@@ -240,6 +240,3 @@ youtube-transcript-api==1.2.2
 youtube-transcript-api==1.2.2
 yt-dlp==2025.7.21
 zstandard==0.23.0
-TurkishStemmer==1.0.2
-thefuzz==0.22.1
-python-Levenshtein==0.25.1

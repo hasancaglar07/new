@@ -9,7 +9,6 @@
     "branch": "main"
   },
   "deploy": {
-    "startCommand": "python main.py",
     "healthcheckPath": "/",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
