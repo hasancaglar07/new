@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     libjpeg-dev \
     zlib1g-dev \
+    libffi-dev \
     ca-certificates \
     curl \
     wget \
