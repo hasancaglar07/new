@@ -12,6 +12,10 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     zlib1g-dev \
     libffi-dev \
+    pkg-config \
+    libssl-dev \
+    rustc \
+    cargo \
     ca-certificates \
     curl \
     wget \
