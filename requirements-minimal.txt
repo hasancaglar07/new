@@ -25,11 +25,14 @@ beautifulsoup4==4.13.4
 requests==2.32.4
 lxml==6.0.0
 youtube-transcript-api==1.2.2
+deepgram-sdk==4.8.1
 
 # AI/ML (essential only)
 openai==1.35.0
 sentence-transformers==3.0.1
 faiss-cpu==1.11.0.post1
+langchain-community==0.3.27
+langchain-core==0.3.69
 
 # PyTorch CPU (will be installed separately)
 --extra-index-url https://download.pytorch.org/whl/cpu
