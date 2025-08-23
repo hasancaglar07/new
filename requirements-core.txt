@@ -1,7 +1,10 @@
-# Core requirements for Railway - Sadece temel paketler
+# Micro requirements for Railway deployment - Sadece temel paketler
 fastapi==0.116.1
 uvicorn==0.35.0
+gunicorn==23.0.0
 httpx==0.27.2
+aiofiles==24.1.0
+python-multipart==0.0.20
 python-dotenv==1.1.1
 pydantic==2.11.7
 requests==2.32.4
@@ -9,23 +12,34 @@ requests==2.32.4
 # Database
 Whoosh==2.7.4
 
-# Turkish Search (Core)
-TurkishStemmer==1.0.2
-thefuzz==0.22.1
-python-Levenshtein==0.25.1
-
-# PDF processing
+# PDF processing (minimal)
 PyMuPDF==1.26.3
+pdf2image==1.17.0
+pillow==11.3.0
 
 # Video processing
 yt-dlp==2025.7.21
 
-# AI
+# AI/ML (minimal)
 openai==1.35.0
 numpy==1.26.4
+faiss-cpu==1.11.0.post1
+sentence-transformers==3.0.1
 
 # Web scraping
 beautifulsoup4==4.13.4
+lxml==6.0.0
 
-# Transcript
+# Transcript & Speech
 youtube-transcript-api==1.2.2
+deepgram-sdk==4.8.1
+
+# YouTube bot koruması çözümleri
+fake-useragent==1.4.0
+urllib3==2.2.2
+requests[socks]==2.32.4
+
+# Turkish Search (Core)
+TurkishStemmer==1.0.2
+thefuzz==0.22.1
+python-Levenshtein==0.25.1
