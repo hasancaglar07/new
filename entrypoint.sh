@@ -22,10 +22,14 @@ echo "Starting server immediately for Railway health checks..."
         echo "Background: Using pre-built index from Backblaze."
     fi
     
-    # Vector DB'yi populate et
-    echo "Background: Populating vector database..."
-    python populate_vector_db.py
-    echo "Background: Vector database population finished."
+    # Vector DB'yi kontrol et ve gerekirse populate et
+    if [ -f "data/vector_db/vector_metadata.db" ] && [ -f "data/vector_db/faiss.index" ]; then
+        echo "Background: Vector database already exists, skipping populate."
+    else
+        echo "Background: Vector database not found, populating..."
+        python populate_vector_db.py
+        echo "Background: Vector database population finished."
+    fi
 ) &
 
 # Sunucuyu hemen başlat
