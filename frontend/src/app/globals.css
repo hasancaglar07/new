@@ -177,6 +177,15 @@
     min-width: 44px;
   }
   
+  /* Enhanced touch manipulation */
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  
   /* Responsive metinler */
   .text-responsive {
     font-size: clamp(0.875rem, 2.5vw, 1.125rem);
@@ -198,6 +207,87 @@
   
   .safe-area-inset-bottom {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  /* Performance optimizations */
+  .gpu-accelerated {
+    transform: translateZ(0);
+    will-change: transform;
+  }
+  
+  .smooth-scroll {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Mobile-first animations */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  
+  /* Optimized focus states for mobile */
+  .focus-visible:focus-visible {
+    outline: 2px solid #10b981;
+    outline-offset: 2px;
+  }
+  
+  /* Mobile card optimizations */
+  .mobile-card {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+  
+  /* Lazy loading placeholder */
+  .lazy-placeholder {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+  }
+  
+  @keyframes loading {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+  
+  /* Mobile input optimizations */
+  .mobile-input {
+    font-size: 16px; /* Prevents zoom on iOS */
+    -webkit-appearance: none;
+    border-radius: 0;
+  }
+  
+  /* Prevent text selection on UI elements */
+  .no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  
+  /* Mobile-optimized shadows */
+  .mobile-shadow {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  }
+  
+  .mobile-shadow-lg {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+  
+  /* Content visibility optimization */
+  .content-visibility-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: 200px;
   }
   
   /* Logo hover efekti */
@@ -241,6 +331,104 @@
       color: #333333;
     }
   }
+  
+  /* PDF Viewer optimizations */
+  .pdf-image-container {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+  }
+  
+  .pdf-image-container img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    image-rendering: auto;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+    will-change: transform;
+  }
+  
+  /* TransformWrapper optimizations */
+  .react-transform-wrapper {
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
+  .react-transform-component {
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+  }
+  
+  .react-transform-element {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  
+  /* Cropper.js optimizations */
+  .cropper-container {
+    direction: ltr;
+    font-size: 0;
+    line-height: 0;
+    position: relative;
+    touch-action: none;
+    user-select: none;
+    background-color: #1e293b !important;
+  }
+  
+  .cropper-canvas {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    image-rendering: auto;
+  }
+  
+  /* Prevent layout shift during image loading */
+  .pdf-viewer-container {
+    contain: layout style paint;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  
+  /* PDF Viewer Kesin Ortalama Çözümü */
+  .pdf-viewer-container .react-transform-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  
+  .pdf-viewer-container .react-transform-component {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  
+  .pdf-viewer-container .pdf-image-container {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  
+
   
   /* Reduced motion support */
   @media (prefers-reduced-motion: reduce) {
@@ -295,10 +483,11 @@
     /* Improve button responsiveness */
     button,
     .btn {
-      -webkit-tap-highlight-color: rgba(16, 185, 129, 0.3);
+      -webkit-tap-highlight-color: transparent;
       -webkit-touch-callout: none;
       -webkit-user-select: none;
       user-select: none;
+      outline: none;
     }
     
     /* Active states for better feedback */
@@ -338,14 +527,35 @@
   .btn,
   .clickable {
     touch-action: manipulation;
-    -webkit-tap-highlight-color: rgba(16, 185, 129, 0.2);
+    -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
     cursor: pointer;
+    outline: none;
+    border: none;
     
     /* Immediate visual feedback */
     transition: transform 0.05s ease, background-color 0.05s ease;
+  }
+  
+  /* Remove any white flash effects */
+  button:focus,
+  [role="button"]:focus,
+  .btn:focus,
+  .clickable:focus {
+    outline: none;
+    box-shadow: none;
+  }
+  
+  /* Prevent text selection on mobile */
+  button *,
+  [role="button"] *,
+  .btn *,
+  .clickable * {
+    -webkit-user-select: none;
+    user-select: none;
+    pointer-events: none;
   }
   
   /* Active state for immediate feedback */

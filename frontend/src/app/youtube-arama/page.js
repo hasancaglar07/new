@@ -24,7 +24,7 @@ function VideoCard({ video, index }) {
   
   return (
     <motion.div variants={cardVariants} initial="hidden" animate="visible" exit="hidden">
-      <Card className="overflow-hidden bg-white hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 rounded-xl border group h-full flex flex-col">
+      <Card className="overflow-hidden bg-white hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 rounded-xl border group h-full flex flex-col touch-manipulation">
         <div className="aspect-video bg-slate-200">
             <iframe 
               src={`https://www.youtube.com/embed/${video.id}`} 
@@ -35,12 +35,12 @@ function VideoCard({ video, index }) {
               className="w-full h-full"
             ></iframe>
         </div>
-        <CardHeader className="flex-grow">
-            <CardTitle className="text-base font-bold text-slate-800 line-clamp-2">{video.title}</CardTitle>
+        <CardHeader className="flex-grow p-3 sm:p-4">
+            <CardTitle className="text-sm sm:text-base font-bold text-slate-800 line-clamp-2 leading-tight">{video.title}</CardTitle>
         </CardHeader>
-        <CardFooter className="bg-slate-50/70 p-3 flex justify-between items-center text-xs text-slate-500">
-            <span className="font-semibold">{video.channel}</span>
-            <span>{new Date(video.publishedTime).toLocaleDateString('tr-TR')}</span>
+        <CardFooter className="bg-slate-50/70 p-2 sm:p-3 flex justify-between items-center text-xs text-slate-500">
+            <span className="font-semibold truncate max-w-[60%]">{video.channel}</span>
+            <span className="text-xs">{new Date(video.publishedTime).toLocaleDateString('tr-TR')}</span>
         </CardFooter>
       </Card>
     </motion.div>
@@ -50,15 +50,15 @@ function VideoCard({ video, index }) {
 // 2. Video Kartı İskelet Yükleyici
 function VideoSkeleton() {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
             {[...Array(6)].map((_, i) => (
-                 <div key={i} className="bg-white rounded-xl border p-4 space-y-4 animate-pulse">
+                 <div key={i} className="bg-white rounded-xl border p-3 sm:p-4 space-y-3 sm:space-y-4 animate-pulse">
                     <div className="bg-slate-200 rounded-md aspect-video"></div>
                     <div className="space-y-2">
-                        <div className="h-4 bg-slate-200 rounded w-full"></div>
-                        <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+                        <div className="h-3 sm:h-4 bg-slate-200 rounded w-full"></div>
+                        <div className="h-3 sm:h-4 bg-slate-200 rounded w-3/4"></div>
                     </div>
-                     <div className="h-4 bg-slate-200 rounded w-1/2 mt-2"></div>
+                     <div className="h-3 sm:h-4 bg-slate-200 rounded w-1/2 mt-2"></div>
                 </div>
             ))}
         </div>
@@ -145,26 +145,27 @@ export default function YouTubeSearchPage() {
 
     return (
         <div className="bg-slate-50 min-h-screen">
-            <div className="container mx-auto px-4 py-12 md:py-20">
+            <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 md:py-12 lg:py-20">
                 <motion.header 
                     initial={{ opacity: 0, y: -20 }} 
                     animate={{ opacity: 1, y: 0 }} 
                     transition={{ duration: 0.5 }} 
-                    className="text-center mb-10"
+                    className="text-center mb-6 sm:mb-8 md:mb-10 px-2 sm:px-0"
                 >
-                    <h1 className="text-4xl md:text-5xl font-bold text-[#177267]">YouTube Video Arama</h1>
-                    <p className="mt-3 text-base md:text-lg text-slate-600">Belirtilen kanallardaki videolarda arama yapın</p>
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#177267] leading-tight">YouTube Video Arama</h1>
+                    <p className="mt-2 sm:mt-3 text-sm sm:text-base md:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">Belirtilen kanallardaki videolarda arama yapın</p>
                     
                     {cacheStats && (
-                        <div className="mt-6 flex flex-wrap justify-center gap-4 text-sm">
-                            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm">
-                                <Database className="h-4 w-4 text-[#177267]" />
+                        <div className="mt-4 sm:mt-6 flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4 text-xs sm:text-sm px-2">
+                            <div className="flex items-center gap-1.5 sm:gap-2 bg-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-sm">
+                                <Database className="h-3 w-3 sm:h-4 sm:w-4 text-[#177267]" />
                                 <span className="font-semibold">{cacheStats.total_videos}</span>
-                                <span className="text-slate-600">video hazır</span>
+                                <span className="text-slate-600 hidden sm:inline">video hazır</span>
+                                <span className="text-slate-600 sm:hidden">video</span>
                             </div>
-                            {cacheStats.channels?.slice(0, 4).map((channel, index) => (
-                                <div key={index} className="bg-white px-3 py-2 rounded-full shadow-sm">
-                                    <span className="font-medium text-slate-700">{channel.channel_name}</span>
+                            {cacheStats.channels?.slice(0, 3).map((channel, index) => (
+                                <div key={index} className="bg-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-full shadow-sm">
+                                    <span className="font-medium text-slate-700 text-xs sm:text-sm truncate max-w-[80px] sm:max-w-none">{channel.channel_name}</span>
                                     <span className="text-slate-500 ml-1">({channel.video_count})</span>
                                 </div>
                             ))}
@@ -176,7 +177,7 @@ export default function YouTubeSearchPage() {
                     initial={{ opacity: 0, y: 20 }} 
                     animate={{ opacity: 1, y: 0 }} 
                     transition={{ duration: 0.5, delay: 0.1 }} 
-                    className="max-w-3xl mx-auto"
+                    className="max-w-3xl mx-auto px-2 sm:px-0"
                 >
                     <form onSubmit={handleSearch} className="flex flex-col gap-3">
                         <div className="flex flex-col sm:flex-row gap-3">
@@ -187,26 +188,47 @@ export default function YouTubeSearchPage() {
                                     value={query}
                                     onChange={e => setQuery(e.target.value)}
                                     placeholder="Video konusu girin (ör: rabıta)..."
-                                    className="w-full h-11 text-base pl-9 border-slate-300 focus:border-[#177267] focus:ring-0"
+                                    className="w-full h-10 sm:h-11 text-sm sm:text-base pl-9 border-slate-300 focus:border-[#177267] focus:ring-0 touch-manipulation"
+                                    style={{
+                                        WebkitTapHighlightColor: 'transparent',
+                                        WebkitTouchCallout: 'none',
+                                        WebkitUserSelect: 'text',
+                                        fontSize: '16px' // Prevents zoom on iOS
+                                    }}
                                 />
                             </div>
                             <select 
                                 value={selectedChannel}
                                 onChange={e => setSelectedChannel(e.target.value)}
-                                className="h-11 px-3 border border-slate-300 rounded-md focus:border-[#177267] focus:ring-0 bg-white text-base"
+                                className="h-10 sm:h-11 px-3 border border-slate-300 rounded-md focus:border-[#177267] focus:ring-0 bg-white text-sm sm:text-base touch-manipulation"
+                                style={{
+                                    WebkitTapHighlightColor: 'transparent',
+                                    WebkitTouchCallout: 'none'
+                                }}
                             >
                                 {channels.map(channel => (
                                     <option key={channel} value={channel}>{channel}</option>
                                 ))}
                             </select>
                         </div>
-                        <Button type="submit" disabled={isLoading} className="w-full h-11 text-base px-6 bg-[#177267] hover:bg-[#116358] text-white">
-                            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Ara'}
+                        <Button 
+                            type="submit" 
+                            disabled={isLoading} 
+                            className="w-full h-10 sm:h-11 text-sm sm:text-base px-6 bg-[#177267] hover:bg-[#116358] text-white touch-manipulation min-h-[44px] active:scale-95"
+                            style={{
+                                WebkitTapHighlightColor: 'transparent',
+                                WebkitTouchCallout: 'none',
+                                WebkitUserSelect: 'none',
+                                userSelect: 'none',
+                                touchAction: 'manipulation'
+                            }}
+                        >
+                            {isLoading ? <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : 'Ara'}
                         </Button>
                     </form>
                 </motion.section>
                 
-                <section className="mt-12 w-full">
+                <section className="mt-8 sm:mt-10 md:mt-12 w-full px-2 sm:px-0">
                     <AnimatePresence mode="wait">
                         {isLoading && (
                             <motion.div key="loading" exit={{ opacity: 0 }}>
@@ -225,7 +247,7 @@ export default function YouTubeSearchPage() {
                         )}
                     </AnimatePresence>
                     {!isLoading && !error && videoResults.length > 0 && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
                             {videoResults.map((video, index) => (
                                 <VideoCard key={video.id || index} video={video} index={index} />
                             ))}

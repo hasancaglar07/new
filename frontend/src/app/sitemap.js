@@ -86,5 +86,27 @@ export default async function sitemap() {
     console.error('Error fetching articles for sitemap:', error);
   }
 
+  try {
+    // Sohbet geçmişi için
+    const chatHistoryResponse = await fetch(`${API_BASE_URL}/chat/history`, {
+      next: { revalidate: 3600 } // 1 saat cache (daha sık güncellenen içerik)
+    });
+    
+    if (chatHistoryResponse.ok) {
+      const chatHistory = await chatHistoryResponse.json();
+      const chatPages = chatHistory
+        .filter(chat => chat.slug && chat.is_public !== false) // Sadece slug'ı olan ve public olan sohbetler
+        .map((chat) => ({
+          url: `${baseUrl}/sohbet/${chat.slug}`,
+          lastModified: new Date(chat.updated_at || chat.created_at || new Date()),
+          changeFrequency: 'weekly',
+          priority: 0.6,
+        }));
+      dynamicPages = [...dynamicPages, ...chatPages];
+    }
+  } catch (error) {
+    console.error('Error fetching chat history for sitemap:', error);
+  }
+
   return [...staticPages, ...dynamicPages];
 }

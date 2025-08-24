@@ -255,24 +255,26 @@ function AudioCard({ audio, source, onPlay, searchQuery }) {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="group relative bg-white rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-xl transition-all duration-300 overflow-hidden"
+            className="group relative bg-white rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-xl transition-all duration-300 overflow-hidden touch-manipulation"
         >
             {/* Header - Sadece meta bilgiler */}
-            <div className="p-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
-                <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-[#177267] text-white text-sm font-semibold shadow-sm">
-                        <Tag className="h-4 w-4 mr-2" />
-                        {source}
+            <div className="p-3 sm:p-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                    <span className="inline-flex items-center px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-[#177267] text-white text-xs sm:text-sm font-semibold shadow-sm">
+                        <Tag className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                        <span className="truncate max-w-[120px] sm:max-w-none">{source}</span>
                     </span>
-                    <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full border border-emerald-200 text-[#177267] font-semibold shadow-sm">
-                          <ListMusic className="h-4 w-4" />
-                          {audio.chapters.length} konu
+                    <div className="flex items-center gap-1 sm:gap-2">
+                        <span className="inline-flex items-center gap-1 sm:gap-1.5 bg-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-emerald-200 text-[#177267] font-semibold shadow-sm text-xs sm:text-sm">
+                          <ListMusic className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <span className="hidden sm:inline">{audio.chapters.length} konu</span>
+                          <span className="sm:hidden">{audio.chapters.length}</span>
                         </span>
                         {audio.duration && (
-                          <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full border border-slate-200 text-slate-600 font-medium shadow-sm">
-                            <Clock className="h-4 w-4" />
-                            {audio.duration}
+                          <span className="inline-flex items-center gap-1 sm:gap-1.5 bg-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-slate-200 text-slate-600 font-medium shadow-sm text-xs sm:text-sm">
+                            <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span className="hidden sm:inline">{audio.duration}</span>
+                            <span className="sm:hidden text-xs">{audio.duration}</span>
                           </span>
                         )}
                     </div>
@@ -280,19 +282,19 @@ function AudioCard({ audio, source, onPlay, searchQuery }) {
             </div>
             
             {/* Konu Başlıkları - Ana İçerik */}
-            <div className="p-5">
+            <div className="p-3 sm:p-5">
                 <div className="mb-4">
-                    <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-                        <div className="w-1 h-6 bg-[#177267] rounded-full"></div>
-                        Konu Başlıkları
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-3 sm:mb-4 flex items-center gap-2">
+                        <div className="w-1 h-5 sm:h-6 bg-[#177267] rounded-full"></div>
+                        <span className="text-sm sm:text-xl">Konu Başlıkları</span>
                     </h3>
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                    <div className="space-y-2 max-h-48 sm:max-h-64 overflow-y-auto">
                         {audio.chapters.map((chapter, index) => (
-                            <div key={index} className="flex items-start gap-3 p-3 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200 hover:border-emerald-300 transition-colors">
-                                <span className="text-xs text-[#177267] font-mono bg-white px-2 py-1 rounded border border-emerald-300 shrink-0 font-semibold">
+                            <div key={index} className="flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200 hover:border-emerald-300 transition-colors">
+                                <span className="text-xs text-[#177267] font-mono bg-white px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-emerald-300 shrink-0 font-semibold">
                                     {chapter.time}
                                 </span>
-                                <span className="text-sm text-slate-800 flex-1 font-medium leading-relaxed">
+                                <span className="text-xs sm:text-sm text-slate-800 flex-1 font-medium leading-relaxed">
                                     {highlightSearchTerm(chapter.title, searchQuery)}
                                 </span>
                             </div>
@@ -303,10 +305,17 @@ function AudioCard({ audio, source, onPlay, searchQuery }) {
                 {/* Büyük Play Button */}
                 <button
                     onClick={() => onPlay(audio, source)}
-                    className="w-full bg-gradient-to-r from-[#177267] to-[#0d9488] hover:from-[#116358] hover:to-[#0f766e] text-white font-bold py-6 px-8 rounded-xl flex items-center justify-center gap-4 transition-all duration-300 hover:shadow-xl hover:scale-[1.03] group"
+                    className="w-full bg-gradient-to-r from-[#177267] to-[#0d9488] hover:from-[#116358] hover:to-[#0f766e] text-white font-bold py-4 sm:py-6 px-6 sm:px-8 rounded-xl flex items-center justify-center gap-3 sm:gap-4 transition-all duration-300 hover:shadow-xl hover:scale-[1.03] group touch-manipulation min-h-[44px] active:scale-95"
+                    style={{
+                        WebkitTapHighlightColor: 'transparent',
+                        WebkitTouchCallout: 'none',
+                        WebkitUserSelect: 'none',
+                        userSelect: 'none',
+                        touchAction: 'manipulation'
+                    }}
                 >
-                    <Play className="h-8 w-8 group-hover:scale-110 transition-transform" />
-                    <span className="text-xl">Dinlemeye Başla</span>
+                    <Play className="h-6 w-6 sm:h-8 sm:w-8 group-hover:scale-110 transition-transform" />
+                    <span className="text-base sm:text-xl">Dinlemeye Başla</span>
                 </button>
             </div>
         </motion.div>
@@ -445,16 +454,16 @@ export default function AudioLibraryPage() {
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/30 to-teal-50/50">
             {/* Header */}
             <div className="bg-white border-b border-slate-200">
-                <div className="container mx-auto px-4 py-8">
-                    <div className="text-center mb-6">
-                        <h1 className="text-4xl lg:text-5xl font-bold text-[#177267]">Ses Kayıtları Arşivi</h1>
-                        <p className="mt-3 text-base text-slate-600">
+                <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
+                    <div className="text-center mb-4 sm:mb-6">
+                        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#177267] leading-tight">Ses Kayıtları Arşivi</h1>
+                        <p className="mt-2 sm:mt-3 text-sm sm:text-base text-slate-600">
                             <span className="text-[#177267] font-semibold">{filteredAudios.length}</span> ses kaydı bulundu
                         </p>
                     </div>
 
                     {/* Search Section */}
-                    <div className="max-w-2xl mx-auto">
+                    <div className="max-w-2xl mx-auto px-2 sm:px-0">
                         <div className="relative">
                             <input
                                 type="text"
@@ -462,17 +471,30 @@ export default function AudioLibraryPage() {
                                 aria-label="Ses kaydı ara"
                                 value={inputQuery}
                                 onChange={(e) => setInputQuery(e.target.value)}
-                                className="w-full text-base md:text-lg h-14 pl-4 pr-4 rounded-lg border border-slate-300 focus:border-[#177267] focus:ring-2 focus:ring-[#177267]/20 bg-white text-slate-700 placeholder-slate-400 transition-all duration-200 shadow-sm"
+                                className="w-full text-sm sm:text-base md:text-lg h-12 sm:h-14 pl-3 sm:pl-4 pr-3 sm:pr-4 rounded-lg border border-slate-300 focus:border-[#177267] focus:ring-2 focus:ring-[#177267]/20 bg-white text-slate-700 placeholder-slate-400 transition-all duration-200 shadow-sm touch-manipulation"
+                                style={{
+                                    WebkitTapHighlightColor: 'transparent',
+                                    WebkitTouchCallout: 'none',
+                                    WebkitUserSelect: 'text',
+                                    fontSize: '16px' // Prevents zoom on iOS
+                                }}
                             />
                         </div>
                         
                         {/* Suggestions */}
-                        <div className="flex flex-wrap justify-center gap-2 mt-4">
+                        <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 mt-3 sm:mt-4">
                             {["Sohbet", "Dua", "Nasihat", "İlim", "Ahlak"].map((label) => (
                                 <button 
                                     key={label} 
                                     onClick={() => setInputQuery(label)} 
-                                    className="px-4 py-2 text-sm rounded-full border border-slate-300 text-[#177267] hover:bg-[#177267] hover:text-white transition-colors duration-200"
+                                    className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-full border border-slate-300 text-[#177267] hover:bg-[#177267] hover:text-white transition-colors duration-200 touch-manipulation min-h-[44px] active:scale-95"
+                                    style={{
+                                        WebkitTapHighlightColor: 'transparent',
+                                        WebkitTouchCallout: 'none',
+                                        WebkitUserSelect: 'none',
+                                        userSelect: 'none',
+                                        touchAction: 'manipulation'
+                                    }}
                                 >
                                     {label}
                                 </button>
@@ -483,7 +505,7 @@ export default function AudioLibraryPage() {
             </div>
 
             {/* Main Content */}
-            <div className="container mx-auto px-4 py-8">
+            <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
                 {filteredAudios.length === 0 ? (
                     <div className="text-center py-20">
                         <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -498,7 +520,7 @@ export default function AudioLibraryPage() {
                     <>
                     <div className={
                         viewMode === 'grid'
-                            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6"
+                            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6"
                             : "space-y-4"
                     }>
                         {filteredAudios.slice(0, limit).map(audio => (

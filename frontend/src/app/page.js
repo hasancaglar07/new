@@ -36,19 +36,37 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 // --- YARDIMCI FONKSİYONLAR VE BİLEŞENLER ---
 function TapButton({ children, className, onClick, ...props }) {
   return (
-    <motion.div whileTap={{ scale: 0.95 }} className="w-full">
+    <motion.div 
+      whileTap={{ scale: 0.98 }} 
+      className="w-full"
+      transition={{ duration: 0.1, ease: "easeInOut" }}
+    >
       <Button 
-        className={`${className} touch-manipulation`} 
+        className={`${className} touch-manipulation active:scale-98 transition-transform duration-100`} 
         onClick={onClick}
         {...props}
         style={{
-          WebkitTapHighlightColor: 'rgba(16, 185, 129, 0.2)',
+          WebkitTapHighlightColor: 'transparent',
           WebkitTouchCallout: 'none',
           WebkitUserSelect: 'none',
           userSelect: 'none',
           touchAction: 'manipulation',
           minHeight: '44px',
+          outline: 'none',
+          border: 'none',
           ...props.style
+        }}
+        onTouchStart={(e) => {
+          e.currentTarget.style.transform = 'scale(0.98)';
+          if (props.onTouchStart) props.onTouchStart(e);
+        }}
+        onTouchEnd={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+          if (props.onTouchEnd) props.onTouchEnd(e);
+        }}
+        onTouchCancel={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+          if (props.onTouchCancel) props.onTouchCancel(e);
         }}
       >
         {children}
@@ -2071,24 +2089,24 @@ export default function HomePage() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1.5, delay: 0.1 }} className="text-center mb-3"><p className="text-lg md:text-2xl text-slate-600" style={{ fontFamily: "'Noto Naskh Arabic', serif" }}>بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ</p></motion.div>
           {/* Namaz widget: bismillah altında (kaldırıldı) */}
          
-          <motion.header initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: "easeOut" }} className="text-center">
-            {/* Sabit alt metin kısmı geri getirildi */}
+          <motion.header initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: "easeOut" }} className="text-center px-2 sm:px-4">
+            {/* Mobil uyumlu logo */}
             <div className="relative mt-0 sm:-mt-0.5 md:-mt-1 mb-4 flex justify-center">
               <Image 
                 src="/logo-bottom.svg" 
                 alt="Mihmandar - Gönül Rehberiniz" 
                 width={375} 
                 height={112} 
-                className="w-auto h-16 sm:h-18 md:h-20 lg:h-22 xl:h-24 object-contain max-w-full"
+                className="w-auto h-12 sm:h-16 md:h-20 lg:h-22 xl:h-24 object-contain max-w-full"
                 priority
               />
             </div>
-            <p className="mt-3 text-responsive text-slate-600 max-w-3xl mx-auto">Üstadlarımızın eserlerinde, sohbetlerinde derinlemesine arama yapın.</p>
+            <p className="mt-3 text-sm sm:text-base md:text-lg text-slate-600 max-w-3xl mx-auto px-4 leading-relaxed">Üstadlarımızın eserlerinde, sohbetlerinde derinlemesine arama yapın.</p>
             <LogoCarousel />
           </motion.header>
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }} className="mt-6">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }} className="mt-6 px-2 sm:px-4">
             <Card className="max-w-3xl mx-auto shadow-xl shadow-slate-200/70 border-t-4 border-primary bg-white/90 backdrop-blur-lg rounded-2xl">
-              <CardContent className="p-4 md:p-6">
+              <CardContent className="p-3 sm:p-4 md:p-6">
                 <div className="space-y-4">
                 <motion.div
                   className="relative"
@@ -2106,11 +2124,17 @@ export default function HomePage() {
                     placeholder="Konu, eser veya yazar adı..."
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    className={`text-base md:text-lg h-14 pl-4 rounded-lg transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary/50 ${
-                      query.trim() ? 'pr-32' : 'pr-12'
+                    className={`text-sm sm:text-base md:text-lg h-12 sm:h-14 pl-3 sm:pl-4 rounded-lg transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary/50 touch-manipulation ${
+                      query.trim() ? 'pr-28 sm:pr-32' : 'pr-10 sm:pr-12'
                     }`}
+                    style={{
+                      WebkitTapHighlightColor: 'transparent',
+                      WebkitTouchCallout: 'none',
+                      WebkitUserSelect: 'text',
+                      fontSize: '16px' // Prevents zoom on iOS
+                    }}
                   />
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  <div className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 sm:gap-2">
                       {/* Clear button with text - moved to right side of input */}
                       <AnimatePresence>
                         {query.trim() && (
@@ -2124,7 +2148,14 @@ export default function HomePage() {
                               variant="outline"
                               size="sm"
                               onClick={handleClearSearch}
-                              className="h-8 px-3 text-xs text-slate-600 hover:text-slate-800 hover:bg-slate-100 border-slate-300 rounded-full transition-all duration-200"
+                              className="h-7 sm:h-8 px-2 sm:px-3 text-xs text-slate-600 hover:text-slate-800 hover:bg-slate-100 border-slate-300 rounded-full transition-all duration-200 touch-manipulation min-h-[44px] active:scale-95"
+                              style={{
+                                WebkitTapHighlightColor: 'transparent',
+                                WebkitTouchCallout: 'none',
+                                WebkitUserSelect: 'none',
+                                userSelect: 'none',
+                                touchAction: 'manipulation'
+                              }}
                             >
                               <motion.div
                                 whileHover={{ rotate: 90 }}
@@ -2241,39 +2272,94 @@ export default function HomePage() {
                   >
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                    
-                      <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 gap-2 h-auto md:h-auto rounded-2xl p-3 bg-white border border-slate-200/60 shadow-sm">
-                      <TabsTrigger value="kitaplar" disabled={allResults.books.length === 0} className="h-16 text-sm md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg gap-2 rounded-xl font-medium flex items-center justify-center px-4 col-span-2 md:col-span-1 transition-all duration-200">
-                        <BookOpen className="h-5 w-5 shrink-0"/>
-                        <span className="truncate">Kitaplar</span>
-                        <span className="ml-2 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 data-[state=active]:bg-white/20 data-[state=active]:text-white">
+                      <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1 sm:gap-2 h-auto rounded-xl sm:rounded-2xl p-2 sm:p-3 bg-white border border-slate-200/60 shadow-sm overflow-x-auto">
+                      <TabsTrigger 
+                        value="kitaplar" 
+                        disabled={allResults.books.length === 0} 
+                        className="h-12 sm:h-14 md:h-16 text-xs sm:text-sm md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg gap-1 sm:gap-2 rounded-lg sm:rounded-xl font-medium flex items-center justify-center px-2 sm:px-4 col-span-2 sm:col-span-1 md:col-span-1 transition-all duration-200 touch-manipulation min-h-[44px] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{
+                          WebkitTapHighlightColor: 'rgba(16, 185, 129, 0.2)',
+                          WebkitTouchCallout: 'none',
+                          WebkitUserSelect: 'none',
+                          userSelect: 'none',
+                          touchAction: 'manipulation'
+                        }}
+                      >
+                        <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 shrink-0"/>
+                        <span className="truncate text-xs sm:text-sm">Kitaplar</span>
+                        <span className="ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 data-[state=active]:bg-white/20 data-[state=active]:text-white">
                           {allResults.books.length}
                         </span>
                       </TabsTrigger>
-                      <TabsTrigger value="makaleler" disabled={allResults.articles.length === 0} className="h-16 text-sm md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg gap-2 rounded-xl font-medium flex items-center justify-center px-4 transition-all duration-200">
-                        <Newspaper className="h-5 w-5 shrink-0"/>
-                        <span className="truncate">Makaleler</span>
-                        <span className="ml-2 px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 data-[state=active]:bg-white/20 data-[state=active]:text-white">
+                      <TabsTrigger 
+                        value="makaleler" 
+                        disabled={allResults.articles.length === 0} 
+                        className="h-12 sm:h-14 md:h-16 text-xs sm:text-sm md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg gap-1 sm:gap-2 rounded-lg sm:rounded-xl font-medium flex items-center justify-center px-2 sm:px-4 transition-all duration-200 touch-manipulation min-h-[44px] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{
+                          WebkitTapHighlightColor: 'rgba(16, 185, 129, 0.2)',
+                          WebkitTouchCallout: 'none',
+                          WebkitUserSelect: 'none',
+                          userSelect: 'none',
+                          touchAction: 'manipulation'
+                        }}
+                      >
+                        <Newspaper className="h-4 w-4 sm:h-5 sm:w-5 shrink-0"/>
+                        <span className="truncate text-xs sm:text-sm">Makaleler</span>
+                        <span className="ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 data-[state=active]:bg-white/20 data-[state=active]:text-white">
                           {allResults.articles.length}
                         </span>
                       </TabsTrigger>
-                      <TabsTrigger value="ses-kayitlari" disabled={allResults.audio.length === 0} className="h-16 text-sm md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg gap-2 rounded-xl font-medium flex items-center justify-center px-4 transition-all duration-200">
-                          <Music className="h-5 w-5 shrink-0"/>
-                          <span className="truncate">Ses Kayıtları</span>
-                          <span className="ml-2 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 data-[state=active]:bg-white/20 data-[state=active]:text-white">
+                      <TabsTrigger 
+                        value="ses-kayitlari" 
+                        disabled={allResults.audio.length === 0} 
+                        className="h-12 sm:h-14 md:h-16 text-xs sm:text-sm md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg gap-1 sm:gap-2 rounded-lg sm:rounded-xl font-medium flex items-center justify-center px-2 sm:px-4 transition-all duration-200 touch-manipulation min-h-[44px] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{
+                          WebkitTapHighlightColor: 'rgba(16, 185, 129, 0.2)',
+                          WebkitTouchCallout: 'none',
+                          WebkitUserSelect: 'none',
+                          userSelect: 'none',
+                          touchAction: 'manipulation'
+                        }}
+                      >
+                          <Music className="h-4 w-4 sm:h-5 sm:w-5 shrink-0"/>
+                          <span className="truncate text-xs sm:text-sm">Ses Kayıtları</span>
+                          <span className="ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 data-[state=active]:bg-white/20 data-[state=active]:text-white">
                             {allResults.audio.length}
                           </span>
                       </TabsTrigger>
-                      <TabsTrigger value="videolar" disabled={allResults.videos.length === 0} className="h-16 text-sm md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg gap-2 rounded-xl font-medium flex items-center justify-center px-4 transition-all duration-200">
-                        <Video className="h-5 w-5 shrink-0"/>
-                        <span className="truncate">Videolar</span>
-                        <span className="ml-2 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 data-[state=active]:bg-white/20 data-[state=active]:text-white">
+                      <TabsTrigger 
+                        value="videolar" 
+                        disabled={allResults.videos.length === 0} 
+                        className="h-12 sm:h-14 md:h-16 text-xs sm:text-sm md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg gap-1 sm:gap-2 rounded-lg sm:rounded-xl font-medium flex items-center justify-center px-2 sm:px-4 transition-all duration-200 touch-manipulation min-h-[44px] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{
+                          WebkitTapHighlightColor: 'rgba(16, 185, 129, 0.2)',
+                          WebkitTouchCallout: 'none',
+                          WebkitUserSelect: 'none',
+                          userSelect: 'none',
+                          touchAction: 'manipulation'
+                        }}
+                      >
+                        <Video className="h-4 w-4 sm:h-5 sm:w-5 shrink-0"/>
+                        <span className="truncate text-xs sm:text-sm">Videolar</span>
+                        <span className="ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 data-[state=active]:bg-white/20 data-[state=active]:text-white">
                           {allResults.videos.length}
                         </span>
                       </TabsTrigger>
-                      <TabsTrigger value="analizler" disabled={allResults.analyses.length === 0} className="h-16 text-sm md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg gap-2 rounded-xl font-medium flex items-center justify-center px-4 transition-all duration-200">
-                        <BotMessageSquare className="h-5 w-5 shrink-0"/>
-                        <span className="truncate">Analizler</span>
-                        <span className="ml-2 px-2 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700 data-[state=active]:bg-white/20 data-[state=active]:text-white">
+                      <TabsTrigger 
+                        value="analizler" 
+                        disabled={allResults.analyses.length === 0} 
+                        className="h-12 sm:h-14 md:h-16 text-xs sm:text-sm md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg gap-1 sm:gap-2 rounded-lg sm:rounded-xl font-medium flex items-center justify-center px-2 sm:px-4 transition-all duration-200 touch-manipulation min-h-[44px] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{
+                          WebkitTapHighlightColor: 'rgba(16, 185, 129, 0.2)',
+                          WebkitTouchCallout: 'none',
+                          WebkitUserSelect: 'none',
+                          userSelect: 'none',
+                          touchAction: 'manipulation'
+                        }}
+                      >
+                        <BotMessageSquare className="h-4 w-4 sm:h-5 sm:w-5 shrink-0"/>
+                        <span className="truncate text-xs sm:text-sm">Analizler</span>
+                        <span className="ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700 data-[state=active]:bg-white/20 data-[state=active]:text-white">
                           {allResults.analyses.length}
                         </span>
                       </TabsTrigger>
@@ -2291,7 +2377,7 @@ export default function HomePage() {
                                 }
                               }
                             }}
-                            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8"
+                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8"
                           >
                             {allResults.books.map((r, i) => (
                               <motion.div

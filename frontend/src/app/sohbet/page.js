@@ -13,6 +13,7 @@ import { useChat, ChatProvider } from '@/components/chat/ChatProvider';
 import MessageComponent from '@/components/chat/MessageComponent';
 import ChatInput from '@/components/chat/ChatInput';
 import ChatHistory from '@/components/chat/ChatHistory';
+import { MainChatStructuredData } from '@/components/seo/StructuredData';
 
 function ChatInterface() {
   const {
@@ -231,6 +232,50 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
   // Handle source click
   const handleSourceClick = useCallback((source) => {
     console.log('Source clicked:', source);
+    
+    if (!source) return;
+    
+    // Kitap kaynağı için yönlendirme
+    if (source.type === 'book' || source.type === 'kitap') {
+      // Kitap adını URL-friendly hale getir
+      const bookTitle = source.title || source.kitap_adi || source.name;
+      if (bookTitle) {
+        // Kitaplar sayfasına yönlendir
+        const kitaplarUrl = `/kitaplar?search=${encodeURIComponent(bookTitle)}`;
+        window.open(kitaplarUrl, '_blank');
+      }
+    }
+    // Makale kaynağı için yönlendirme
+    else if (source.type === 'article' || source.type === 'makale') {
+      if (source.url) {
+        window.open(source.url, '_blank');
+      } else if (source.id) {
+        // Makale detay sayfasına yönlendir
+        window.open(`/makaleler/${source.id}`, '_blank');
+      }
+    }
+    // Ses kaynağı için yönlendirme
+    else if (source.type === 'audio' || source.type === 'ses') {
+      if (source.url) {
+        window.open(source.url, '_blank');
+      } else {
+        // Ses kayıtları sayfasına yönlendir
+        window.open('/ses-kayitlari', '_blank');
+      }
+    }
+    // Video kaynağı için yönlendirme
+    else if (source.type === 'video') {
+      if (source.url) {
+        window.open(source.url, '_blank');
+      } else {
+        // Video analizi sayfasına yönlendir
+        window.open('/video-analizi', '_blank');
+      }
+    }
+    // Genel URL varsa aç
+    else if (source.url) {
+      window.open(source.url, '_blank');
+    }
   }, []);
 
   // Handle feedback
@@ -301,8 +346,8 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
         <main className="flex-1 flex flex-col bg-gradient-to-br from-white via-slate-50/30 to-emerald-50/20 relative">
         {messages.length === 0 ? (
           // Modern 2025 Welcome Layout
-           <div className="flex-1 flex flex-col justify-center items-center px-6 py-8 min-h-[85vh]">
-             <div className="w-full max-w-5xl mx-auto text-center space-y-10">
+           <div className="flex-1 flex flex-col justify-center items-center px-3 sm:px-6 py-6 sm:py-8 min-h-[85vh]">
+             <div className="w-full max-w-5xl mx-auto text-center space-y-6 sm:space-y-8 md:space-y-10">
               {/* Modern Welcome Header */}
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
@@ -310,77 +355,87 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
                 transition={{ duration: 0.8, ease: "easeOut" }}
                 className="space-y-8"
               >
-                <div className="w-24 h-24 mx-auto bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-3xl flex items-center justify-center shadow-2xl">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 mx-auto bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-2xl">
                   <Image 
                     src="/logo-top.svg" 
                     alt="Mihmandar" 
                     width={48}
                     height={48}
-                    className="w-12 h-12"
+                    className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12"
                   />
                 </div>
                 
-                <div className="space-y-6">
-                  <h1 className="text-5xl md:text-6xl font-bold text-gray-900 leading-tight tracking-tight">
+                <div className="space-y-4 sm:space-y-6">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 leading-tight tracking-tight px-2">
                     Selamün Aleyküm! 🌹
                   </h1>
                   
-                  <p className="text-2xl md:text-3xl text-gray-600 font-normal leading-relaxed">
+                  <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-gray-600 font-normal leading-relaxed px-2">
                     Ben Mihmandar, akıllı asistanınızım.
                   </p>
                   
-                  <p className="text-xl text-gray-500 leading-relaxed max-w-3xl mx-auto">
+                  <p className="text-base sm:text-lg md:text-xl text-gray-500 leading-relaxed max-w-3xl mx-auto px-4">
                     İslami ve tasavvufi konularda sorularınızı sorabilirsiniz.
                   </p>
                 </div>
               </motion.div>
               
-              {/* Google-style Smart Suggestions for Welcome - Hidden on Mobile */}
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-                className="w-full max-w-4xl mx-auto mb-6 hidden sm:block"
-              >
-                <div className="bg-white rounded-2xl border border-emerald-200 shadow-sm p-4">
-                  <h3 className="text-sm font-semibold text-emerald-800 mb-3 flex items-center gap-2 justify-center">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
-                    Akıllı Soru Önerileri
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {[
-                      "Rabıta nedir ve nasıl yapılır?",
-                      "Nefis terbiyesi nasıl olur?",
-                      "Zikir çeşitleri nelerdir?",
-                      "Mürşit-mürit ilişkisi nasıl olmalı?",
-                      "Fena ve beka kavramları nedir?",
-                      "Manevi makamlar nelerdir?"
-                    ].map((suggestion, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleSendMessage(suggestion)}
-                        className="text-left p-3 text-sm text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border border-emerald-200 hover:border-emerald-300 rounded-lg transition-all duration-200 font-medium flex items-center gap-2"
-                      >
-                        <svg className="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        {suggestion}
-                      </button>
-                    ))}
+              {/* Smart Suggestions - Hidden on Mobile */}
+              {!isMobile && (
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+                  className="w-full max-w-4xl mx-auto mb-4 sm:mb-6 px-2 sm:px-0"
+                >
+                  <div className="bg-white rounded-xl sm:rounded-2xl border border-emerald-200 shadow-sm p-3 sm:p-4">
+                    <h3 className="text-xs sm:text-sm font-semibold text-emerald-800 mb-2 sm:mb-3 flex items-center gap-2 justify-center">
+                      <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                      <span className="hidden sm:inline">Akıllı Soru Önerileri</span>
+                      <span className="sm:hidden">Soru Önerileri</span>
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
+                      {[
+                        "Rabıta nedir ve nasıl yapılır?",
+                        "Nefis terbiyesi nasıl olur?",
+                        "Zikir çeşitleri nelerdir?",
+                        "Mürşit-mürit ilişkisi nasıl olmalı?",
+                        "Fena ve beka kavramları nedir?",
+                        "Manevi makamlar nelerdir?"
+                      ].map((suggestion, index) => (
+                        <button
+                          key={index}
+                          onClick={() => handleSendMessage(suggestion)}
+                          className="text-left p-2.5 sm:p-3 text-xs sm:text-sm text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border border-emerald-200 hover:border-emerald-300 rounded-lg transition-all duration-200 font-medium flex items-center gap-2 touch-manipulation min-h-[44px] active:scale-95"
+                          style={{
+                            WebkitTapHighlightColor: 'transparent',
+                            WebkitTouchCallout: 'none',
+                            WebkitUserSelect: 'none',
+                            userSelect: 'none',
+                            touchAction: 'manipulation'
+                          }}
+                        >
+                          <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                          <span className="line-clamp-2">{suggestion}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              </motion.div>
+                </motion.div>
+              )}
               
               {/* Modern Input Container */}
                <motion.div
                  initial={{ opacity: 0, y: 30 }}
                  animate={{ opacity: 1, y: 0 }}
                  transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
-                 className="w-full max-w-4xl mx-auto"
+                 className="w-full max-w-4xl mx-auto px-2 sm:px-0"
                >
-                 <div className="bg-white rounded-3xl border-2 border-emerald-200 shadow-xl p-6 hover:shadow-2xl hover:border-emerald-300 transition-all duration-300">
+                 <div className="bg-white rounded-2xl sm:rounded-3xl border-2 border-emerald-200 shadow-xl p-4 sm:p-6 hover:shadow-2xl hover:border-emerald-300 transition-all duration-300">
                   <ChatInput 
                     onSendMessage={handleSendMessage}
                     disabled={isLoading}
@@ -391,40 +446,50 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
           </div>
         ) : (
           // Modern Chat Layout
-          <div className="max-w-4xl mx-auto w-full flex-1 flex flex-col px-4 sm:px-6 py-4">
+          <div className="max-w-4xl mx-auto w-full flex-1 flex flex-col px-3 sm:px-4 md:px-6 py-3 sm:py-4">
           
-            {/* Google-style Smart Suggestions - Hidden on Mobile */}
-            <div className="mb-6 hidden sm:block">
-              <div className="bg-white rounded-2xl border border-emerald-200 shadow-sm p-4">
-                <h3 className="text-sm font-semibold text-emerald-800 mb-3 flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                  </svg>
-                  Akıllı Soru Önerileri
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {[
-                    "Rabıta nedir ve nasıl yapılır?",
-                    "Nefis terbiyesi nasıl olur?",
-                    "Zikir çeşitleri nelerdir?",
-                    "Mürşit-mürit ilişkisi nasıl olmalı?",
-                    "Fena ve beka kavramları nedir?",
-                    "Manevi makamlar nelerdir?"
-                  ].map((suggestion, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleSendMessage(suggestion)}
-                      className="text-left p-3 text-sm text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border border-emerald-200 hover:border-emerald-300 rounded-lg transition-all duration-200 font-medium flex items-center gap-2"
-                    >
-                      <svg className="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                      {suggestion}
-                    </button>
-                  ))}
+            {/* Smart Suggestions - Hidden on Mobile */}
+            {!isMobile && (
+              <div className="mb-4 sm:mb-6">
+                <div className="bg-white rounded-xl sm:rounded-2xl border border-emerald-200 shadow-sm p-3 sm:p-4">
+                  <h3 className="text-xs sm:text-sm font-semibold text-emerald-800 mb-2 sm:mb-3 flex items-center gap-2">
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    <span className="hidden sm:inline">Akıllı Soru Önerileri</span>
+                    <span className="sm:hidden">Soru Önerileri</span>
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 sm:gap-2">
+                    {[
+                      "Rabıta nedir?",
+                      "Nefis terbiyesi nasıl olur?",
+                      "Zikir çeşitleri nelerdir?",
+                      "Mürşit-mürit ilişkisi",
+                      "Fena ve beka kavramları",
+                      "Manevi makamlar"
+                    ].map((suggestion, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleSendMessage(suggestion)}
+                        className="text-left p-2.5 sm:p-3 text-xs sm:text-sm text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border border-emerald-200 hover:border-emerald-300 rounded-lg transition-all duration-200 font-medium flex items-center gap-2 touch-manipulation min-h-[44px] active:scale-95"
+                        style={{
+                          WebkitTapHighlightColor: 'transparent',
+                          WebkitTouchCallout: 'none',
+                          WebkitUserSelect: 'none',
+                          userSelect: 'none',
+                          touchAction: 'manipulation'
+                        }}
+                      >
+                        <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <span className="truncate">{suggestion}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           
             {/* Messages Area */}
             <div 
@@ -653,10 +718,17 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
               variant="ghost"
               size="sm"
               onClick={() => setShowChatHistory(true)}
-              className="h-10 w-10 bg-emerald-50/90 backdrop-blur-lg border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 rounded-full shadow-lg transition-all duration-200 flex items-center justify-center"
+              className="h-12 w-12 min-h-[48px] min-w-[48px] bg-emerald-50/90 backdrop-blur-lg border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 rounded-full shadow-lg transition-all duration-200 flex items-center justify-center touch-manipulation active:scale-95"
               title="Sohbet Geçmişi"
+              style={{
+                WebkitTapHighlightColor: 'transparent',
+                WebkitTouchCallout: 'none',
+                WebkitUserSelect: 'none',
+                userSelect: 'none',
+                touchAction: 'manipulation'
+              }}
             >
-              <History className="w-4 h-4" />
+              <History className="w-5 h-5" />
             </Button>
           )}
           
@@ -773,6 +845,7 @@ Kitap kaynaklarını öncelikle kullan, daha güvenilir ve detaylı bilgi verirl
 export default function SohbetPage() {
   return (
     <ChatProvider>
+      <MainChatStructuredData />
       <ChatInterface />
     </ChatProvider>
   );

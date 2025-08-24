@@ -365,18 +365,18 @@ export default function VideoAnalysisPage() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
             {/* Modern Centered Layout */}
-            <div className="container mx-auto px-4 py-8 max-w-6xl">
+            <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-6xl">
                 {/* Header */}
                 <motion.header 
                     initial={{ opacity: 0, y: -20 }} 
                     animate={{ opacity: 1, y: 0 }} 
                     transition={{ duration: 0.6, ease: "easeOut" }}
-                    className="text-center mb-12"
+                    className="text-center mb-8 sm:mb-10 md:mb-12 px-2 sm:px-0"
                 >
-                    <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-4">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-3 sm:mb-4 leading-tight">
                         Video İçerik Analizi
                     </h1>
-                    <p className="text-base md:text-lg text-slate-600 max-w-3xl mx-auto leading-relaxed">
+                    <p className="text-sm sm:text-base md:text-lg text-slate-600 max-w-3xl mx-auto leading-relaxed px-4">
                         YouTube videolarınızı AI ile analiz edin ve önemli konu başlıklarını keşfedin
                     </p>
                 </motion.header>
@@ -389,21 +389,21 @@ export default function VideoAnalysisPage() {
                     className="mb-12"
                 >
                     <Card className="border-0 shadow-2xl shadow-emerald-500/20 bg-white/80 backdrop-blur-sm overflow-hidden">
-                        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6">
-                            <div className="flex items-center gap-4 text-white">
-                                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-                                    <Sparkles className="h-6 w-6" />
+                        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-4 sm:p-6">
+                            <div className="flex items-center gap-3 sm:gap-4 text-white">
+                                <div className="p-2 sm:p-3 bg-white/20 rounded-lg sm:rounded-xl backdrop-blur-sm">
+                                    <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-bold">Yeni Video Analizi</h2>
-                                    <p className="text-emerald-100">YouTube video linkini yapıştırın ve AI analizi başlatın</p>
+                                    <h2 className="text-lg sm:text-xl font-bold">Yeni Video Analizi</h2>
+                                    <p className="text-emerald-100 text-sm sm:text-base">YouTube video linkini yapıştırın ve AI analizi başlatın</p>
                                 </div>
                             </div>
                         </div>
                         
-                        <div className="p-8">
-                            <form onSubmit={handleAnalyze} id="analysis-form" className="space-y-6">
-                                <div className="space-y-3">
+                        <div className="p-4 sm:p-6 md:p-8">
+                            <form onSubmit={handleAnalyze} id="analysis-form" className="space-y-4 sm:space-y-6">
+                                <div className="space-y-2 sm:space-y-3">
                                     <label htmlFor="youtube_url" className="block text-sm font-semibold text-slate-700">
                                         YouTube Video Linki
                                     </label>
@@ -414,11 +414,17 @@ export default function VideoAnalysisPage() {
                                             value={url} 
                                             onChange={e => setUrl(e.target.value)} 
                                             placeholder="https://www.youtube.com/watch?v=..." 
-                                            className="w-full h-16 text-lg pl-6 pr-16 rounded-2xl border-2 border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-300 bg-slate-50/50"
+                                            className="w-full h-12 sm:h-14 md:h-16 text-sm sm:text-base md:text-lg pl-4 sm:pl-6 pr-12 sm:pr-16 rounded-xl sm:rounded-2xl border-2 border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-300 bg-slate-50/50 touch-manipulation"
+                                            style={{
+                                                WebkitTapHighlightColor: 'transparent',
+                                                WebkitTouchCallout: 'none',
+                                                WebkitUserSelect: 'text',
+                                                fontSize: '16px' // Prevents zoom on iOS
+                                            }}
                                         />
-                                        <div className="absolute right-5 top-1/2 -translate-y-1/2">
-                                            <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center shadow-lg">
-                                                <span className="text-white text-sm font-bold">▶</span>
+                                        <div className="absolute right-3 sm:right-5 top-1/2 -translate-y-1/2">
+                                            <div className="w-6 h-6 sm:w-8 sm:h-8 bg-red-500 rounded-lg flex items-center justify-center shadow-lg">
+                                                <span className="text-white text-xs sm:text-sm font-bold">▶</span>
                                             </div>
                                         </div>
                                     </div>
@@ -427,17 +433,26 @@ export default function VideoAnalysisPage() {
                                 <Button 
                                     type="submit" 
                                     disabled={isLoading} 
-                                    className="w-full h-16 text-lg font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg"
+                                    className="w-full h-12 sm:h-14 md:h-16 text-sm sm:text-base md:text-lg font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl sm:rounded-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg touch-manipulation min-h-[44px] active:scale-95"
+                                    style={{
+                                        WebkitTapHighlightColor: 'transparent',
+                                        WebkitTouchCallout: 'none',
+                                        WebkitUserSelect: 'none',
+                                        userSelect: 'none',
+                                        touchAction: 'manipulation'
+                                    }}
                                 >
                                     {isLoading ? (
                                         <>
-                                            <Loader2 className="mr-4 h-6 w-6 animate-spin" />
-                                            Analiz Ediliyor...
+                                            <Loader2 className="mr-2 sm:mr-3 md:mr-4 h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 animate-spin" />
+                                            <span className="hidden sm:inline">Analiz Ediliyor...</span>
+                                            <span className="sm:hidden">Analiz...</span>
                                         </>
                                     ) : (
                                         <>
-                                            <Sparkles className="mr-4 h-6 w-6" />
-                                            AI Analizi Başlat
+                                            <Sparkles className="mr-2 sm:mr-3 md:mr-4 h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+                                            <span className="hidden sm:inline">AI Analizi Başlat</span>
+                                            <span className="sm:hidden">Analiz Başlat</span>
                                         </>
                                     )}
                                 </Button>
@@ -451,7 +466,7 @@ export default function VideoAnalysisPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.5, delay: 0.2 }}
-                    className="mb-12"
+                    className="mb-8 sm:mb-10 md:mb-12 px-2 sm:px-0"
                 >
                      <AnimatePresence mode="wait">
                         {isLoading && <EnhancedAnalysisStatusCard statusMessage={statusMessage} />}
@@ -467,19 +482,19 @@ export default function VideoAnalysisPage() {
                     transition={{ duration: 0.5, delay: 0.3 }}
                 >
                     <Card className="border-0 shadow-xl shadow-blue-500/10 bg-white/80 backdrop-blur-sm overflow-hidden">
-                        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6">
-                            <div className="flex items-center gap-4 text-white">
-                                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-                                    <History className="h-6 w-6" />
+                        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 sm:p-6">
+                            <div className="flex items-center gap-3 sm:gap-4 text-white">
+                                <div className="p-2 sm:p-3 bg-white/20 rounded-lg sm:rounded-xl backdrop-blur-sm">
+                                    <History className="h-5 w-5 sm:h-6 sm:w-6" />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-bold">Analiz Geçmişi</h2>
-                                    <p className="text-blue-100">Önceki video analizlerinizi görüntüleyin ve yeniden analiz edin</p>
+                                    <h2 className="text-lg sm:text-xl font-bold">Analiz Geçmişi</h2>
+                                    <p className="text-blue-100 text-sm sm:text-base">Önceki video analizlerinizi görüntüleyin ve yeniden analiz edin</p>
                                 </div>
                             </div>
                         </div>
                         
-                        <div className="p-8">
+                        <div className="p-4 sm:p-6 md:p-8">
                             {/* Search and Filter Component */}
                             {!historyLoading && history.length > 0 && (
                                 <div className="mb-8">
@@ -510,7 +525,7 @@ export default function VideoAnalysisPage() {
                                         initial="hidden"
                                         animate="visible"
                                         variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
-                                        className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+                                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6"
                                     >
                                         {filteredHistory.map(({ id, data }, index) => (
                                             <motion.div
