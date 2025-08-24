@@ -237,9 +237,7 @@ def render_book_dialog():
         st.image(img_bytes, use_container_width=True)
         st.caption(f"📄 Sayfa {st.session_state.dialog_page_num} / {total_pages}")
         st.divider()
-        dl_col, close_col = st.columns(2)
-        dl_col.download_button("📄 Sayfayı İndir", img_bytes, "sayfa.jpeg", "image/jpeg", use_container_width=True)
-        close_col.button("Kapat", on_click=close_book_dialog, use_container_width=True)
+        st.button("Kapat", on_click=close_book_dialog, use_container_width=True)
     else:
         st.error("Sayfa yüklenemedi.")
 

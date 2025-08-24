@@ -125,16 +125,35 @@ function levenshteinDistance(str1, str2) {
 export function highlightTurkishText(text, searchTerm) {
     if (!text || !searchTerm) return text;
     
-    const normalizedText = normalizeTurkishText(text);
-    const normalizedSearchTerm = normalizeTurkishText(searchTerm);
+    const searchTerms = searchTerm.trim().split(/\s+/);
+    let result = text;
     
-    // Orijinal metindeki eşleşen kısımları bul
-    const regex = new RegExp(
-        `(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`,
-        'gi'
-    );
+    searchTerms.forEach(term => {
+        if (!term) return;
+        
+        // Türkçe karakter varyasyonlarını içeren regex oluştur
+        const turkishCharPattern = {
+            'a': '[aâàáä]',
+            'c': '[cç]',
+            'e': '[eêèéë]',
+            'g': '[gğ]',
+            'i': '[iıîìíï]',
+            'o': '[oöôòóő]',
+            's': '[sş]',
+            'u': '[uüûùúű]'
+        };
+        
+        let pattern = term.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        
+        // Her karakteri Türkçe varyasyonlarıyla değiştir
+        pattern = pattern.replace(/[acegilosu]/g, char => turkishCharPattern[char] || char);
+        
+        const regex = new RegExp(`(${pattern})`, 'gi');
+        
+        result = result.replace(regex, '<mark class="bg-emerald-100 text-emerald-800 px-1 rounded font-bold border-b-2 border-emerald-400">$1</mark>');
+    });
     
-    return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-800 px-1 rounded font-bold">$1</mark>');
+    return result;
 }
 
 /**

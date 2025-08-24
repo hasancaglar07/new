@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar';
 import MobileLayout from '@/components/MobileLayout';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { ToastProvider } from '@/components/Toast';
+import { SearchProvider } from '@/contexts/SearchContext';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { initAccessibility } from '@/lib/accessibility';
@@ -28,14 +29,16 @@ export default function ClientLayout({ children }) {
   return (
     <ErrorBoundary>
       <ToastProvider>
-        <AudioProvider>
-          <Navbar />
-          <MobileLayout isNativeApp={isNativeApp} setIsNativeApp={setIsNativeApp}>
-            {children}
-          </MobileLayout>
-          <MiniPlayer />
-          {shouldShowBottomNav && <BottomNav />}
-        </AudioProvider>
+        <SearchProvider>
+          <AudioProvider>
+            <Navbar />
+            <MobileLayout isNativeApp={isNativeApp} setIsNativeApp={setIsNativeApp}>
+              {children}
+            </MobileLayout>
+            <MiniPlayer />
+            {shouldShowBottomNav && <BottomNav />}
+          </AudioProvider>
+        </SearchProvider>
       </ToastProvider>
     </ErrorBoundary>
   );

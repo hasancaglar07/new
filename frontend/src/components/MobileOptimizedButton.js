@@ -11,48 +11,52 @@ export default function MobileOptimizedButton({
   ...props 
 }) {
   const [isPressed, setIsPressed] = useState(false);
-  const touchStartTime = useRef(0);
-  const hasTouchStarted = useRef(false);
+  const touchHandled = useRef(false);
+  const clickTimeout = useRef(null);
 
-  // Optimize touch events for mobile - immediate response
+  // Handle touch start for visual feedback
   const handleTouchStart = useCallback((e) => {
     if (disabled) return;
-    
-    e.preventDefault();
-    e.stopPropagation();
-    
-    hasTouchStarted.current = true;
-    touchStartTime.current = Date.now();
     setIsPressed(true);
-    
-    // Immediate visual feedback
-    if (onClick) {
-      onClick(e);
-    }
-  }, [onClick, disabled]);
+    touchHandled.current = false;
+  }, [disabled]);
 
+  // Handle touch end and execute action
   const handleTouchEnd = useCallback((e) => {
     if (disabled) return;
     
-    e.preventDefault();
-    e.stopPropagation();
-    
     setIsPressed(false);
-    hasTouchStarted.current = false;
-  }, [disabled]);
+    
+    // Only execute if not already handled
+    if (!touchHandled.current && onClick) {
+      touchHandled.current = true;
+      onClick(e);
+      
+      // Clear any pending click events
+      if (clickTimeout.current) {
+        clearTimeout(clickTimeout.current);
+        clickTimeout.current = null;
+      }
+    }
+  }, [onClick, disabled]);
 
+  // Handle click for non-touch devices with delay to avoid conflicts
   const handleClick = useCallback((e) => {
-    // Prevent duplicate events from touch devices
-    if (hasTouchStarted.current) {
-      e.preventDefault();
-      e.stopPropagation();
+    if (disabled) return;
+    
+    // If touch was recently handled, ignore click
+    if (touchHandled.current) {
+      touchHandled.current = false;
       return;
     }
     
-    // Fallback for non-touch devices
-    if (!disabled && onClick) {
-      onClick(e);
-    }
+    // Delay click execution to allow touch events to be processed first
+    clickTimeout.current = setTimeout(() => {
+      if (onClick && !touchHandled.current) {
+        onClick(e);
+      }
+      clickTimeout.current = null;
+    }, 10);
   }, [onClick, disabled]);
 
   return (

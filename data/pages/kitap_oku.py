@@ -126,19 +126,11 @@ with main_content:
 
                 st.caption(f"Sayfa {st.session_state.selected_page} / {total_pages}")
                 
-                bottom_prev, bottom_dl, bottom_next = st.columns([2,3,2])
+                bottom_prev, bottom_next = st.columns([1,1])
                 with bottom_prev:
                     st.button("⬅️ Geri", on_click=go_to_previous_page, use_container_width=True, disabled=(st.session_state.selected_page <= 1), key="prev_bottom")
                 with bottom_next:
                     st.button("İleri ➡️", on_click=go_to_next_page, use_container_width=True, disabled=(st.session_state.selected_page >= total_pages), key="next_bottom")
-                with bottom_dl:
-                    st.download_button(
-                        label="📄 Sayfayı JPEG İndir",
-                        data=img_bytes,
-                        file_name=f"{st.session_state.selected_book}_sayfa_{st.session_state.selected_page}.jpeg",
-                        mime="image/jpeg",
-                        use_container_width=True
-                    )
                 doc.close()
             except Exception as e:
                 logger.error(f"PDF yükleme hatası: {e}")

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
-import { Loader2, Search, BookOpen, Video, ArrowRight, ArrowLeft, FileQuestion, ServerCrash, X, Sparkles, ZoomIn, ZoomOut, RotateCcw, Download, BotMessageSquare, Newspaper, User, Clock, Library, Music, Trash2, Play, ListMusic, List, ExternalLink, Eye, ChevronRight, Crop } from "lucide-react";
+import { Loader2, Search, BookOpen, Video, ArrowRight, ArrowLeft, FileQuestion, ServerCrash, X, Sparkles, ZoomIn, ZoomOut, RotateCcw, BotMessageSquare, Newspaper, User, Clock, Library, Music, Trash2, Play, ListMusic, List, ExternalLink, Eye, ChevronRight, Crop } from "lucide-react";
 import LoadingSpinner, { PageLoader, InlineLoader } from "@/components/LoadingSpinner";
 import ErrorMessage, { NetworkError, NotFoundError } from "@/components/ErrorMessage";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import NamazWidget from "@/components/NamazWidget";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@/components/ui/visually-hidden";
 import { useAudio } from "@/components/audio/AudioProvider";
 import ChapterNavigationModal from "@/components/ChapterNavigationModal";
 
@@ -33,11 +34,26 @@ import { Progress } from "@/components/ui/progress";
 import { turkishIncludes, highlightTurkishText, normalizeTurkishText } from '@/utils/turkishSearch';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 // --- YARDIMCI FONKSİYONLAR VE BİLEŞENLER ---
-function TapButton({ children, className, ...props }) {
+function TapButton({ children, className, onClick, ...props }) {
   return (
-    <Button className={className} {...props} asChild>
-      <motion.button whileTap={{ scale: 0.95 }}>{children}</motion.button>
-    </Button>
+    <motion.div whileTap={{ scale: 0.95 }} className="w-full">
+      <Button 
+        className={`${className} touch-manipulation`} 
+        onClick={onClick}
+        {...props}
+        style={{
+          WebkitTapHighlightColor: 'rgba(16, 185, 129, 0.2)',
+          WebkitTouchCallout: 'none',
+          WebkitUserSelect: 'none',
+          userSelect: 'none',
+          touchAction: 'manipulation',
+          minHeight: '44px',
+          ...props.style
+        }}
+      >
+        {children}
+      </Button>
+    </motion.div>
   );
 }
 const formatDate = (dateString) => new Date(dateString).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -99,7 +115,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     const ctx = canvas.getContext('2d');
     const bookTitle = book?.kitap_adi || book?.kitap || 'Kitap';
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 'Bilinmeyen Yazar';
-    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    const pageUrl = `javascript:window.open('https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')`;
     
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
@@ -199,7 +215,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
       try {
         const response = await fetch(croppedImageUrl);
         const blob = await response.blob();
-        const file = new File([blob], `${bookTitle.replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
+        const file = new File([blob], `${(bookTitle || 'Kitap').replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
         await navigator.share({ text: shareText, files: [file] });
       } catch (error) {
         const url = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
@@ -222,7 +238,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
       try {
         const response = await fetch(croppedImageUrl);
         const blob = await response.blob();
-        const file = new File([blob], `${bookTitle.replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
+        const file = new File([blob], `${(bookTitle || 'Kitap').replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
         await navigator.share({ text: shareText, files: [file] });
       } catch (error) {
         const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent('https://mihmandar.org')}&quote=${encodeURIComponent(shareText)}`;
@@ -245,7 +261,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
       try {
         const response = await fetch(croppedImageUrl);
         const blob = await response.blob();
-        const file = new File([blob], `${bookTitle.replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
+        const file = new File([blob], `${(bookTitle || 'Kitap').replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
         await navigator.share({ text: shareText, files: [file] });
       } catch (error) {
         const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
@@ -346,19 +362,8 @@ function BookViewerDialog({ book, onClose, isOpen }) {
         setIsSelecting(false);
         const width = Math.abs(selectionEnd.x - selectionStart.x);
         const height = Math.abs(selectionEnd.y - selectionStart.y);
-        console.log('Selection size:', width, 'x', height);
         
-        if (width > 15 && height > 15) { // Daha düşük threshold
-          const selectedText = `Seçilen alan: ${Math.round(width)}x${Math.round(height)} piksel`;
-          console.log('Showing share menu with text:', selectedText);
-          setSelectedText(selectedText);
-          setShareMenuPosition({
-            x: e.clientX,
-            y: e.clientY - 60
-          });
-          setShowShareMenu(true);
-        } else {
-          console.log('Selection too small, hiding box');
+        if (width <= 15 || height <= 15) {
           setShowSelectionBox(false);
         }
       }
@@ -415,18 +420,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
         const height = Math.abs(selectionEnd.y - selectionStart.y);
         console.log('Touch selection size:', width, 'x', height);
         
-        if (width > 20 && height > 20) { // Daha düşük touch threshold
-          const selectedText = `Seçilen alan: ${Math.round(width)}x${Math.round(height)} piksel`;
-          console.log('Showing share menu with text:', selectedText);
-          setSelectedText(selectedText);
-          // Position menu in center for mobile
-          setShareMenuPosition({
-            x: window.innerWidth / 2 - 100,
-            y: window.innerHeight / 2 - 100
-          });
-          setShowShareMenu(true);
-        } else {
-          console.log('Touch selection too small, hiding box');
+        if (width <= 20 || height <= 20) {
           setShowSelectionBox(false);
         }
       }
@@ -572,8 +566,8 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 
                       (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
     
-    // Gerçek sayfa linki oluştur
-    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    // Popup açacak JavaScript kodu oluştur
+    const pageUrl = `javascript:window.open('https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')`;
     
     // Seçilen alanı crop et
     const croppedImage = await cropSelectedArea();
@@ -589,7 +583,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
          // 1. Önce sadece resim paylaş (text olmadan)
          try {
            console.log('Attempting native share...');
-           const file = new File([croppedImage], `${bookTitle.replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
+           const file = new File([croppedImage], `${(bookTitle || 'Kitap').replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
            await navigator.share({
              title: `📚 ${bookTitle} - Mihmandar.org E-Kütüphanesi`,
              files: [file]
@@ -630,15 +624,15 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 
                       (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
     
-    // Gerçek sayfa linki oluştur
-    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    // Popup açacak JavaScript kodu oluştur
+    const pageUrl = `javascript:window.open('https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')`;
     
     // Seçilen alanı crop et
     const croppedImage = await cropSelectedArea();
     
     if (croppedImage && navigator.share) {
       try {
-        const file = new File([croppedImage], `${bookTitle.replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
+        const file = new File([croppedImage], `${(bookTitle || 'Kitap').replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
         await navigator.share({
           title: `📚 ${bookTitle} - Mihmandar.org E-Kütüphanesi`,
           text: `📚 ${bookTitle}\n\n✍️ Yazar: ${authorName}\n📖 Sayfa: ${currentPage}\n\n🌟 Bu değerli eserden özel bir bölüm paylaşıyorum. İlim ve maneviyat dolu bu kitabı Mihmandar.org E-Kütüphanesi'nde okuyabilirsiniz.\n\n🔗 Bu sayfayı okumak için:\n${pageUrl}\n\n📚 Tüm kütüphaneyi keşfetmek için:\nmihmandar.org\n\n#MihmandarOrg #EKütüphane #Kitap #İlim #Maneviyat #Tasavvuf #Eğitim #Bilgi`,
@@ -665,15 +659,15 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 
                       (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
     
-    // Gerçek sayfa linki oluştur
-    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    // Popup açacak JavaScript kodu oluştur
+    const pageUrl = `javascript:window.open('https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')`;
     
     // Seçilen alanı crop et
     const croppedImage = await cropSelectedArea();
     
     if (croppedImage && navigator.share) {
       try {
-        const file = new File([croppedImage], `${bookTitle.replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
+        const file = new File([croppedImage], `${(bookTitle || 'Kitap').replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
         await navigator.share({
           title: `📚 ${bookTitle} | Mihmandar.org E-Kütüphanesi`,
           text: `📚 "${bookTitle}" - ${authorName}\n📖 Sayfa ${currentPage}\n\n💎 Bu değerli eserden bir bölüm...\n\n🔗 ${pageUrl}\n\n📚 mihmandar.org\n\n#MihmandarOrg #EKütüphane #Kitap #İlim #Maneviyat #Tasavvuf #Bilgi #Hikmet`,
@@ -701,7 +695,22 @@ function BookViewerDialog({ book, onClose, isOpen }) {
       <DialogContent className="max-w-none w-screen h-screen p-0 gap-0 flex flex-col bg-slate-800">
         <DialogHeader className="p-3 border-b border-slate-700 flex-shrink-0 flex-row items-center justify-between text-white bg-slate-900/50">
           <DialogTitle className="text-lg md:text-xl text-slate-100 line-clamp-1">{book.kitap_adi || book.kitap}</DialogTitle>
-          <MobileOptimizedButton aria-label="Kapat" variant="ghost" size="icon" onClick={onClose} className="text-slate-300 hover:text-white hover:bg-slate-700 min-h-[44px] min-w-[44px]"><X className="h-6 w-6"/></MobileOptimizedButton>
+          <Button 
+            aria-label="Kapat" 
+            variant="ghost" 
+            size="icon" 
+            onClick={onClose} 
+            className="text-slate-300 hover:text-white hover:bg-slate-700 min-h-[44px] min-w-[44px] touch-manipulation"
+            style={{
+              WebkitTapHighlightColor: 'rgba(255, 255, 255, 0.1)',
+              WebkitTouchCallout: 'none',
+              WebkitUserSelect: 'none',
+              userSelect: 'none',
+              touchAction: 'manipulation'
+            }}
+          >
+            <X className="h-6 w-6"/>
+          </Button>
         </DialogHeader>
         <div className="flex-grow w-full h-full flex justify-center items-center overflow-hidden relative">
           {isLoading && <LoadingSpinner size="xl" variant="muted" className="absolute z-10" />}
@@ -874,9 +883,6 @@ function BookViewerDialog({ book, onClose, isOpen }) {
         </div>
         <DialogFooter className="flex-col gap-3 md:flex-row md:gap-0 md:justify-between md:items-center p-3 bg-slate-900/50 border-t border-slate-700 flex-shrink-0 text-white backdrop-blur-sm">
           <div className="flex items-center gap-2 w-full md:w-auto">
-            <Button aria-label="Sayfayı indir" onClick={handleDownload} disabled={isDownloading} className="bg-slate-700 hover:bg-slate-600"><div className="w-12">{isDownloading ? <LoadingSpinner size="sm" variant="white" /> : <Download className="h-5 w-5 mx-auto" />}</div></Button>
-          </div>
-          <div className="flex items-center gap-2 w-full md:w-auto">
             <Button aria-label="Önceki sayfa" onClick={() => setCurrentPage(p => p > 1 ? p - 1 : 1)} disabled={currentPage <= 1} className="bg-slate-700 hover:bg-slate-600 h-12 w-12 md:h-10 md:w-10"><ArrowLeft className="h-5 w-5" /></Button>
             <div className="flex items-center gap-2">
               <input value={pageInput} onChange={(e)=> setPageInput(e.target.value.replace(/\D/g,''))} placeholder={`${currentPage}`} className="w-20 h-10 px-2 rounded bg-slate-800 border border-slate-700 text-center" />
@@ -891,133 +897,194 @@ function BookViewerDialog({ book, onClose, isOpen }) {
         </DialogFooter>
       </DialogContent>
       
-      {/* Floating Share Menu */}
+      {/* Share Menu for PDF Cropped Content */}
       <AnimatePresence>
-        {showShareMenu && (selectedText || croppedImageUrl) && (
+        {showShareMenu && croppedImageUrl && (
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
-            className={`share-menu fixed z-[9999] bg-white rounded-lg shadow-2xl border border-slate-200 p-3 flex items-center ${croppedImageUrl ? 'gap-2' : 'gap-1'}`}
+            className="share-menu fixed z-[9999] bg-white rounded-lg shadow-2xl border border-slate-200 p-4 flex items-center gap-3"
             style={{
-              left: Math.max(10, Math.min(shareMenuPosition.x - (croppedImageUrl ? 200 : 75), (typeof window !== 'undefined' ? window.innerWidth : 1000) - (croppedImageUrl ? 400 : 160))),
+              left: Math.max(10, Math.min(shareMenuPosition.x, (typeof window !== 'undefined' ? window.innerWidth : 1000) - 320)),
               top: Math.max(10, shareMenuPosition.y),
               pointerEvents: 'auto'
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {croppedImageUrl ? (
-              // Kırpılmış görüntü paylaşım menüsü
-              <>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    shareOnWhatsAppCropped();
-                  }}
-                  className="p-3 text-green-600 hover:bg-green-50 rounded-lg transition-colors flex flex-col items-center justify-center min-w-[80px]"
-                  title="WhatsApp'ta Paylaş"
-                >
-                  <span className="text-2xl mb-1">📱</span>
-                  <span className="text-xs font-medium">WhatsApp</span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    shareOnFacebookCropped();
-                  }}
-                  className="p-3 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex flex-col items-center justify-center min-w-[80px]"
-                  title="Facebook'ta Paylaş"
-                >
-                  <span className="text-2xl mb-1">👥</span>
-                  <span className="text-xs font-medium">Facebook</span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    shareOnTwitterCropped();
-                  }}
-                  className="p-3 text-sky-600 hover:bg-sky-50 rounded-lg transition-colors flex flex-col items-center justify-center min-w-[80px]"
-                  title="X'te Paylaş"
-                >
-                  <span className="text-2xl mb-1">🐦</span>
-                  <span className="text-xs font-medium">X (Twitter)</span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    downloadCroppedImage();
-                    setShowShareMenu(false);
-                  }}
-                  className="p-3 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex flex-col items-center justify-center min-w-[80px]"
-                  title="İndir"
-                >
-                  <span className="text-2xl mb-1">💾</span>
-                  <span className="text-xs font-medium">İndir</span>
-                </button>
-              </>
-            ) : (
-              // Normal seçim paylaşım menüsü
-              <>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    shareOnWhatsApp(selectedText);
-                  }}
-                  className="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors flex items-center justify-center"
-                  title="WhatsApp'ta Paylaş"
-                >
-                  <span className="text-lg">📱</span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    shareOnFacebook(selectedText);
-                  }}
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors flex items-center justify-center"
-                  title="Facebook'ta Paylaş"
-                >
-                  <span className="text-lg">👥</span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    shareOnTwitter(selectedText);
-                  }}
-                  className="p-2 text-sky-600 hover:bg-sky-50 rounded-full transition-colors flex items-center justify-center"
-                  title="X'te Paylaş"
-                >
-                  <span className="text-lg">🔗</span>
-                </button>
-              </>
-            )}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                shareOnWhatsApp();
+              }}
+              className="p-3 text-green-600 hover:bg-green-50 rounded-lg transition-colors flex flex-col items-center justify-center min-w-[80px]"
+              title="WhatsApp'ta Paylaş"
+            >
+              <span className="text-2xl mb-1">📱</span>
+              <span className="text-xs font-medium">WhatsApp</span>
+            </button>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                shareOnFacebook();
+              }}
+              className="p-3 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex flex-col items-center justify-center min-w-[80px]"
+              title="Facebook'ta Paylaş"
+            >
+              <span className="text-2xl mb-1">👥</span>
+              <span className="text-xs font-medium">Facebook</span>
+            </button>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                shareOnTwitter();
+              }}
+              className="p-3 text-sky-600 hover:bg-sky-50 rounded-lg transition-colors flex flex-col items-center justify-center min-w-[80px]"
+              title="X'te Paylaş"
+            >
+              <span className="text-2xl mb-1">🐦</span>
+              <span className="text-xs font-medium">X (Twitter)</span>
+            </button>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                downloadCroppedImage();
+              }}
+              className="p-3 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex flex-col items-center justify-center min-w-[80px]"
+              title="İndir"
+            >
+              <span className="text-2xl mb-1">💾</span>
+              <span className="text-xs font-medium">İndir</span>
+            </button>
+            <button
+              onClick={() => setShowShareMenu(false)}
+              className="p-2 text-gray-400 hover:text-gray-600 rounded-full transition-colors"
+              title="Kapat"
+            >
+              <X className="h-4 w-4" />
+            </button>
             <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white border-r border-b border-slate-200 rotate-45"></div>
           </motion.div>
         )}
       </AnimatePresence>
+
     </Dialog>
   );
 }
-function ArticleViewerDialog({ articleId, onClose, isOpen }) {
+function ArticleViewerDialog({ articleId, onClose, isOpen, query }) {
   const [article, setArticle] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState(0);
+  const [highlightedContent, setHighlightedContent] = useState('');
+  
+  // Crop functionality states
+  const [isCropMode, setIsCropMode] = useState(false);
+  const [cropperRef, setCropperRef] = useState(null);
+  const [croppedImageUrl, setCroppedImageUrl] = useState(null);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [shareMenuPosition, setShareMenuPosition] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     if (isOpen && articleId) {
       setIsLoading(true);
       fetch(`${API_BASE_URL}/article/${articleId}`)
         .then(res => res.json())
-        .then(data => { setArticle(data); setIsLoading(false); })
+        .then(data => { 
+          setArticle(data); 
+          setIsLoading(false); 
+        })
         .catch(() => setIsLoading(false));
     }
   }, [isOpen, articleId]);
+
+  // Makale içeriğini vurgula
+  useEffect(() => {
+    if (article && article.content && query && query.trim()) {
+      const highlighted = highlightTurkishText(article.content, query.trim());
+      setHighlightedContent(highlighted);
+    } else if (article && article.content) {
+      setHighlightedContent(article.content);
+    }
+  }, [article, query]);
+
+  // Crop functionality
+  const toggleCropMode = useCallback(() => {
+    setIsCropMode(!isCropMode);
+    if (isCropMode) {
+      setCroppedImageUrl(null);
+    }
+  }, [isCropMode]);
+
+  const applyCrop = () => {
+    if (cropperRef && cropperRef.cropper) {
+      try {
+        const canvas = cropperRef.cropper.getCroppedCanvas({
+          width: 800,
+          height: 600,
+          imageSmoothingEnabled: true,
+          imageSmoothingQuality: 'high'
+        });
+        
+        if (canvas) {
+          const croppedDataUrl = canvas.toDataURL('image/png', 0.9);
+          setCroppedImageUrl(croppedDataUrl);
+          setIsCropMode(false);
+          
+          // Show share menu
+          setShareMenuPosition({
+            x: window.innerWidth / 2 - 200,
+            y: window.innerHeight / 2 - 100
+          });
+          setShowShareMenu(true);
+        }
+      } catch (error) {
+        console.error('Crop error:', error);
+      }
+    }
+  };
+
+  const cancelCrop = () => {
+    setIsCropMode(false);
+    setCroppedImageUrl(null);
+  };
+
+  // Share functions
+  const shareOnWhatsApp = async () => {
+    if (!croppedImageUrl) return;
+    
+    try {
+      const response = await fetch(croppedImageUrl);
+      const blob = await response.blob();
+      const file = new File([blob], `makale_${articleId}_crop.png`, { type: 'image/png' });
+      
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: `📰 ${article?.title || 'Makale'} - Mihmandar.org`,
+          files: [file]
+        });
+      } else {
+        const url = `https://wa.me/?text=${encodeURIComponent(`📰 ${article?.title || 'Makale'}\n\n🔗 mihmandar.org`)}`;
+        window.open(url, '_blank');
+      }
+    } catch (error) {
+      console.error('Share error:', error);
+    }
+    setShowShareMenu(false);
+  };
+
+  const downloadCroppedImage = () => {
+    if (!croppedImageUrl) return;
+    
+    const link = document.createElement('a');
+    link.download = `makale_${articleId}_crop.png`;
+    link.href = croppedImageUrl;
+    link.click();
+    setShowShareMenu(false);
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -1053,44 +1120,176 @@ function ArticleViewerDialog({ articleId, onClose, isOpen }) {
         ) : (
           <>
             <DialogHeader className="p-6 pb-3">
-              <DialogTitle className="text-3xl font-bold leading-tight">{article.title}</DialogTitle>
-              <DialogDescription className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2 text-sm">
-                <span className="flex items-center gap-1.5"><User className="h-4 w-4" />{article.author}</span>
-                <span className="flex items-center gap-1.5"><Library className="h-4 w-4" />{article.category}</span>
-                <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" />{articleDate} • {readMins} dk okuma</span>
-              </DialogDescription>
+              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <div className="flex-1">
+                  <DialogTitle className="text-2xl md:text-3xl font-bold leading-tight">{article.title}</DialogTitle>
+                  <DialogDescription className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2 text-sm">
+                    <span className="flex items-center gap-1.5"><User className="h-4 w-4" />{article.author}</span>
+                    <span className="flex items-center gap-1.5"><Library className="h-4 w-4" />{article.category}</span>
+                    <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" />{articleDate} • {readMins} dk okuma</span>
+                  </DialogDescription>
+                </div>
+                
+                {/* Crop Controls */}
+                <div className="flex items-center gap-2 justify-center md:justify-end">
+                  <Button 
+                    aria-label={isCropMode ? "Okuma Modu" : "Kırpma Modu"} 
+                    onClick={toggleCropMode} 
+                    className={`${isCropMode ? 'bg-orange-600/80 hover:bg-orange-700/90' : 'bg-blue-600/80 hover:bg-blue-700/90'} text-white h-9 w-9 md:h-10 md:w-10 p-0 rounded-lg shadow-lg border ${isCropMode ? 'border-orange-500/50' : 'border-blue-500/50'}`}
+                    size="sm"
+                  >
+                    {isCropMode ? <Eye className="h-4 w-4 md:h-5 md:w-5" /> : <Crop className="h-4 w-4 md:h-5 md:w-5" />}
+                  </Button>
+                  
+                  {isCropMode && (
+                    <>
+                      <Button 
+                        aria-label="Kırpmayı Uygula" 
+                        onClick={applyCrop} 
+                        className="bg-green-600/80 hover:bg-green-700/90 text-white h-9 md:h-10 px-2 md:px-3 rounded-lg shadow-lg border border-green-500/50 text-xs md:text-sm font-medium"
+                        size="sm"
+                      >
+                        Uygula
+                      </Button>
+                      <Button 
+                        aria-label="Kırpmayı İptal Et" 
+                        onClick={cancelCrop} 
+                        className="bg-red-600/80 hover:bg-red-700/90 text-white h-9 md:h-10 px-2 md:px-3 rounded-lg shadow-lg border border-red-500/50 text-xs md:text-sm font-medium"
+                        size="sm"
+                      >
+                        İptal
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
               <div className="mt-3"><Progress value={progress} /></div>
             </DialogHeader>
             <Separator />
-            <div id="article-scroll-container" className="px-6 py-6 flex-grow overflow-y-auto">
-              <article className="
-                prose prose-lg max-w-none
-                prose-headings:text-slate-800 prose-headings:font-bold prose-headings:tracking-tight
-                prose-h1:text-3xl prose-h1:mb-6 prose-h1:mt-8 prose-h1:text-emerald-800
-                prose-h2:text-2xl prose-h2:mb-4 prose-h2:mt-6 prose-h2:text-emerald-700 prose-h2:border-b prose-h2:border-emerald-200 prose-h2:pb-2
-                prose-h3:text-xl prose-h3:mb-3 prose-h3:mt-5 prose-h3:text-emerald-600
-                prose-h4:text-lg prose-h4:mb-2 prose-h4:mt-4 prose-h4:text-slate-700
-                prose-p:text-slate-700 prose-p:leading-relaxed prose-p:mb-4 prose-p:text-base
-                prose-a:text-emerald-600 prose-a:font-medium prose-a:no-underline hover:prose-a:text-emerald-700 hover:prose-a:underline
-                prose-strong:text-slate-800 prose-strong:font-semibold prose-strong:bg-yellow-100 prose-strong:px-1 prose-strong:rounded
-                prose-em:text-slate-600 prose-em:italic
-                prose-blockquote:border-l-4 prose-blockquote:border-emerald-300 prose-blockquote:bg-emerald-50/70 prose-blockquote:pl-6 prose-blockquote:py-4 prose-blockquote:my-6 prose-blockquote:rounded-r-lg prose-blockquote:italic
-                prose-ul:my-4 prose-ul:space-y-2 prose-ol:my-4 prose-ol:space-y-2 prose-li:text-slate-700 prose-li:leading-relaxed
-                prose-code:text-emerald-700 prose-code:bg-emerald-50 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:font-mono prose-code:text-sm
-                prose-pre:bg-slate-50 prose-pre:border prose-pre:border-slate-200 prose-pre:rounded-lg prose-pre:p-4 prose-pre:my-4
-                prose-hr:border-emerald-200 prose-hr:my-8
-                prose-table:my-6 prose-thead:bg-emerald-50 prose-th:text-emerald-700 prose-th:font-semibold prose-th:p-3 prose-td:p-3
-                prose-img:rounded-lg prose-img:shadow-md prose-img:my-4
-              " style={{
-                textAlign: 'justify',
-                hyphens: 'auto'
-              }}>
-                <div dangerouslySetInnerHTML={{ __html: article.content }} />
-              </article>
+            <div id="article-scroll-container" className="px-6 py-6 flex-grow overflow-y-auto relative">
+              {isCropMode ? (
+                <div className="w-full h-full flex items-center justify-center bg-slate-50 rounded-lg overflow-hidden">
+                  <Suspense fallback={<div className="flex items-center justify-center w-full h-full"><LoadingSpinner size="lg" variant="muted" /></div>}>
+                    <Cropper
+                      src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
+                        <svg width="1200" height="1600" xmlns="http://www.w3.org/2000/svg">
+                          <foreignObject width="100%" height="100%">
+                            <div xmlns="http://www.w3.org/1999/xhtml" style="padding: 40px; font-family: system-ui; background: white; min-height: 1600px;">
+                              <h1 style="color: #059669; margin-bottom: 24px; font-size: 32px; font-weight: bold; line-height: 1.2;">${(article?.title || 'Makale').replace(/[<>&"']/g, '')}</h1>
+                              <div style="color: #374151; line-height: 1.8; font-size: 16px; text-align: justify;">
+                                ${(article?.content?.replace(/<[^>]*>/g, '').substring(0, 2500) || 'Makale içeriği yükleniyor...').replace(/[<>&"']/g, '')}
+                              </div>
+                            </div>
+                          </foreignObject>
+                        </svg>
+                      `)}`}
+                      style={{ height: '100%', width: '100%', minHeight: '80vh' }}
+                      initialAspectRatio={4/3}
+                      guides={true}
+                      viewMode={1}
+                      dragMode="crop"
+                      scalable={true}
+                      cropBoxMovable={true}
+                      cropBoxResizable={true}
+                      toggleDragModeOnDblclick={false}
+                      onInitialized={(instance) => {
+                        setCropperRef(instance);
+                      }}
+                      ref={(cropper) => {
+                        setCropperRef(cropper);
+                      }}
+                      responsive={true}
+                      restore={false}
+                      checkCrossOrigin={false}
+                      checkOrientation={false}
+                      modal={true}
+                      background={true}
+                      autoCrop={true}
+                      autoCropArea={0.8}
+                      movable={false}
+                      rotatable={false}
+                      zoomable={true}
+                      zoomOnTouch={true}
+                      zoomOnWheel={true}
+                      wheelZoomRatio={0.1}
+                      minCropBoxHeight={100}
+                      minCropBoxWidth={100}
+                    />
+                  </Suspense>
+                </div>
+              ) : (
+                <article className="
+                  prose prose-lg max-w-none
+                  prose-headings:text-slate-800 prose-headings:font-bold prose-headings:tracking-tight
+                  prose-h1:text-3xl prose-h1:mb-6 prose-h1:mt-8 prose-h1:text-emerald-800
+                  prose-h2:text-2xl prose-h2:mb-4 prose-h2:mt-6 prose-h2:text-emerald-700 prose-h2:border-b prose-h2:border-emerald-200 prose-h2:pb-2
+                  prose-h3:text-xl prose-h3:mb-3 prose-h3:mt-5 prose-h3:text-emerald-600
+                  prose-h4:text-lg prose-h4:mb-2 prose-h4:mt-4 prose-h4:text-slate-700
+                  prose-p:text-slate-700 prose-p:leading-relaxed prose-p:mb-4 prose-p:text-base
+                  prose-a:text-emerald-600 prose-a:font-medium prose-a:no-underline hover:prose-a:text-emerald-700 hover:prose-a:underline
+                  prose-strong:text-slate-800 prose-strong:font-semibold prose-strong:bg-yellow-100 prose-strong:px-1 prose-strong:rounded
+                  prose-em:text-slate-600 prose-em:italic
+                  prose-blockquote:border-l-4 prose-blockquote:border-emerald-300 prose-blockquote:bg-emerald-50/70 prose-blockquote:pl-6 prose-blockquote:py-4 prose-blockquote:my-6 prose-blockquote:rounded-r-lg prose-blockquote:italic
+                  prose-ul:my-4 prose-ul:space-y-2 prose-ol:my-4 prose-ol:space-y-2 prose-li:text-slate-700 prose-li:leading-relaxed
+                  prose-code:text-emerald-700 prose-code:bg-emerald-50 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:font-mono prose-code:text-sm
+                  prose-pre:bg-slate-50 prose-pre:border prose-pre:border-slate-200 prose-pre:rounded-lg prose-pre:p-4 prose-pre:my-4
+                  prose-hr:border-emerald-200 prose-hr:my-8
+                  prose-table:my-6 prose-thead:bg-emerald-50 prose-th:text-emerald-700 prose-th:font-semibold prose-th:p-3 prose-td:p-3
+                  prose-img:rounded-lg prose-img:shadow-md prose-img:my-4
+                " style={{
+                  textAlign: 'justify',
+                  hyphens: 'auto'
+                }}>
+                  <div dangerouslySetInnerHTML={{ __html: highlightedContent }} />
+                </article>
+              )}
             </div>
           </>
         )}
       </DialogContent>
+      
+      {/* Share Menu for Cropped Content */}
+      <AnimatePresence>
+        {showShareMenu && croppedImageUrl && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="share-menu fixed z-[9999] bg-white rounded-lg shadow-2xl border border-slate-200 p-4 flex items-center gap-3"
+            style={{
+              left: Math.max(10, Math.min(shareMenuPosition.x, (typeof window !== 'undefined' ? window.innerWidth : 1000) - 320)),
+              top: Math.max(10, shareMenuPosition.y),
+              pointerEvents: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={shareOnWhatsApp}
+              className="p-3 text-green-600 hover:bg-green-50 rounded-lg transition-colors flex flex-col items-center justify-center min-w-[80px]"
+              title="WhatsApp'ta Paylaş"
+            >
+              <span className="text-2xl mb-1">📱</span>
+              <span className="text-xs font-medium">WhatsApp</span>
+            </button>
+            <button
+              onClick={downloadCroppedImage}
+              className="p-3 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex flex-col items-center justify-center min-w-[80px]"
+              title="İndir"
+            >
+              <span className="text-2xl mb-1">💾</span>
+              <span className="text-xs font-medium">İndir</span>
+            </button>
+            <button
+              onClick={() => setShowShareMenu(false)}
+              className="p-2 text-gray-400 hover:text-gray-600 rounded-full transition-colors"
+              title="Kapat"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white border-r border-b border-slate-200 rotate-45"></div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Dialog>
   );
 }
@@ -2308,7 +2507,7 @@ export default function HomePage() {
         </main>
       
         <BookViewerDialog isOpen={isBookModalOpen} onClose={() => setIsBookModalOpen(false)} book={selectedBook} />
-        <ArticleViewerDialog isOpen={isArticleModalOpen} onClose={() => setIsArticleModalOpen(false)} articleId={selectedArticleId} />
+        <ArticleViewerDialog isOpen={isArticleModalOpen} onClose={() => setIsArticleModalOpen(false)} articleId={selectedArticleId} query={query} />
       </div>
     );
 }

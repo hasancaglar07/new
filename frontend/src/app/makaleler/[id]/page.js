@@ -8,15 +8,13 @@ import { ArrowLeft, Clock, User, Library, Loader2, ServerCrash, FileText, Share2
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
+import { highlightTurkishText } from '@/utils/turkishSearch';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// Arama terimlerini vurgulama fonksiyonu
+// Arama terimlerini vurgulama fonksiyonu (Türkçe karakter uyumlu)
 function highlightSearchTerm(text, searchTerm) {
-    if (!text || !searchTerm) return text;
-    
-    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-800 px-1 rounded font-bold">$1</mark>');
+    return highlightTurkishText(text, searchTerm);
 }
 
 // --- Yüklenme İskeleti Bileşeni ---

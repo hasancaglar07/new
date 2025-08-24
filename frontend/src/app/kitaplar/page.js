@@ -5,7 +5,7 @@
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react";
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Download, ArrowLeft, ArrowRight, BookOpen, Search, Library, ZoomIn, ZoomOut, RotateCcw, X, Crop, Eye } from "lucide-react";
+import { Loader2, ArrowLeft, ArrowRight, BookOpen, Search, Library, ZoomIn, ZoomOut, RotateCcw, X, Crop, Eye } from "lucide-react";
 import Image from 'next/image';
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import dynamic from 'next/dynamic';
@@ -80,7 +80,7 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
     const ctx = canvas.getContext('2d');
     const bookTitle = book?.kitap_adi || 'Kitap';
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 'Bilinmeyen Yazar';
-    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    const pageUrl = `javascript:window.open('https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')`;
     
     // Canvas boyutları
     const canvasWidth = canvas.width;
@@ -202,7 +202,7 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
   const shareOnWhatsAppCropped = async () => {
     const bookTitle = book?.kitap_adi || 'Kitap';
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 'Bilinmeyen Yazar';
-    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    const pageUrl = `https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}`;
     
     const shareText = `📚 "${bookTitle}" - ${authorName}\n📖 Sayfa ${currentPage}\n\n💎 Bu değerli eserden kırpılmış bir bölüm paylaşıyorum...\n\n🔗 Bu sayfayı okumak için:\n${pageUrl}\n\n📚 Tüm kütüphaneyi keşfetmek için:\nmihmandar.org\n\n#MihmandarOrg #EKütüphane #Kitap #İlim #Maneviyat #Tasavvuf`;
     
@@ -210,7 +210,7 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
       try {
         const response = await fetch(croppedImageUrl);
         const blob = await response.blob();
-        const file = new File([blob], `${bookTitle.replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
+        const file = new File([blob], `${(bookTitle || 'Kitap').replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
         await navigator.share({ text: shareText, files: [file] });
       } catch (error) {
         const url = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
@@ -227,7 +227,7 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
   const shareOnFacebookCropped = async () => {
     const bookTitle = book?.kitap_adi || 'Kitap';
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 'Bilinmeyen Yazar';
-    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    const pageUrl = `https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}`;
     
     const shareText = `📚 ${bookTitle}\n\n✍️ Yazar: ${authorName}\n📖 Sayfa: ${currentPage}\n\n🌟 Bu değerli eserden kırpılmış bir bölüm paylaşıyorum. İlim ve maneviyat dolu bu kitabı Mihmandar.org E-Kütüphanesi'nde okuyabilirsiniz.\n\n🔗 Bu sayfayı okumak için:\n${pageUrl}\n\n📚 Tüm kütüphaneyi keşfetmek için:\nmihmandar.org\n\n#MihmandarOrg #EKütüphane #Kitap #İlim #Maneviyat #Tasavvuf #Eğitim #Bilgi`;
     
@@ -235,7 +235,7 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
       try {
         const response = await fetch(croppedImageUrl);
         const blob = await response.blob();
-        const file = new File([blob], `${bookTitle.replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
+        const file = new File([blob], `${(bookTitle || 'Kitap').replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
         await navigator.share({ text: shareText, files: [file] });
       } catch (error) {
         const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent('https://mihmandar.org')}&quote=${encodeURIComponent(shareText)}`;
@@ -252,7 +252,7 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
   const shareOnTwitterCropped = async () => {
     const bookTitle = book?.kitap_adi || 'Kitap';
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 'Bilinmeyen Yazar';
-    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    const pageUrl = `https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}`;
     
     const shareText = `📚 "${bookTitle}" - ${authorName}\n📖 Sayfa ${currentPage}\n\n💎 Bu değerli eserden kırpılmış bir bölüm...\n\n🔗 ${pageUrl}\n\n📚 mihmandar.org\n\n#MihmandarOrg #EKütüphane #Kitap #İlim #Maneviyat #Tasavvuf #Bilgi #Hikmet`;
     
@@ -260,7 +260,7 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
       try {
         const response = await fetch(croppedImageUrl);
         const blob = await response.blob();
-        const file = new File([blob], `${bookTitle.replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
+        const file = new File([blob], `${(bookTitle || 'Kitap').replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
         await navigator.share({ text: shareText, files: [file] });
       } catch (error) {
         const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
@@ -568,7 +568,7 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
                         (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
       
       // Gerçek sayfa linki oluştur
-      const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+      const pageUrl = `javascript:window.open('https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')`;
       
       // Başlık
       ctx.fillStyle = '#ffffff';
@@ -621,7 +621,7 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
                       (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
     
     // Gerçek sayfa linki oluştur
-    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    const pageUrl = `javascript:window.open('https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')`;
     
     // Seçilen alanı crop et
     const croppedImage = await cropSelectedArea();
@@ -637,7 +637,7 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
       // 1. Önce sadece resim paylaş (text olmadan)
       try {
         console.log('Attempting native share...');
-        const file = new File([croppedImage], `${bookTitle.replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
+        const file = new File([croppedImage], `${(bookTitle || 'Kitap').replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
         await navigator.share({
           title: `📚 ${bookTitle} - Mihmandar.org E-Kütüphanesi`,
           files: [file]
@@ -679,14 +679,14 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
                       (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
     
     // Gerçek sayfa linki oluştur
-    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    const pageUrl = `javascript:window.open('https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')`;
     
     // Seçilen alanı crop et
     const croppedImage = await cropSelectedArea();
     
     if (croppedImage && navigator.share) {
       try {
-        const file = new File([croppedImage], `${bookTitle.replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
+        const file = new File([croppedImage], `${(bookTitle || 'Kitap').replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
         await navigator.share({
           title: `📚 ${bookTitle} - Mihmandar.org E-Kütüphanesi`,
           text: `📚 ${bookTitle}\n\n✍️ Yazar: ${authorName}\n📖 Sayfa: ${currentPage}\n\n🌟 Bu değerli eserden özel bir bölüm paylaşıyorum. İlim ve maneviyat dolu bu kitabı Mihmandar.org E-Kütüphanesi'nde okuyabilirsiniz.\n\n🔗 Bu sayfayı okumak için:\n${pageUrl}\n\n📚 Tüm kütüphaneyi keşfetmek için:\nmihmandar.org\n\n#MihmandarOrg #EKütüphane #Kitap #İlim #Maneviyat #Tasavvuf #Eğitim #Bilgi`,
@@ -714,14 +714,14 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
                       (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
     
     // Gerçek sayfa linki oluştur
-    const pageUrl = `https://mihmandar.org/kitaplar/${book?.id || 'kitap'}?sayfa=${currentPage}`;
+    const pageUrl = `javascript:window.open('https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')`;
     
     // Seçilen alanı crop et
     const croppedImage = await cropSelectedArea();
     
     if (croppedImage && navigator.share) {
       try {
-        const file = new File([croppedImage], `${bookTitle.replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
+        const file = new File([croppedImage], `${(bookTitle || 'Kitap').replace(/[^a-zA-Z0-9]/g, '_')}_sayfa_${currentPage}.png`, { type: 'image/png' });
         await navigator.share({
           title: `📚 ${bookTitle} | Mihmandar.org E-Kütüphanesi`,
           text: `📚 "${bookTitle}" - ${authorName}\n📖 Sayfa ${currentPage}\n\n💎 Bu değerli eserden bir bölüm...\n\n🔗 ${pageUrl}\n\n📚 mihmandar.org\n\n#MihmandarOrg #EKütüphane #Kitap #İlim #Maneviyat #Tasavvuf #Bilgi #Hikmet`,
@@ -750,7 +750,22 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
         <DialogHeader className="p-3 border-b border-slate-700 flex-shrink-0 flex-col text-white bg-slate-900/50">
           <div className="flex items-center justify-between w-full">
             <DialogTitle className="text-lg md:text-xl text-slate-100 line-clamp-1">{book.kitap_adi}</DialogTitle>
-            <MobileOptimizedButton aria-label="Kapat" variant="ghost" size="icon" onClick={onClose} className="text-slate-300 hover:text-white hover:bg-slate-700 min-h-[44px] min-w-[44px]"><X className="h-6 w-6"/></MobileOptimizedButton>
+            <Button 
+              aria-label="Kapat" 
+              variant="ghost" 
+              size="icon" 
+              onClick={onClose} 
+              className="text-slate-300 hover:text-white hover:bg-slate-700 min-h-[44px] min-w-[44px] touch-manipulation"
+              style={{
+                WebkitTapHighlightColor: 'rgba(255, 255, 255, 0.1)',
+                WebkitTouchCallout: 'none',
+                WebkitUserSelect: 'none',
+                userSelect: 'none',
+                touchAction: 'manipulation'
+              }}
+            >
+              <X className="h-6 w-6"/>
+            </Button>
           </div>
           {showTargetPageNotice && (
             <div className="mt-2 p-2 bg-yellow-600/20 border border-yellow-500/30 rounded-lg flex items-center gap-2">
@@ -940,7 +955,6 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
         </div>
         <DialogFooter className="flex-col gap-3 md:flex-row md:gap-0 md:justify-between md:items-center p-3 bg-slate-900/50 border-t border-slate-700 flex-shrink-0 text-white backdrop-blur-sm">
           <div className="flex items-center gap-2 w-full md:w-auto">
-            <Button aria-label="Sayfayı indir" onClick={handleDownload} disabled={isDownloading} className="bg-slate-700 hover:bg-slate-600"><div className="w-12">{isDownloading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : <Download className="h-5 w-5 mx-auto" />}</div></Button>
             {croppedImageUrl && (
               <div className="text-sm text-green-400 font-medium px-2">
                 ✓ Kırpılmış görüntü hazır
@@ -961,117 +975,82 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
           {/* metin önizleme kaldırıldı */}
         </DialogFooter>
       </DialogContent>
-      
-      {/* Floating Share Menu */}
-      <AnimatePresence>
-        {showShareMenu && (selectedText || croppedImageUrl) && (
-          <motion.div
-             initial={{ opacity: 0, scale: 0.8 }}
-             animate={{ opacity: 1, scale: 1 }}
-             exit={{ opacity: 0, scale: 0.8 }}
-             className={`share-menu fixed z-[9999] bg-white rounded-lg shadow-2xl border border-slate-200 p-3 flex items-center ${croppedImageUrl ? 'gap-2' : 'gap-1'}`}
-             style={{
-               left: Math.max(10, Math.min(shareMenuPosition.x - (croppedImageUrl ? 200 : 75), (typeof window !== 'undefined' ? window.innerWidth : 1000) - (croppedImageUrl ? 400 : 160))),
-               top: Math.max(10, shareMenuPosition.y),
-               pointerEvents: 'auto'
-             }}
-             onClick={(e) => e.stopPropagation()}
-           >
-            {croppedImageUrl ? (
-              // Kırpılmış görüntü paylaşım menüsü
-              <>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    shareOnWhatsAppCropped();
-                  }}
-                  className="p-3 text-green-600 hover:bg-green-50 rounded-lg transition-colors flex flex-col items-center justify-center min-w-[80px]"
-                  title="WhatsApp'ta Paylaş"
-                >
-                  <span className="text-2xl mb-1">📱</span>
-                  <span className="text-xs font-medium">WhatsApp</span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    shareOnFacebookCropped();
-                  }}
-                  className="p-3 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex flex-col items-center justify-center min-w-[80px]"
-                  title="Facebook'ta Paylaş"
-                >
-                  <span className="text-2xl mb-1">👥</span>
-                  <span className="text-xs font-medium">Facebook</span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    shareOnTwitterCropped();
-                  }}
-                  className="p-3 text-sky-600 hover:bg-sky-50 rounded-lg transition-colors flex flex-col items-center justify-center min-w-[80px]"
-                  title="X'te Paylaş"
-                >
-                  <span className="text-2xl mb-1">🐦</span>
-                  <span className="text-xs font-medium">X (Twitter)</span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    downloadCroppedImage();
-                    setShowShareMenu(false);
-                  }}
-                  className="p-3 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex flex-col items-center justify-center min-w-[80px]"
-                  title="İndir"
-                >
-                  <span className="text-2xl mb-1">💾</span>
-                  <span className="text-xs font-medium">İndir</span>
-                </button>
-              </>
-            ) : (
-              // Normal seçim paylaşım menüsü
-              <>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    shareOnWhatsApp(selectedText);
-                  }}
-                  className="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors flex items-center justify-center"
-                  title="WhatsApp'ta Paylaş"
-                >
-                  <span className="text-lg">📱</span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    shareOnFacebook(selectedText);
-                  }}
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors flex items-center justify-center"
-                  title="Facebook'ta Paylaş"
-                >
-                  <span className="text-lg">👥</span>
-                </button>
-                <button
-                   onClick={(e) => {
-                     e.preventDefault();
-                     e.stopPropagation();
-                     shareOnTwitter(selectedText);
-                   }}
-                   className="p-2 text-sky-600 hover:bg-sky-50 rounded-full transition-colors flex items-center justify-center"
-                   title="X'te Paylaş"
-                 >
-                   <span className="text-lg">🔗</span>
-                 </button>
-               </>
-             )}
-             <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white border-r border-b border-slate-200 rotate-45"></div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        
+        {/* Share Menu for PDF Cropped Content */}
+        <AnimatePresence>
+          {showShareMenu && croppedImageUrl && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="share-menu fixed z-[9999] bg-white rounded-lg shadow-2xl border border-slate-200 p-4 flex items-center gap-3"
+              style={{
+                left: Math.max(10, Math.min(shareMenuPosition.x, (typeof window !== 'undefined' ? window.innerWidth : 1000) - 320)),
+                top: Math.max(10, shareMenuPosition.y),
+                pointerEvents: 'auto'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  shareOnWhatsAppCropped();
+                }}
+                className="p-3 text-green-600 hover:bg-green-50 rounded-lg transition-colors flex flex-col items-center justify-center min-w-[80px]"
+                title="WhatsApp'ta Paylaş"
+              >
+                <span className="text-2xl mb-1">📱</span>
+                <span className="text-xs font-medium">WhatsApp</span>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  shareOnFacebookCropped();
+                }}
+                className="p-3 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex flex-col items-center justify-center min-w-[80px]"
+                title="Facebook'ta Paylaş"
+              >
+                <span className="text-2xl mb-1">👥</span>
+                <span className="text-xs font-medium">Facebook</span>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  shareOnTwitterCropped();
+                }}
+                className="p-3 text-sky-600 hover:bg-sky-50 rounded-lg transition-colors flex flex-col items-center justify-center min-w-[80px]"
+                title="X'te Paylaş"
+              >
+                <span className="text-2xl mb-1">🐦</span>
+                <span className="text-xs font-medium">X (Twitter)</span>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  downloadCroppedImage();
+                }}
+                className="p-3 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex flex-col items-center justify-center min-w-[80px]"
+                title="İndir"
+              >
+                <span className="text-2xl mb-1">💾</span>
+                <span className="text-xs font-medium">İndir</span>
+              </button>
+              <button
+                onClick={() => setShowShareMenu(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-full transition-colors"
+                title="Kapat"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white border-r border-b border-slate-200 rotate-45"></div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+ 
     </Dialog>
   );
 }
@@ -1317,7 +1296,9 @@ function LibraryContent() {
                 if (!response.ok) throw new Error("Veri sunucudan alınamadı.");
                 const data = await response.json();
                 setLibraryData(data.kutuphane || []);
-            } catch (error) { console.error("Kütüphane verisi alınırken hata:", error); } 
+            } catch (error) { 
+                console.error("Kütüphane verisi alınırken hata:", error);
+            } 
             finally { setIsLoading(false); }
         }
         fetchLibrary();
@@ -1333,7 +1314,8 @@ function LibraryContent() {
                 const key = `${book.kitap_adi}-${book.pdf_dosyasi}`;
                 if (seen.has(key)) return false;
                 seen.add(key);
-                return turkishIncludes(book.kitap_adi, searchTerm);
+                // Eğer searchTerm boş ise tüm kitapları göster
+                return !searchTerm.trim() || turkishIncludes(book.kitap_adi, searchTerm);
             });
             if (filteredBooks.length === 0) return null;
             return { ...authorData, kitaplar: filteredBooks };
