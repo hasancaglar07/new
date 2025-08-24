@@ -133,7 +133,7 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     const ctx = canvas.getContext('2d');
     const bookTitle = book?.kitap_adi || book?.kitap || 'Kitap';
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 'Bilinmeyen Yazar';
-    const pageUrl = `javascript:window.open('https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')`;
+    const pageUrl = `https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}`;
     
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
@@ -584,8 +584,8 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 
                       (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
     
-    // Popup açacak JavaScript kodu oluştur
-    const pageUrl = `javascript:window.open('https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')`;
+    // Doğrudan kitap sayfası URL'si oluştur
+    const pageUrl = `https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}`;
     
     // Seçilen alanı crop et
     const croppedImage = await cropSelectedArea();
@@ -642,8 +642,8 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 
                       (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
     
-    // Popup açacak JavaScript kodu oluştur
-    const pageUrl = `javascript:window.open('https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')`;
+    // Doğrudan kitap sayfası URL'si oluştur
+    const pageUrl = `https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}`;
     
     // Seçilen alanı crop et
     const croppedImage = await cropSelectedArea();
@@ -677,8 +677,8 @@ function BookViewerDialog({ book, onClose, isOpen }) {
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 
                       (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
     
-    // Popup açacak JavaScript kodu oluştur
-    const pageUrl = `javascript:window.open('https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')`;
+    // Doğrudan kitap sayfası URL'si oluştur
+    const pageUrl = `https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}`;
     
     // Seçilen alanı crop et
     const croppedImage = await cropSelectedArea();

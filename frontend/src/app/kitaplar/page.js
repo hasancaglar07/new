@@ -75,7 +75,7 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
     const ctx = canvas.getContext('2d');
     const bookTitle = book?.kitap_adi || 'Kitap';
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 'Bilinmeyen Yazar';
-    const pageUrl = `javascript:window.open('https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')`;
+    const pageUrl = `https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}`;
     
     // Canvas boyutları
     const canvasWidth = canvas.width;
@@ -446,7 +446,7 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 
                       (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
     
-    const pageUrl = `javascript:window.open('https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')`;
+    const pageUrl = `https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}`;
     
     const croppedImage = await cropSelectedArea();
     
@@ -477,7 +477,7 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 
                       (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
     
-    const pageUrl = `javascript:window.open('https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')`;
+    const pageUrl = `https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}`;
     
     const croppedImage = await cropSelectedArea();
     
@@ -508,7 +508,7 @@ function BookViewerDialog({ book, onClose, isOpen, targetPage }) {
     const authorName = book?.yazar || book?.author || book?.yazarAdi || book?.authorName || 
                       (book?.pdf_dosyasi ? book.pdf_dosyasi.split('-').slice(1).join('-').replace('.pdf', '').replace(/_/g, ' ') : 'Bilinmeyen Yazar');
     
-    const pageUrl = `javascript:window.open('https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')`;
+    const pageUrl = `https://mihmandar.org/kitaplar?kitap=${encodeURIComponent(book?.kitap_adi || book?.kitap || 'kitap')}&sayfa=${currentPage}`;
     
     const croppedImage = await cropSelectedArea();
     
@@ -1041,8 +1041,8 @@ function LibrarySkeleton() {
  // --- ANA KÜTÜPHANE SAYFASI ---
  function LibraryContent() {
      const searchParams = useSearchParams();
-     const targetPage = searchParams.get('page');
-     const openBook = searchParams.get('open'); // Direkt açılacak kitap
+     const targetPage = searchParams.get('sayfa') || searchParams.get('page');
+     const openBook = searchParams.get('kitap') || searchParams.get('open'); // Direkt açılacak kitap
      const [libraryData, setLibraryData] = useState([]);
      const [isLoading, setIsLoading] = useState(true);
      const [selectedBook, setSelectedBook] = useState(null);
@@ -1086,13 +1086,29 @@ function LibrarySkeleton() {
      // Direkt kitap açma işlemi
      useEffect(() => {
          if (openBook && libraryData.length > 0 && !isModalOpen) {
-             // Tüm kitaplar arasında PDF dosya adına göre ara
+             // URL'den gelen kitap adını decode et
+             const decodedBookName = decodeURIComponent(openBook);
+             
+             // Tüm kitaplar arasında ara
              for (const authorData of libraryData) {
-                 const foundBook = authorData.kitaplar.find(book => 
-                     book.pdf_dosyasi === openBook || 
-                     book.pdf_dosyasi === `${openBook}.pdf` ||
-                     turkishIncludes(book.kitap_adi, openBook)
-                 );
+                 const foundBook = authorData.kitaplar.find(book => {
+                     // Kitap adı ile tam eşleşme
+                     if (book.kitap_adi === decodedBookName) return true;
+                     
+                     // PDF dosya adı ile eşleşme
+                     if (book.pdf_dosyasi === openBook || book.pdf_dosyasi === `${openBook}.pdf`) return true;
+                     
+                     // Türkçe karakterleri dikkate alarak kısmi eşleşme
+                     if (turkishIncludes(book.kitap_adi, decodedBookName)) return true;
+                     
+                     // Kitap adının normalize edilmiş hali ile eşleşme
+                     const normalizedBookTitle = book.kitap_adi.toLowerCase().replace(/[^a-zA-ZğüşıöçĞÜŞİÖÇ0-9]/g, '');
+                     const normalizedSearchTerm = decodedBookName.toLowerCase().replace(/[^a-zA-ZğüşıöçĞÜŞİÖÇ0-9]/g, '');
+                     if (normalizedBookTitle.includes(normalizedSearchTerm)) return true;
+                     
+                     return false;
+                 });
+                 
                  if (foundBook) {
                      setSelectedBook(foundBook);
                      setIsModalOpen(true);

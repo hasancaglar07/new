@@ -61,20 +61,29 @@ function AudioPlayer({ source, title, chapters, mp3Filename, onReadyToPlay, onCl
     const audioSrc = `${API_BASE_URL}/audio/file/${mp3Filename}`;
 
     return (
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white relative flex-shrink-0" style={{background: 'linear-gradient(to right, #177267, #0d9488)'}}>
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col border border-slate-200/50">
+            {/* Modern Header */}
+            <div className="bg-gradient-to-r from-[#177267] to-[#0d9488] p-8 text-white relative flex-shrink-0">
                 <MobileOptimizedButton
                     onClick={onClose}
-                    className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors z-10 min-h-[44px] min-w-[44px]"
+                    className="absolute top-6 right-6 p-3 hover:bg-white/20 rounded-xl transition-all duration-200 z-10 min-h-[44px] min-w-[44px] backdrop-blur-sm"
                 >
                     <X className="h-5 w-5" />
                 </MobileOptimizedButton>
-                <div className="pr-12">
-                    <h2 className="text-2xl font-bold mb-4">Kaynak: {source}</h2>
+                <div className="pr-16">
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                            <Volume2 className="h-8 w-8 text-white" />
+                        </div>
+                        <div>
+                            <h2 className="text-3xl font-bold mb-2">{title.replace(/\.(mp3|wav|m4a)$/i, '').replace(/_/g, ' ')}</h2>
+                            <p className="text-white/80 text-lg font-medium">{source}</p>
+                        </div>
+                    </div>
                     
                     {/* Sosyal Medya Paylaşım Butonları */}
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
+                        <span className="text-white/70 text-sm font-medium mr-2">Paylaş:</span>
                         <button
                             onClick={() => {
                                 const baseUrl = window.location.origin + '/ses-kayitlari';
@@ -83,10 +92,10 @@ function AudioPlayer({ source, title, chapters, mp3Filename, onReadyToPlay, onCl
                                 const text = `🎧 "${title}" ses kaydını dinleyin! - ${source}`;
                                 window.open(`https://wa.me/?text=${encodeURIComponent(text + '\n' + audioUrl)}`, '_blank');
                             }}
-                            className="p-2 text-emerald-200 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+                            className="p-3 text-white/80 hover:text-white hover:bg-white/20 rounded-xl transition-all duration-200 backdrop-blur-sm"
                             title="WhatsApp'ta Paylaş"
                         >
-                            <MessageCircle className="h-4 w-4" />
+                            <MessageCircle className="h-5 w-5" />
                         </button>
                         <button
                             onClick={() => {
@@ -95,10 +104,10 @@ function AudioPlayer({ source, title, chapters, mp3Filename, onReadyToPlay, onCl
                                 const audioUrl = `${baseUrl}?audio=${encodeURIComponent(audioId)}&autoplay=true`;
                                 window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(audioUrl)}&quote=${encodeURIComponent(`🎧 "${title}" ses kaydını dinleyin! - ${source}`)}`, '_blank');
                             }}
-                            className="p-2 text-emerald-200 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+                            className="p-3 text-white/80 hover:text-white hover:bg-white/20 rounded-xl transition-all duration-200 backdrop-blur-sm"
                             title="Facebook'ta Paylaş"
                         >
-                            <Share2 className="h-4 w-4" />
+                            <Share2 className="h-5 w-5" />
                         </button>
                         <button
                             onClick={() => {
@@ -108,79 +117,99 @@ function AudioPlayer({ source, title, chapters, mp3Filename, onReadyToPlay, onCl
                                 const text = `🎧 "${title}" ses kaydını dinleyin! - ${source}`;
                                 window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(audioUrl)}`, '_blank');
                             }}
-                            className="p-2 text-emerald-200 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+                            className="p-3 text-white/80 hover:text-white hover:bg-white/20 rounded-xl transition-all duration-200 backdrop-blur-sm"
                             title="X'te Paylaş"
                         >
-                            <X className="h-4 w-4" />
+                            <X className="h-5 w-5" />
                         </button>
                     </div>
                 </div>
             </div>
             
-            {/* Audio Player - Büyük */}
-            <div className="p-8 border-b border-slate-200 flex-shrink-0 bg-gradient-to-r from-slate-50 to-slate-100">
-                <div className="bg-white rounded-xl p-4 shadow-md border border-slate-200">
-                    <audio
-                        ref={audioRef}
-                        src={audioSrc}
-                        controls
-                        className="w-full h-16 rounded-lg"
-                        key={mp3Filename}
-                        style={{
-                            filter: 'drop-shadow(0 4px 6px rgb(0 0 0 / 0.1))',
-                            transform: 'scale(1.05)'
-                        }}
-                    />
+            {/* Enhanced Audio Player */}
+            <div className="p-8 border-b border-slate-100 flex-shrink-0 bg-gradient-to-br from-slate-50 to-white">
+                <div className="bg-gradient-to-r from-[#177267]/5 to-[#0d9488]/5 rounded-2xl p-6 border border-[#177267]/10 shadow-lg">
+                    <div className="mb-4">
+                        <h3 className="text-lg font-semibold text-slate-800 mb-2">Ses Oynatıcı</h3>
+                        <p className="text-sm text-slate-600">Yüksek kaliteli ses deneyimi için kulaklık kullanmanızı öneririz</p>
+                    </div>
+                    <div className="bg-white rounded-xl p-4 shadow-md border border-slate-200/50">
+                        <audio
+                            ref={audioRef}
+                            src={audioSrc}
+                            controls
+                            className="w-full h-12 rounded-lg"
+                            key={mp3Filename}
+                            style={{
+                                filter: 'drop-shadow(0 4px 12px rgb(23 114 103 / 0.15))',
+                                background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                                border: '2px solid #e2e8f0',
+                                borderRadius: '12px'
+                            }}
+                        />
+                    </div>
                 </div>
             </div>
             
-            {/* Konu Başlıkları - Aşağı Doğru Seçilebilir */}
-            <div className="flex-1 overflow-hidden flex flex-col">
-                <div className="p-6 pb-4 flex-shrink-0">
-                    <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                        <ListMusic className="h-6 w-6 text-[#177267]" />
-                        Konu Başlıkları
-                        <span className="text-sm font-normal text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
-                            {chapters.length} konu
-                        </span>
-                    </h3>
-                    <p className="text-sm text-slate-600 mt-1">Dinlemek istediğiniz konuya tıklayın</p>
+            {/* Modern Konu Başlıkları */}
+            <div className="flex-1 overflow-hidden flex flex-col bg-slate-50/50">
+                <div className="p-8 pb-6 flex-shrink-0 bg-white border-b border-slate-100">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-gradient-to-br from-[#177267] to-[#0d9488] rounded-xl flex items-center justify-center">
+                            <ListMusic className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-slate-900">Konu Başlıkları</h3>
+                            <p className="text-sm text-slate-600">{chapters.length} konu mevcut</p>
+                        </div>
+                    </div>
+                    <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        💡 Dinlemek istediğiniz konuya tıklayarak o bölüme atlayabilirsiniz
+                    </p>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto px-6 pb-6">
+                <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100">
                     <div className="space-y-3">
                         {chapters.map((chapter, index) => (
-                            <div key={index} className={`w-full rounded-xl border transition-all duration-200 ${
+                            <div key={index} className={`group rounded-2xl border transition-all duration-300 ${
                                 activeChapter === chapter.time
-                                    ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-300 shadow-lg ring-2 ring-emerald-200'
-                                    : 'bg-slate-50 border-slate-200 hover:bg-gradient-to-r hover:from-emerald-50 hover:to-teal-50 hover:border-emerald-300'
+                                    ? 'bg-gradient-to-r from-[#177267]/5 to-[#0d9488]/5 border-[#177267]/20 shadow-lg ring-2 ring-[#177267]/10'
+                                    : 'bg-white border-slate-200 hover:bg-gradient-to-r hover:from-[#177267]/5 hover:to-[#0d9488]/5 hover:border-[#177267]/20 hover:shadow-md'
                             }`}>
                                 <button
                                     onClick={() => jumpToTime(chapter.time)}
-                                    className="w-full text-left p-4 hover:bg-emerald-50/50 transition-colors rounded-t-xl"
+                                    className="w-full text-left p-5 transition-all duration-200 rounded-2xl"
                                 >
-                                    <div className="flex items-start gap-4">
+                                    <div className="flex items-center gap-4">
                                         <div className="flex-shrink-0">
-                                            <span className="inline-flex items-center justify-center w-12 h-8 text-xs font-mono font-bold text-[#177267] bg-white rounded-lg border-2 border-emerald-300 shadow-sm">
-                                                {chapter.time}
-                                            </span>
+                                            <div className="w-14 h-10 bg-white rounded-xl border border-slate-200 flex items-center justify-center shadow-sm group-hover:border-[#177267]/30 transition-colors">
+                                                <span className="text-xs font-mono font-bold text-[#177267]">
+                                                    {chapter.time}
+                                                </span>
+                                            </div>
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <h4 className="text-base font-semibold text-slate-900 leading-relaxed mb-1">
+                                            <h4 className="text-base font-semibold text-slate-900 leading-relaxed mb-2 group-hover:text-slate-800">
                                                 {highlightSearchTerm(chapter.title, searchQuery)}
                                             </h4>
-                                            <div className="flex items-center gap-2 text-xs text-emerald-600">
-                                                <Play className="h-3.5 w-3.5" />
+                                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                <div className={`w-2 h-2 rounded-full ${
+                                                    activeChapter === chapter.time ? 'bg-[#177267] animate-pulse' : 'bg-slate-300'
+                                                }`}></div>
                                                 <span className="font-medium">
                                                     {activeChapter === chapter.time ? 'Şu anda oynatılıyor' : 'Bu konuya git'}
                                                 </span>
                                             </div>
                                         </div>
-                                        {activeChapter === chapter.time && (
-                                            <div className="flex-shrink-0">
-                                                <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
+                                        <div className="flex-shrink-0">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                                                activeChapter === chapter.time 
+                                                    ? 'bg-[#177267] text-white' 
+                                                    : 'bg-slate-100 text-slate-400 group-hover:bg-[#177267]/10 group-hover:text-[#177267]'
+                                            }`}>
+                                                <Play className="h-3.5 w-3.5" />
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
                                 </button>
                                 <div className="px-4 pb-2 border-t border-slate-100">
@@ -251,61 +280,110 @@ function AudioCard({ audio, source, onPlay, searchQuery }) {
     // Dosya adından temiz başlık çıkar
     const cleanTitle = audio.title.replace(/\.(mp3|wav|m4a)$/i, '').replace(/_/g, ' ');
     
+    // Arama yapıldığında sadece eşleşen konuları filtrele
+    const filteredChapters = useMemo(() => {
+        if (!searchQuery || searchQuery.trim() === '') {
+            return audio.chapters;
+        }
+        return audio.chapters.filter(chapter => 
+            turkishIncludes(chapter.title, searchQuery.trim())
+        );
+    }, [audio.chapters, searchQuery]);
+    
+    // Gösterilecek konuları belirle
+    const chaptersToShow = expanded ? filteredChapters : filteredChapters.slice(0, 3);
+    
+    // Belirli bir saniyeden başlatma fonksiyonu
+    const handleChapterPlay = (chapter) => {
+        const parts = chapter.time.split(':').map(Number);
+        const seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+        onPlay(audio, source, chapter.time, seconds);
+    };
+    
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="group relative bg-white rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-xl transition-all duration-300 overflow-hidden touch-manipulation"
+            className="group relative bg-white rounded-2xl border border-slate-200/60 hover:border-[#177267]/30 hover:shadow-2xl transition-all duration-500 overflow-hidden touch-manipulation backdrop-blur-sm"
         >
-            {/* Header - Sadece meta bilgiler */}
-            <div className="p-3 sm:p-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                    <span className="inline-flex items-center px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-[#177267] text-white text-xs sm:text-sm font-semibold shadow-sm">
-                        <Tag className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                        <span className="truncate max-w-[120px] sm:max-w-none">{source}</span>
-                    </span>
-                    <div className="flex items-center gap-1 sm:gap-2">
-                        <span className="inline-flex items-center gap-1 sm:gap-1.5 bg-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-emerald-200 text-[#177267] font-semibold shadow-sm text-xs sm:text-sm">
-                          <ListMusic className="h-3 w-3 sm:h-4 sm:w-4" />
-                          <span className="hidden sm:inline">{audio.chapters.length} konu</span>
-                          <span className="sm:hidden">{audio.chapters.length}</span>
-                        </span>
-                        {audio.duration && (
-                          <span className="inline-flex items-center gap-1 sm:gap-1.5 bg-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-slate-200 text-slate-600 font-medium shadow-sm text-xs sm:text-sm">
-                            <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
-                            <span className="hidden sm:inline">{audio.duration}</span>
-                            <span className="sm:hidden text-xs">{audio.duration}</span>
-                          </span>
-                        )}
-                    </div>
-                </div>
-            </div>
-            
-            {/* Konu Başlıkları - Ana İçerik */}
-            <div className="p-3 sm:p-5">
-                <div className="mb-4">
-                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-3 sm:mb-4 flex items-center gap-2">
-                        <div className="w-1 h-5 sm:h-6 bg-[#177267] rounded-full"></div>
-                        <span className="text-sm sm:text-xl">Konu Başlıkları</span>
-                    </h3>
-                    <div className="space-y-2 max-h-48 sm:max-h-64 overflow-y-auto">
-                        {audio.chapters.map((chapter, index) => (
-                            <div key={index} className="flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200 hover:border-emerald-300 transition-colors">
-                                <span className="text-xs text-[#177267] font-mono bg-white px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-emerald-300 shrink-0 font-semibold">
-                                    {chapter.time}
-                                </span>
-                                <span className="text-xs sm:text-sm text-slate-800 flex-1 font-medium leading-relaxed">
-                                    {highlightSearchTerm(chapter.title, searchQuery)}
-                                </span>
-                            </div>
-                        ))}
+            {/* Modern Header */}
+            <div className="p-6 border-b border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-gradient-to-br from-[#177267] to-[#0d9488] rounded-xl flex items-center justify-center shadow-lg">
+                            <Volume2 className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-slate-900 text-lg leading-tight">{cleanTitle}</h3>
+                            <p className="text-sm text-slate-500 font-medium">{source}</p>
+                        </div>
                     </div>
                 </div>
                 
-                {/* Büyük Play Button */}
+                {/* Meta Info */}
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-200">
+                        <ListMusic className="h-4 w-4 text-slate-600" />
+                        <span className="text-sm font-medium text-slate-700">
+                            {searchQuery ? `${filteredChapters.length}/${audio.chapters.length}` : audio.chapters.length} konu
+                        </span>
+                    </div>
+                    {audio.duration && (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-200">
+                            <Clock className="h-4 w-4 text-slate-600" />
+                            <span className="text-sm font-medium text-slate-700">{audio.duration}</span>
+                        </div>
+                    )}
+                </div>
+            </div>
+            
+            {/* Konu Başlıkları */}
+            <div className="p-6">
+                <div className="mb-6">
+                    <h4 className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-4">Konu Başlıkları</h4>
+                    {filteredChapters.length === 0 ? (
+                        <div className="text-center py-8">
+                            <p className="text-slate-500 text-sm">Arama kriterinize uygun konu bulunamadı.</p>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100">
+                                {chaptersToShow.map((chapter, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => handleChapterPlay(chapter)}
+                                        className="w-full flex items-center gap-3 p-3 bg-slate-50/50 rounded-xl hover:bg-[#177267]/5 hover:border-[#177267]/20 transition-all duration-200 group/chapter border border-transparent"
+                                    >
+                                        <div className="w-12 h-8 bg-white rounded-lg border border-slate-200 flex items-center justify-center shadow-sm group-hover/chapter:border-[#177267]/30">
+                                            <span className="text-xs font-mono font-semibold text-[#177267]">{chapter.time}</span>
+                                        </div>
+                                        <span 
+                                            className="text-sm text-slate-700 flex-1 font-bold leading-relaxed group-hover/chapter:text-[#177267] text-left"
+                                            dangerouslySetInnerHTML={{ __html: highlightSearchTerm(chapter.title, searchQuery) }}
+                                        />
+                                        <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center group-hover/chapter:bg-[#177267]/10 transition-colors">
+                                            <Play className="h-3 w-3 text-slate-400 group-hover/chapter:text-[#177267]" />
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                            
+                            {filteredChapters.length > 3 && (
+                                <button
+                                    onClick={() => setExpanded(!expanded)}
+                                    className="mt-3 text-sm text-[#177267] hover:text-[#116358] font-medium transition-colors"
+                                >
+                                    {expanded ? 'Daha az göster' : `+${filteredChapters.length - 3} konu daha`}
+                                </button>
+                            )}
+                        </>
+                    )}
+                </div>
+                
+                {/* Modern Play Button */}
                 <button
                     onClick={() => onPlay(audio, source)}
-                    className="w-full bg-gradient-to-r from-[#177267] to-[#0d9488] hover:from-[#116358] hover:to-[#0f766e] text-white font-bold py-4 sm:py-6 px-6 sm:px-8 rounded-xl flex items-center justify-center gap-3 sm:gap-4 transition-all duration-300 hover:shadow-xl hover:scale-[1.03] group touch-manipulation min-h-[44px] active:scale-95"
+                    className="w-full bg-gradient-to-r from-[#177267] to-[#0d9488] hover:from-[#116358] hover:to-[#0f766e] text-white font-semibold py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-all duration-300 hover:shadow-xl hover:shadow-[#177267]/25 hover:-translate-y-0.5 group/play touch-manipulation min-h-[44px] active:scale-95"
                     style={{
                         WebkitTapHighlightColor: 'transparent',
                         WebkitTouchCallout: 'none',
@@ -314,8 +392,10 @@ function AudioCard({ audio, source, onPlay, searchQuery }) {
                         touchAction: 'manipulation'
                     }}
                 >
-                    <Play className="h-6 w-6 sm:h-8 sm:w-8 group-hover:scale-110 transition-transform" />
-                    <span className="text-base sm:text-xl">Dinlemeye Başla</span>
+                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center group-hover/play:bg-white/30 transition-colors">
+                        <Play className="h-4 w-4 group-hover/play:scale-110 transition-transform" />
+                    </div>
+                    <span className="text-base">Dinlemeye Başla</span>
                 </button>
             </div>
         </motion.div>
@@ -335,17 +415,27 @@ export default function AudioLibraryPage() {
     // *** YENİ: URL'den gelen zaman parametresini saklamak için state ***
     const [initialSeconds, setInitialSeconds] = useState(null);
     
-    const handlePlayAudio = useCallback((audio, source, startTimeString = null) => {
+    const handlePlayAudio = useCallback((audio, source, startTimeString = null, startSeconds = null) => {
         console.log('=== HANDLE PLAY AUDIO ===');
         console.log('Audio:', audio.title);
         console.log('StartTime:', startTimeString);
-        let seconds = null;
-        if (startTimeString) {
+        console.log('StartSeconds:', startSeconds);
+        
+        let finalSeconds = startSeconds;
+        if (!finalSeconds && startTimeString) {
             const parts = startTimeString.split(':').map(Number);
-            seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+            finalSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
         }
+        
         // Sadece global mini-player üzerinden çal (modalı açma)
-        play({ id: `${source}-${audio.id}`, title: audio.title.replace(/\.(mp3|wav|m4a)$/i, '').replace(/_/g, ' '), source, mp3Filename: audio.mp3_filename, startSeconds: seconds ?? undefined, chapters: audio.chapters });
+        play({ 
+            id: `${source}-${audio.id}`, 
+            title: audio.title.replace(/\.(mp3|wav|m4a)$/i, '').replace(/_/g, ' '), 
+            source, 
+            mp3Filename: audio.mp3_filename, 
+            startSeconds: finalSeconds ?? undefined, 
+            chapters: audio.chapters 
+        });
     }, [play]);
     
     useEffect(() => {
@@ -451,27 +541,38 @@ export default function AudioLibraryPage() {
         );
     }
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/30 to-teal-50/50">
-            {/* Header */}
-            <div className="bg-white border-b border-slate-200">
-                <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
-                    <div className="text-center mb-4 sm:mb-6">
-                        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#177267] leading-tight">Ses Kayıtları Arşivi</h1>
-                        <p className="mt-2 sm:mt-3 text-sm sm:text-base text-slate-600">
-                            <span className="text-[#177267] font-semibold">{filteredAudios.length}</span> ses kaydı bulundu
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100/50">
+            {/* Modern Header */}
+            <div className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60">
+                <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
+                    <div className="text-center mb-8">
+                        <div className="flex items-center justify-center gap-4 mb-6">
+                            <div className="w-16 h-16 bg-gradient-to-br from-[#177267] to-[#0d9488] rounded-2xl flex items-center justify-center shadow-lg">
+                                <Volume2 className="h-8 w-8 text-white" />
+                            </div>
+                            <div className="text-left">
+                                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 leading-tight">Ses Kayıtları</h1>
+                                <p className="text-lg text-slate-600 font-medium">Arşivi</p>
+                            </div>
+                        </div>
+                        <p className="text-slate-600 text-lg">
+                            <span className="text-[#177267] font-bold">{filteredAudios.length}</span> ses kaydı bulundu
                         </p>
                     </div>
 
-                    {/* Search Section */}
-                    <div className="max-w-2xl mx-auto px-2 sm:px-0">
-                        <div className="relative">
+                    {/* Enhanced Search Section */}
+                    <div className="max-w-3xl mx-auto">
+                        <div className="relative mb-6">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <Search className="h-5 w-5 text-slate-400" />
+                            </div>
                             <input
                                 type="text"
                                 placeholder="Konu, başlık veya kaynak ara..."
                                 aria-label="Ses kaydı ara"
                                 value={inputQuery}
                                 onChange={(e) => setInputQuery(e.target.value)}
-                                className="w-full text-sm sm:text-base md:text-lg h-12 sm:h-14 pl-3 sm:pl-4 pr-3 sm:pr-4 rounded-lg border border-slate-300 focus:border-[#177267] focus:ring-2 focus:ring-[#177267]/20 bg-white text-slate-700 placeholder-slate-400 transition-all duration-200 shadow-sm touch-manipulation"
+                                className="w-full text-base h-14 pl-12 pr-4 rounded-2xl border border-slate-200 focus:border-[#177267] focus:ring-2 focus:ring-[#177267]/10 bg-white/80 backdrop-blur-sm text-slate-700 placeholder-slate-400 transition-all duration-300 shadow-sm hover:shadow-md touch-manipulation"
                                 style={{
                                     WebkitTapHighlightColor: 'transparent',
                                     WebkitTouchCallout: 'none',
@@ -481,13 +582,13 @@ export default function AudioLibraryPage() {
                             />
                         </div>
                         
-                        {/* Suggestions */}
-                        <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 mt-3 sm:mt-4">
+                        {/* Modern Suggestions */}
+                        <div className="flex flex-wrap justify-center gap-3">
                             {["Sohbet", "Dua", "Nasihat", "İlim", "Ahlak"].map((label) => (
                                 <button 
                                     key={label} 
                                     onClick={() => setInputQuery(label)} 
-                                    className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-full border border-slate-300 text-[#177267] hover:bg-[#177267] hover:text-white transition-colors duration-200 touch-manipulation min-h-[44px] active:scale-95"
+                                    className="px-6 py-3 text-sm font-medium rounded-xl border border-slate-200 text-slate-700 hover:bg-[#177267] hover:text-white hover:border-[#177267] transition-all duration-300 touch-manipulation min-h-[44px] active:scale-95 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
                                     style={{
                                         WebkitTapHighlightColor: 'transparent',
                                         WebkitTouchCallout: 'none',
@@ -505,24 +606,22 @@ export default function AudioLibraryPage() {
             </div>
 
             {/* Main Content */}
-            <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
+            <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
                 {filteredAudios.length === 0 ? (
-                    <div className="text-center py-20">
-                        <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                    <div className="text-center py-24">
+                        <div className="w-24 h-24 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                            <Search className="h-12 w-12 text-slate-400" />
+                        </div>
+                        <h3 className="text-2xl font-bold text-slate-800 mb-3">
                             Kayıt bulunamadı
                         </h3>
-                        <p className="text-gray-600">
+                        <p className="text-slate-600 text-lg max-w-md mx-auto">
                             Arama kriterlerinizi değiştirerek tekrar deneyin.
                         </p>
                     </div>
                 ) : (
                     <>
-                    <div className={
-                        viewMode === 'grid'
-                            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6"
-                            : "space-y-4"
-                    }>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-8">
                         {filteredAudios.slice(0, limit).map(audio => (
                             <AudioCard
                                 key={`${audio.source}-${audio.id}`}
@@ -534,7 +633,7 @@ export default function AudioLibraryPage() {
                         ))}
                     </div>
                     {/* Infinite loader */}
-                    <div ref={loaderRef} className="h-8"></div>
+                    <div ref={loaderRef} className="h-12 mt-8"></div>
                     </>
                 )}
             </div>
